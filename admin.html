@@ -175,8 +175,8 @@ th{font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:u
 const CONFIG = {
   appsScriptUrl: "https://script.google.com/macros/s/AKfycbx8_AAZkrvQGIvmORUN1wya8kcyzeOL-GTb3lzaFHnladKfpg4iaZ-ttpo9YfBJ8Z0x/exec",
   // Where quiz-engine.html is hosted, WITHOUT a trailing slash or
-  // query string — e.g. "https://script.google.com/macros/s/AKfycbx8_AAZkrvQGIvmORUN1wya8kcyzeOL-GTb3lzaFHnladKfpg4iaZ-ttpo9YfBJ8Z0x/exec"
-  quizEngineUrl: "https://manisheknath.github.io/Test_V2/quiz-engine.html"
+  // query string — e.g. "https://yoursite.com/quiz-engine.html"
+  quizEngineUrl: "https://github.com/manisheknath/Test_V2/quiz-engine.html"
 };
 
 let ADMIN_TOKEN = sessionStorage.getItem('adminToken') || '';
@@ -313,8 +313,8 @@ async function refreshTestList(){
 /* ---------- Question builder ---------- */
 function addQuestion(type){
   currentQuestions.push(type === 'mc'
-    ? { type: 'mc', prompt: '', points: 2, options: ['', ''], correctIndex: 0, explanation: '' }
-    : { type: 'short', prompt: '', points: 5, answer: '', explanation: '' }
+    ? { type: 'mc', prompt: '', points: 2, options: ['', ''], correctIndex: 0, explanation: '', audioUrl: '' }
+    : { type: 'short', prompt: '', points: 5, answer: '', explanation: '', audioUrl: '' }
   );
   renderQuestions();
 }
@@ -339,6 +339,8 @@ function renderQuestions(){
 
     const promptEl = textarea('Question text', q.prompt, v => q.prompt = v);
     card.appendChild(promptEl);
+
+    card.appendChild(audioUrlField(q));
 
     const pointsRow = document.createElement('div');
     pointsRow.className = 'row';
@@ -376,6 +378,70 @@ function renderQuestions(){
   });
 }
 function btn(text, onClick){ const b=document.createElement('button'); b.textContent=text; b.type='button'; b.addEventListener('click', onClick); return b; }
+
+/* ---------- Audio URL field (optional, per question) ---------- */
+// Converts common "share" link formats into ones that actually work
+// in an <audio> tag. A normal Google Drive share link opens Drive's
+// viewer page, not the raw audio bytes, so it silently fails if used
+// as-is — same idea for a Dropbox link ending in ?dl=0.
+function normalizeAudioUrl(url){
+  const trimmed = (url || '').trim();
+  const driveMatch = trimmed.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (driveMatch) {
+    return `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
+  }
+  const driveOpenMatch = trimmed.match(/drive\.google\.com\/open\?id=([^&]+)/);
+  if (driveOpenMatch) {
+    return `https://drive.google.com/uc?export=download&id=${driveOpenMatch[1]}`;
+  }
+  if (trimmed.includes('dropbox.com') && trimmed.includes('dl=0')) {
+    return trimmed.replace('dl=0', 'dl=1');
+  }
+  return trimmed;
+}
+
+function audioUrlField(q){
+  const wrap = document.createElement('div');
+  wrap.style.marginBottom = '14px';
+  const l = document.createElement('label');
+  l.textContent = 'Audio URL (optional — for listening comprehension)';
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.value = q.audioUrl || '';
+  input.placeholder = 'Paste a Google Drive, Dropbox, or direct .mp3/.wav link';
+  const hint = document.createElement('div');
+  hint.style.cssText = 'font-size:11px;color:var(--ink-soft);margin:-8px 0 8px;';
+  hint.textContent = 'Google Drive and Dropbox share links are auto-converted to a playable format when you leave this field.';
+  const previewMount = document.createElement('div');
+  previewMount.style.marginBottom = '10px';
+
+  function renderPreview(){
+    previewMount.innerHTML = '';
+    if (q.audioUrl) {
+      const audio = document.createElement('audio');
+      audio.controls = true;
+      audio.style.width = '100%';
+      audio.src = q.audioUrl;
+      previewMount.appendChild(audio);
+    }
+  }
+
+  input.addEventListener('input', () => { q.audioUrl = input.value; });
+  input.addEventListener('blur', () => {
+    const converted = normalizeAudioUrl(input.value);
+    input.value = converted;
+    q.audioUrl = converted;
+    renderPreview();
+  });
+
+  wrap.appendChild(l);
+  wrap.appendChild(input);
+  wrap.appendChild(hint);
+  wrap.appendChild(previewMount);
+  renderPreview();
+  return wrap;
+}
+
 function textarea(labelText, value, onInput){
   const wrap = document.createElement('div');
   const l = document.createElement('label'); l.textContent = labelText;
@@ -521,8 +587,8 @@ function normalizeJsTest(obj) {
       shuffleQuestions: !!obj.shuffleQuestions,
       shuffleOptions: !!obj.shuffleOptions,
       questions: obj.questions.map(q => q.type === 'mc'
-        ? { type: 'mc', prompt: q.prompt, points: Number(q.points) || 0, options: q.options, correctIndex: Number(q.correctIndex), explanation: q.explanation || '' }
-        : { type: 'short', prompt: q.prompt, points: Number(q.points) || 0, answer: q.answer || '', explanation: q.explanation || '' }
+        ? { type: 'mc', prompt: q.prompt, points: Number(q.points) || 0, options: q.options, correctIndex: Number(q.correctIndex), explanation: q.explanation || '', audioUrl: q.audioUrl || '' }
+        : { type: 'short', prompt: q.prompt, points: Number(q.points) || 0, answer: q.answer || '', explanation: q.explanation || '', audioUrl: q.audioUrl || '' }
       )
     }
   };
@@ -677,11 +743,13 @@ function parseTestDocument(rawText) {
     if (block.type === 'MC') {
       const optionRegex = /^(\*)?\s*([A-D])\)\s*(.*)$/;
       const promptLines = []; const options = [];
-      let correctIndex = null, explanation = null, inExplanation = false;
+      let correctIndex = null, explanation = null, inExplanation = false, audioUrl = null;
       nonEmpty.forEach(line => {
         const om = line.match(optionRegex);
         const em = line.match(/^Explanation:\s*(.*)$/i);
-        if (em) { inExplanation = true; explanation = em[1]; }
+        const am = line.match(/^Audio:\s*(.*)$/i);
+        if (am) { inExplanation = false; audioUrl = am[1].trim(); }
+        else if (em) { inExplanation = true; explanation = em[1]; }
         else if (inExplanation) explanation += ' ' + line;
         else if (om) { const idx = om[2].charCodeAt(0)-65; if (om[1]==='*') correctIndex=idx; options[idx]=om[3]; }
         else promptLines.push(line);
@@ -690,15 +758,18 @@ function parseTestDocument(rawText) {
       q.options = options;
       q.correctIndex = correctIndex;
       if (explanation) q.explanation = explanation.trim();
+      if (audioUrl) q.audioUrl = audioUrl;
       if (!q.prompt) errors.push(`Q${block.qNum}: no prompt text found.`);
       if (options.filter(Boolean).length < 2) errors.push(`Q${block.qNum}: needs at least two options.`);
       if (correctIndex === null) errors.push(`Q${block.qNum}: no option marked correct (use *B) style).`);
     } else {
-      const promptLines = []; let referenceAnswer=null, explanation=null, mode='prompt';
+      const promptLines = []; let referenceAnswer=null, explanation=null, audioUrl=null, mode='prompt';
       nonEmpty.forEach(line => {
         const rm = line.match(/^Reference answer:\s*(.*)$/i);
         const em = line.match(/^Explanation:\s*(.*)$/i);
-        if (rm) { mode='ref'; referenceAnswer=rm[1]; }
+        const am = line.match(/^Audio:\s*(.*)$/i);
+        if (am) { audioUrl = am[1].trim(); }
+        else if (rm) { mode='ref'; referenceAnswer=rm[1]; }
         else if (em) { mode='exp'; explanation=em[1]; }
         else if (mode==='ref') referenceAnswer += ' ' + line;
         else if (mode==='exp') explanation += ' ' + line;
@@ -707,6 +778,7 @@ function parseTestDocument(rawText) {
       q.prompt = promptLines.join(' ').trim();
       if (referenceAnswer) q.answer = referenceAnswer.trim();
       if (explanation) q.explanation = explanation.trim();
+      if (audioUrl) q.audioUrl = audioUrl;
       if (!q.prompt) errors.push(`Q${block.qNum}: no prompt text found.`);
     }
     return q;
