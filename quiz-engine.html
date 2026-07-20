@@ -135,6 +135,7 @@ button.ghost:hover{ border-color: var(--ink-soft); color: var(--ink); }
 .site-name-bar .tagline{ font-family: var(--sans); font-weight: 400; font-size: 12px; margin-left: 8px; }
 footer.actions{ display:flex; justify-content: flex-end; padding: 20px 32px 28px; }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -192,8 +193,7 @@ footer.actions{ display:flex; justify-content: flex-end; padding: 20px 32px 28px
     <div id="reviewMount"></div>
     <div class="sync-status" id="syncStatus"></div>
     <footer class="actions" style="padding:24px 0 0; gap:10px;">
-      <button class="ghost" id="btnDownloadWord">Download report (.doc)</button>
-      <button class="ghost" id="btnDownloadText">Download report (.txt)</button>
+      <button class="ghost" id="btnDownloadPdf">Download report (.pdf)</button>
     </footer>
   </section>
 </div>
@@ -265,8 +265,7 @@ const els = {
   scoreBlock: document.getElementById('scoreBlock'),
   reviewMount: document.getElementById('reviewMount'),
   syncStatus: document.getElementById('syncStatus'),
-  btnDownloadWord: document.getElementById('btnDownloadWord'),
-  btnDownloadText: document.getElementById('btnDownloadText'),
+  btnDownloadPdf: document.getElementById('btnDownloadPdf'),
 };
 
 let timerInterval = null;
@@ -744,7 +743,7 @@ function renderResults(payload){
       return;
     }
 
-    let tag = '<span class="tag ungraded">Q' + pad(a.number) + ' · to review</span>';
+    let tag = '<span class="tag ungraded">Q' + pad(a.number) + ' · manually graded</span>';
     if (a.type === 'mc') {
       tag = a.correct
         ? '<span class="tag correct">Q' + pad(a.number) + ' · correct</span>'
@@ -755,7 +754,7 @@ function renderResults(payload){
       <div style="font-size:14px;color:var(--ink-soft);">
         Answer given: ${a.answerGiven ? a.answerGiven : '<em>no answer</em>'}
         ${a.correctAnswer ? '<br>Correct answer: ' + a.correctAnswer : ''}
-        ${a.referenceAnswer ? '<br>Reference answer (for your review): ' + a.referenceAnswer : ''}
+        ${a.referenceAnswer ? '<br>Reference answer: ' + a.referenceAnswer : ''}
       </div>
       ${a.explanation ? '<div class="explanation-box"><b>Explanation</b>' + a.explanation + '</div>' : ''}`;
     els.reviewMount.appendChild(item);
@@ -790,14 +789,14 @@ async function submitTest(autoSubmitted){
 
   let downloadedOk = true;
   try{
-    downloadBlob(buildReportHtml(resultsPayload), 'application/msword', 'doc');
+    downloadPdf(resultsPayload);
   }catch(err){
     downloadedOk = false;
   }
 
   if (isPreview) {
     els.syncStatus.textContent = "Preview mode — nothing was recorded. " +
-      (downloadedOk ? "Your report downloaded automatically so you can check its formatting." : "Automatic download didn't start — use a button below.");
+      (downloadedOk ? "Your PDF report downloaded automatically so you can check its formatting." : "Automatic download didn't start — use the button below.");
     return;
   }
 
@@ -806,9 +805,10 @@ async function submitTest(autoSubmitted){
 
   const recordedMsg = result.ok ? "Submission recorded." : "Couldn't reach the server to record this submission (only affects duplicate-attempt checking).";
   const downloadMsg = downloadedOk
-    ? "Your report has downloaded automatically — check your downloads folder."
-    : "Automatic download didn't start — please use a button below.";
-  els.syncStatus.textContent = recordedMsg + " " + downloadMsg + " Send the file to your test administrator.";
+    ? "Your PDF report has downloaded automatically — check your downloads folder."
+    : "Automatic download didn't start — please use the button below.";
+  els.syncStatus.textContent = recordedMsg + " " + downloadMsg +
+    " Your answers, the correct answers and the explanations are shown above. Send the PDF to your test administrator.";
 }
 
 els.btnStart.addEventListener('click', async () => {
@@ -859,109 +859,123 @@ function escapeHtml(str){
   return String(str).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
 }
 
-function buildReportHtml(payload){
-  const rows = payload.answers.map(a => {
-    if (a.type === 'passage') {
-      return `
-      <p style="font-weight:bold;margin-bottom:4px;">${a.audioUrl && a.prompt ? 'Reading &amp; Listening Passage' : a.audioUrl ? 'Listening Passage' : 'Reading Passage'}</p>
-      ${a.prompt ? '<p>' + escapeHtml(a.prompt).replace(/\n/g,'<br>') + '</p>' : ''}
-      ${a.audioUrl ? '<p><i>Audio clip: ' + escapeHtml(a.audioUrl) + ' (not embedded in this file — open the link to listen)</i></p>' : ''}
-      <hr>`;
-    }
-    let correction;
-    if (a.type === 'mc') {
-      correction = `<p style="color:${a.correct ? '#3C6E52' : '#C4453A'};"><b>${a.correct ? 'Correct' : 'Incorrect'}</b> — correct answer: ${escapeHtml(a.correctAnswer)}</p>`;
-    } else if (a.referenceAnswer) {
-      correction = `<p><i>Reference answer (for your review):</i> ${escapeHtml(a.referenceAnswer)}</p>`;
-    } else {
-      correction = `<p><i>(free-text answer — review manually)</i></p>`;
-    }
-    const explanationBlock = a.explanation
-      ? `<p style="background:#ECEFEA;border-left:3px solid #435363;padding:8px 10px;margin:6px 0;"><b>Explanation:</b> ${escapeHtml(a.explanation)}</p>`
-      : '';
-    return `
-      <p style="font-weight:bold;margin-bottom:4px;">Q${pad(a.number)}. ${escapeHtml(a.prompt).replace(/\n/g,'<br>')}</p>
-      <p style="margin-top:0;">Answer given: ${a.answerGiven ? escapeHtml(a.answerGiven) : '<i>no answer</i>'}</p>
-      ${correction}
-      ${explanationBlock}
-      <hr>`;
-  }).join('');
+function downloadPdf(payload){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'pt', format: 'a4' });
 
-  return `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
-<head><meta charset="utf-8"><title>${escapeHtml(payload.testTitle)}</title></head>
-<body style="font-family:Calibri,Arial,sans-serif;">
-  <h1>${escapeHtml(payload.testTitle)}</h1>
-  <p><b>Test code:</b> ${escapeHtml(payload.testCode)}</p>
-  <p>
-    <b>Name:</b> ${escapeHtml(payload.takerName)}<br>
-    <b>Email:</b> ${escapeHtml(payload.takerEmail)}<br>
-    <b>Test deadline:</b> ${formatDateTime(payload.testDeadline)}<br>
-    <b>Submitted:</b> ${formatDateTime(payload.submittedAt)}${payload.autoSubmittedOnTimeout ? ' (auto-submitted — time ran out)' : ''}
-  </p>
-  ${payload.score.gradableQuestionCount > 0 ? `<p><b>Score:</b> ${payload.score.earned} / ${payload.score.possible}</p>` : ''}
-  <p><b>Left fullscreen during test:</b> ${payload.fullscreenExitCount || 0} time(s)</p>
-  <p><b>Switched away from tab during test:</b> ${payload.tabSwitchCount || 0} time(s)</p>
-  <hr>
-  ${rows}
-</body>
-</html>`;
-}
+  const M = 48;                       // page margin
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const CW = W - M * 2;               // content width
+  let y = M;
 
-function buildReportText(payload){
-  const lines = [];
-  lines.push(payload.testTitle);
-  lines.push('Test code: ' + payload.testCode);
-  lines.push('Name: ' + payload.takerName);
-  lines.push('Email: ' + payload.takerEmail);
-  lines.push('Test deadline: ' + formatDateTime(payload.testDeadline));
-  lines.push('Submitted: ' + formatDateTime(payload.submittedAt) + (payload.autoSubmittedOnTimeout ? ' (auto-submitted — time ran out)' : ''));
-  if (payload.score.gradableQuestionCount > 0) {
-    lines.push('Score: ' + payload.score.earned + ' / ' + payload.score.possible);
+  function ensure(space){
+    if (y + space > H - M) { doc.addPage(); y = M; }
   }
-  lines.push('Left fullscreen during test: ' + (payload.fullscreenExitCount || 0) + ' time(s)');
-  lines.push('Switched away from tab during test: ' + (payload.tabSwitchCount || 0) + ' time(s)');
-  lines.push('');
-  lines.push('='.repeat(60));
+  function text(str, opts){
+    opts = opts || {};
+    const size = opts.size || 10;
+    const style = opts.style || 'normal';
+    const color = opts.color || [30, 30, 30];
+    const indent = opts.indent || 0;
+    doc.setFont('helvetica', style);
+    doc.setFontSize(size);
+    doc.setTextColor(color[0], color[1], color[2]);
+    const lines = doc.splitTextToSize(String(str), CW - indent);
+    lines.forEach(line => {
+      ensure(size * 1.35);
+      doc.text(line, M + indent, y);
+      y += size * 1.35;
+    });
+  }
+  function rule(){
+    ensure(14);
+    doc.setDrawColor(200, 200, 200);
+    doc.line(M, y, W - M, y);
+    y += 14;
+  }
+  function gap(n){ y += (n || 8); }
+
+  // ---- Header ----
+  text(payload.testTitle, { size: 18, style: 'bold' });
+  gap(4);
+  text('Test code: ' + payload.testCode, { size: 10, color: [110,110,110] });
+  gap(8);
+  text('Name: ' + payload.takerName, { size: 10 });
+  text('Email: ' + payload.takerEmail, { size: 10 });
+  text('Test deadline: ' + formatDateTime(payload.testDeadline), { size: 10 });
+  text('Submitted: ' + formatDateTime(payload.submittedAt) +
+       (payload.autoSubmittedOnTimeout ? ' (auto-submitted — time ran out)' : ''), { size: 10 });
+  gap(6);
+  if (payload.score.gradableQuestionCount > 0) {
+    text('Score: ' + payload.score.earned + ' / ' + payload.score.possible,
+         { size: 13, style: 'bold' });
+    gap(4);
+  }
+  text('Left fullscreen during test: ' + (payload.fullscreenExitCount || 0) + ' time(s)',
+       { size: 9, color: [110,110,110] });
+  text('Switched away from tab during test: ' + (payload.tabSwitchCount || 0) + ' time(s)',
+       { size: 9, color: [110,110,110] });
+  gap(6);
+  rule();
+
+  // ---- Questions ----
   payload.answers.forEach(a => {
-    lines.push('');
     if (a.type === 'passage') {
-      lines.push((a.audioUrl && a.prompt ? 'READING & LISTENING PASSAGE' : a.audioUrl ? 'LISTENING PASSAGE' : 'READING PASSAGE'));
-      if (a.prompt) lines.push(a.prompt);
-      if (a.audioUrl) lines.push('Audio clip: ' + a.audioUrl + ' (open the link to listen)');
+      const label = a.audioUrl && a.prompt ? 'Reading & Listening Passage'
+                  : a.audioUrl ? 'Listening Passage' : 'Reading Passage';
+      text(label, { size: 11, style: 'bold' });
+      if (a.prompt) { gap(2); text(a.prompt, { size: 10 }); }
+      if (a.audioUrl) {
+        gap(2);
+        text('Audio clip: ' + a.audioUrl + ' (open the link to listen)',
+             { size: 9, style: 'italic', color: [110,110,110] });
+      }
+      gap(6); rule();
       return;
     }
-    lines.push('Q' + pad(a.number) + '. ' + a.prompt);
-    lines.push('Answer given: ' + (a.answerGiven || '(no answer)'));
+
+    ensure(60);
+    text('Q' + pad(a.number) + '. ' + a.prompt, { size: 11, style: 'bold' });
+    gap(3);
+    text('Answer given: ' + (a.answerGiven || '(no answer)'), { size: 10 });
+
     if (a.type === 'mc') {
-      lines.push((a.correct ? 'CORRECT' : 'INCORRECT') + ' — correct answer: ' + a.correctAnswer);
+      gap(2);
+      text((a.correct ? 'Correct' : 'Incorrect') + ' — correct answer: ' + a.correctAnswer,
+           { size: 10, style: 'bold', color: a.correct ? [60,110,82] : [196,69,58] });
     } else if (a.referenceAnswer) {
-      lines.push('Reference answer (for review): ' + a.referenceAnswer);
+      gap(2);
+      text('Reference answer: ' + a.referenceAnswer, { size: 10, style: 'italic' });
     } else {
-      lines.push('(free-text answer — review manually)');
+      gap(2);
+      text('(free-text answer — reviewed manually)', { size: 9, style: 'italic', color: [110,110,110] });
     }
+
     if (a.explanation) {
-      lines.push('Explanation: ' + a.explanation);
+      gap(4);
+      text('Explanation: ' + a.explanation, { size: 10, color: [67,83,99], indent: 12 });
     }
+    gap(6);
+    rule();
   });
-  return lines.join('\n');
+
+  // ---- Page numbers ----
+  const total = doc.internal.getNumberOfPages();
+  for (let i = 1; i <= total; i++) {
+    doc.setPage(i);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('Page ' + i + ' of ' + total, W - M, H - 24, { align: 'right' });
+  }
+
+  const safeName = (payload.takerName || 'results').replace(/[^a-z0-9]+/gi, '_');
+  doc.save(TEST_CONFIG.testCode.replace(/\s+/g, '_') + '_' + safeName + '.pdf');
 }
 
-function downloadBlob(content, mimeType, extension){
-  const blob = new Blob(extension === 'doc' ? ['\ufeff', content] : [content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  const safeName = (resultsPayload.takerName || 'results').replace(/[^a-z0-9]+/gi, '_');
-  a.href = url;
-  a.download = `${TEST_CONFIG.testCode.replace(/\s+/g,'_')}_${safeName}.${extension}`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-els.btnDownloadWord.addEventListener('click', () => {
-  downloadBlob(buildReportHtml(resultsPayload), 'application/msword', 'doc');
-});
-els.btnDownloadText.addEventListener('click', () => {
-  downloadBlob(buildReportText(resultsPayload), 'text/plain;charset=utf-8', 'txt');
+els.btnDownloadPdf.addEventListener('click', () => {
+  downloadPdf(resultsPayload);
 });
 
 async function init(){
