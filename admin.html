@@ -93,12 +93,28 @@ th{font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:u
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
         <h2 style="margin:0;">Tests</h2>
         <div style="display:flex;gap:10px;">
+          <button class="ghost" id="btnPasteImport">Paste text / JS</button>
           <button class="ghost" id="btnImportWord">Import from Word</button>
           <button class="primary" id="btnNewTest">+ New test</button>
         </div>
       </div>
       <input type="file" id="wordFileInput" accept=".docx" class="hidden">
       <div id="importNotice"></div>
+
+      <!-- Paste import panel (hidden until opened) -->
+      <div id="pasteImportPanel" class="q-card hidden" style="margin-bottom:16px;">
+        <p style="font-size:13px;color:var(--ink-soft);margin-top:0;">
+          Paste either: the same plain-text template format used for Word import (TEST CODE: ... === ... Q1 [MC] [2 pts] ...),
+          <b>or</b> a JS/JSON test object like <code>{ testCode: "...", title: "...", questions: [...] }</code> (the same shape
+          used elsewhere in this system — a <code>const TEST_CONFIG = {...}</code> block works too, the <code>const TEST_CONFIG =</code>
+          part is stripped automatically). The format is auto-detected.
+        </p>
+        <textarea id="pasteImportText" style="min-height:220px;font-family:var(--mono);font-size:12px;" placeholder="Paste template text or a TEST_CONFIG-style JS object here..."></textarea>
+        <div style="display:flex;gap:10px;">
+          <button class="primary" id="btnParsePasted">Parse</button>
+          <button class="ghost" id="btnCancelPaste">Cancel</button>
+        </div>
+      </div>
       <table id="testsTable">
         <thead><tr><th>Code</th><th>Title</th><th>Questions</th><th>Status</th><th>Opens / Closes</th><th></th></tr></thead>
         <tbody id="testsTableBody"></tbody>
@@ -157,10 +173,10 @@ th{font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:u
    ONE-TIME SETUP — paste both URLs once, reused for every test.
    ============================================================ */
 const CONFIG = {
-  appsScriptUrl: "https://script.google.com/macros/s/AKfycbx8_AAZkrvQGIvmORUN1wya8kcyzeOL-GTb3lzaFHnladKfpg4iaZ-ttpo9YfBJ8Z0x/exec",
+  appsScriptUrl: "PASTE_YOUR_WEB_APP_URL_HERE",
   // Where quiz-engine.html is hosted, WITHOUT a trailing slash or
   // query string — e.g. "https://yoursite.com/quiz-engine.html"
-  quizEngineUrl: "https://manisheknath.github.io/Test_V2/quiz-engine.html"
+  quizEngineUrl: "PASTE_YOUR_QUIZ_ENGINE_URL_HERE"
 };
 
 let ADMIN_TOKEN = sessionStorage.getItem('adminToken') || '';
@@ -451,6 +467,116 @@ document.getElementById('btnSaveTest').addEventListener('click', async () => {
   document.getElementById('saveResultBox').innerHTML =
     '<div class="notice ok">Saved. Taker link:</div><div class="link-box">' + link + '</div>';
   refreshTestList();
+});
+
+/* ---------- Paste import (text template OR JS/JSON config) ---------- */
+document.getElementById('btnPasteImport').addEventListener('click', () => {
+  document.getElementById('pasteImportPanel').classList.remove('hidden');
+  document.getElementById('pasteImportText').focus();
+});
+document.getElementById('btnCancelPaste').addEventListener('click', () => {
+  document.getElementById('pasteImportPanel').classList.add('hidden');
+});
+
+function looksLikeJs(text) {
+  const t = text.trim();
+  return t.startsWith('{') || /^const\s+TEST_CONFIG\s*=/.test(t) || /^module\.exports/.test(t);
+}
+
+// Normalizes a parsed JS/JSON test object (which may use the original
+// TEST_CONFIG field names) into exactly the shape the editor/save flow
+// expects. Field names already match 1:1 with what this system uses
+// elsewhere (testCode, title, intro, timeLimitMinutes, startDate,
+// deadline, questions[].type/prompt/points/options/correctIndex/
+// explanation/answer) — so this is mostly pass-through with light
+// defaulting for missing optional fields.
+function normalizeJsTest(obj) {
+  const errors = [];
+  if (!obj.testCode) errors.push('Missing "testCode".');
+  if (!obj.title) errors.push('Missing "title".');
+  if (!obj.timeLimitMinutes) errors.push('Missing "timeLimitMinutes".');
+  if (!obj.deadline) errors.push('Missing "deadline".');
+  if (!Array.isArray(obj.questions) || obj.questions.length === 0) errors.push('Missing or empty "questions" array.');
+
+  (obj.questions || []).forEach((q, i) => {
+    if (!q.type || (q.type !== 'mc' && q.type !== 'short')) errors.push(`Question ${i+1}: type must be "mc" or "short".`);
+    if (!q.prompt) errors.push(`Question ${i+1}: missing prompt.`);
+    if (q.type === 'mc') {
+      if (!Array.isArray(q.options) || q.options.filter(Boolean).length < 2) errors.push(`Question ${i+1}: needs at least 2 options.`);
+      if (q.correctIndex === undefined || q.correctIndex === null) errors.push(`Question ${i+1}: missing correctIndex.`);
+    }
+  });
+
+  if (errors.length > 0) return { ok: false, errors };
+
+  return {
+    ok: true,
+    test: {
+      testCode: obj.testCode,
+      title: obj.title,
+      intro: obj.intro || '',
+      timeLimitMinutes: Number(obj.timeLimitMinutes),
+      startDate: obj.startDate || '',
+      deadline: obj.deadline,
+      shuffleQuestions: !!obj.shuffleQuestions,
+      shuffleOptions: !!obj.shuffleOptions,
+      questions: obj.questions.map(q => q.type === 'mc'
+        ? { type: 'mc', prompt: q.prompt, points: Number(q.points) || 0, options: q.options, correctIndex: Number(q.correctIndex), explanation: q.explanation || '' }
+        : { type: 'short', prompt: q.prompt, points: Number(q.points) || 0, answer: q.answer || '', explanation: q.explanation || '' }
+      )
+    }
+  };
+}
+
+function parseJsConfig(text) {
+  // Strip a leading "const TEST_CONFIG = " and a trailing ";" if present,
+  // so both a bare object and the full declaration style both work.
+  let cleaned = text.trim()
+    .replace(/^const\s+TEST_CONFIG\s*=\s*/, '')
+    .replace(/^module\.exports\s*=\s*/, '')
+    .replace(/;\s*$/, '');
+  try {
+    // Using Function(), not eval — still executes the pasted text, but
+    // this is the admin's own trusted input (same trust level as them
+    // typing directly into the form), not third-party/untrusted content.
+    const obj = Function('"use strict"; return (' + cleaned + ')')();
+    return { ok: true, obj };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+document.getElementById('btnParsePasted').addEventListener('click', () => {
+  const text = document.getElementById('pasteImportText').value;
+  const noticeEl = document.getElementById('importNotice');
+  if (!text.trim()) return;
+
+  if (looksLikeJs(text)) {
+    const parsed = parseJsConfig(text);
+    if (!parsed.ok) {
+      noticeEl.innerHTML = '<div class="notice error"><b>Could not parse this as JS:</b><br>' + parsed.error + '</div>';
+      return;
+    }
+    const normalized = normalizeJsTest(parsed.obj);
+    if (!normalized.ok) {
+      noticeEl.innerHTML = '<div class="notice error"><b>This JS object is missing required fields:</b><br>' + normalized.errors.join('<br>') + '</div>';
+      return;
+    }
+    noticeEl.innerHTML = '<div class="notice ok">Imported "' + normalized.test.title + '" from pasted JS — review below, then click Save test.</div>';
+    document.getElementById('pasteImportPanel').classList.add('hidden');
+    document.getElementById('pasteImportText').value = '';
+    openEditor(normalized.test);
+  } else {
+    const result = parseTestDocument(text);
+    if (!result.ok) {
+      noticeEl.innerHTML = '<div class="notice error"><b>Could not parse this as template text:</b><br>' + result.errors.join('<br>') + '</div>';
+      return;
+    }
+    noticeEl.innerHTML = '<div class="notice ok">Imported "' + result.test.title + '" from pasted text — review below, then click Save test.</div>';
+    document.getElementById('pasteImportPanel').classList.add('hidden');
+    document.getElementById('pasteImportText').value = '';
+    openEditor(result.test);
+  }
 });
 
 /* ---------- Word import ---------- */
