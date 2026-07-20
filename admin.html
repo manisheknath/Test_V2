@@ -1,800 +1,316 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Test Admin</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-<style>
-:root{
-  --ink:#1C2E3A; --ink-soft:#435363; --paper:#ECEFEA; --paper-line:#D3D9CE; --card:#FFFFFF;
-  --accent-calm:#3C6E52; --accent-warn:#C98A2C; --accent-alert:#C4453A;
-  --mono:'IBM Plex Mono',ui-monospace,monospace; --sans:'IBM Plex Sans',system-ui,sans-serif; --serif:'Fraunces',Georgia,serif;
-}
-*{box-sizing:border-box;}
-html,body{margin:0;padding:0;}
-body{background:var(--paper);font-family:var(--sans);color:var(--ink);min-height:100vh;padding:32px 20px 96px;}
-.wrap{max-width:920px;margin:0 auto;}
-h1{font-family:var(--serif);font-size:32px;font-weight:600;margin:0 0 4px;}
-.sub{color:var(--ink-soft);font-size:14px;margin:0 0 24px;}
-.card{background:var(--card);border:1px solid var(--paper-line);box-shadow:0 1px 0 var(--paper-line);padding:24px;margin-bottom:24px;}
-.card h2{font-family:var(--serif);font-size:20px;font-weight:600;margin:0 0 16px;}
-label{display:block;font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px;}
-input[type=text],input[type=password],input[type=number],input[type=datetime-local],textarea,select{
-  width:100%;border:1px solid var(--paper-line);background:var(--paper);padding:9px 10px;font-family:var(--sans);font-size:14px;color:var(--ink);margin-bottom:14px;
-}
-textarea{min-height:60px;resize:vertical;}
-.row{display:flex;gap:14px;flex-wrap:wrap;}
-.row > div{flex:1;min-width:180px;}
-button{font-family:var(--mono);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;border:none;padding:10px 16px;}
-button.primary{background:var(--ink);color:var(--paper);}
-button.primary:hover{background:var(--ink-soft);}
-button.ghost{background:transparent;border:1px solid var(--paper-line);color:var(--ink-soft);}
-button.ghost:hover{border-color:var(--ink-soft);color:var(--ink);}
-button.danger{background:transparent;border:1px solid var(--accent-alert);color:var(--accent-alert);}
-button.small{padding:6px 10px;font-size:11px;}
-table{width:100%;border-collapse:collapse;font-size:14px;}
-th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--paper-line);}
-th{font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-soft);}
-.tag{font-family:var(--mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;display:inline-block;}
-.tag.open{background:#E7F0EA;color:var(--accent-calm);}
-.tag.scheduled{background:#FBF1E1;color:var(--accent-warn);}
-.tag.closed{background:#F0F0F0;color:var(--ink-soft);}
-.q-card{border:1px solid var(--paper-line);padding:16px;margin-bottom:14px;background:var(--paper);}
-.q-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
-.q-card-head b{font-family:var(--mono);font-size:12px;color:var(--ink-soft);}
-.opt-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
-.opt-row input[type=radio]{margin:0;}
-.opt-row input[type=text]{margin-bottom:0;flex:1;}
-.notice{font-size:13px;line-height:1.5;padding:12px 14px;margin-bottom:16px;}
-.notice.error{background:#FBEEEC;color:#7A2E27;border-left:3px solid var(--accent-alert);}
-.notice.ok{background:#E7F0EA;color:#254A38;border-left:3px solid var(--accent-calm);}
-.hidden{display:none;}
-.link-box{font-family:var(--mono);font-size:13px;background:var(--paper);border:1px solid var(--paper-line);padding:10px;word-break:break-all;margin-bottom:10px;}
-.actions-bar{display:flex;justify-content:flex-end;gap:10px;margin-top:8px;}
-</style>
-</head>
-<body>
-<div class="wrap">
-
-  <!-- ============ LOGIN SCREEN ============ -->
-  <div id="loginScreen" class="card">
-    <h2>Admin access</h2>
-    <label for="tokenInput">Admin token</label>
-    <input type="password" id="tokenInput" placeholder="Paste your ADMIN_TOKEN">
-    <div id="loginError" class="notice error hidden"></div>
-    <button class="primary" id="btnLogin">Enter</button>
-  </div>
-
-  <!-- ============ MAIN APP (hidden until logged in) ============ -->
-  <div id="app" class="hidden">
-    <h1>Test Admin</h1>
-    <p class="sub">Create, edit, and schedule tests. Test takers only ever see the link, never this page.</p>
-
-    <div class="card">
-      <h2>Site settings</h2>
-      <div class="row">
-        <div>
-          <label for="siteName">Site name (shown above every test)</label>
-          <input type="text" id="siteName" placeholder="e.g. Acme Training Portal">
-        </div>
-        <div>
-          <label for="siteTagline">Tagline (optional)</label>
-          <input type="text" id="siteTagline" placeholder="e.g. Internal assessments">
-        </div>
-      </div>
-      <button class="ghost" id="btnSaveSettings">Save site settings</button>
-      <span id="settingsSavedNote" style="margin-left:10px;font-size:12px;color:var(--ink-soft);"></span>
-    </div>
-
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <h2 style="margin:0;">Tests</h2>
-        <div style="display:flex;gap:10px;">
-          <button class="ghost" id="btnPasteImport">Paste text / JS</button>
-          <button class="ghost" id="btnImportWord">Import from Word</button>
-          <button class="primary" id="btnNewTest">+ New test</button>
-        </div>
-      </div>
-      <input type="file" id="wordFileInput" accept=".docx" class="hidden">
-      <div id="importNotice"></div>
-
-      <!-- Paste import panel (hidden until opened) -->
-      <div id="pasteImportPanel" class="q-card hidden" style="margin-bottom:16px;">
-        <p style="font-size:13px;color:var(--ink-soft);margin-top:0;">
-          Paste either: the same plain-text template format used for Word import (TEST CODE: ... === ... Q1 [MC] [2 pts] ...),
-          <b>or</b> a JS/JSON test object like <code>{ testCode: "...", title: "...", questions: [...] }</code> (the same shape
-          used elsewhere in this system — a <code>const TEST_CONFIG = {...}</code> block works too, the <code>const TEST_CONFIG =</code>
-          part is stripped automatically). The format is auto-detected.
-        </p>
-        <textarea id="pasteImportText" style="min-height:220px;font-family:var(--mono);font-size:12px;" placeholder="Paste template text or a TEST_CONFIG-style JS object here..."></textarea>
-        <div style="display:flex;gap:10px;">
-          <button class="primary" id="btnParsePasted">Parse</button>
-          <button class="ghost" id="btnCancelPaste">Cancel</button>
-        </div>
-      </div>
-      <table id="testsTable">
-        <thead><tr><th>Code</th><th>Title</th><th>Questions</th><th>Status</th><th>Opens / Closes</th><th></th></tr></thead>
-        <tbody id="testsTableBody"></tbody>
-      </table>
-    </div>
-
-    <!-- ============ TEST EDITOR ============ -->
-    <div class="card hidden" id="editorCard">
-      <h2 id="editorTitle">New test</h2>
-      <div id="editorNotice"></div>
-
-      <div class="row">
-        <div>
-          <label for="f_testCode">Test code (unique, no spaces)</label>
-          <input type="text" id="f_testCode" placeholder="e.g. FR-A2-002">
-        </div>
-        <div>
-          <label for="f_timeLimit">Time limit (minutes)</label>
-          <input type="number" id="f_timeLimit" placeholder="45">
-        </div>
-      </div>
-      <label for="f_title">Title</label>
-      <input type="text" id="f_title" placeholder="e.g. French A2 Placement Test">
-      <label for="f_intro">Instructions shown before the test starts</label>
-      <textarea id="f_intro" placeholder="Read each question carefully..."></textarea>
-      <div class="row">
-        <div>
-          <label for="f_startDate">Start date (optional — blank = open immediately)</label>
-          <input type="datetime-local" id="f_startDate">
-        </div>
-        <div>
-          <label for="f_deadline">Deadline (required)</label>
-          <input type="datetime-local" id="f_deadline">
-        </div>
-      </div>
-
-      <h2 style="margin-top:24px;">Questions</h2>
-      <div id="questionsList"></div>
-      <div style="display:flex;gap:10px;margin-bottom:20px;">
-        <button class="ghost" id="btnAddMc">+ Add multiple choice</button>
-        <button class="ghost" id="btnAddShort">+ Add short answer</button>
-      </div>
-
-      <div class="actions-bar">
-        <button class="ghost" id="btnCancelEdit">Cancel</button>
-        <button class="primary" id="btnSaveTest">Save test</button>
-      </div>
-      <div id="saveResultBox"></div>
-    </div>
-
-  </div>
-</div>
-
-<script>
 /* ============================================================
-   ONE-TIME SETUP — paste both URLs once, reused for every test.
+   QUESTIONS FILE
+   English B2 Level Test
+   Sections: Reading (2 passages) · Grammar · Vocabulary ·
+             Sentence Transformation · Situational Essays
+   Total: 66 Points across 30 questions
    ============================================================ */
-const CONFIG = {
-  appsScriptUrl: "https://script.google.com/macros/s/AKfycbx8_AAZkrvQGIvmORUN1wya8kcyzeOL-GTb3lzaFHnladKfpg4iaZ-ttpo9YfBJ8Z0x/exec",
-  // Where quiz-engine.html is hosted, WITHOUT a trailing slash or
-  // query string — e.g. "https://yoursite.com/quiz-engine.html"
-  quizEngineUrl: "https://manisheknath.github.io/Test_V2/quiz-engine.html"
+
+const TEST_CONFIG = {
+
+  testCode: "EN-B2-001",
+
+  title: "English B2 Level Test",
+
+  intro: "This test covers reading comprehension, grammar, vocabulary, sentence transformation, and situational writing at B2 level. Read each question carefully and complete all 30 before submitting.",
+
+  timeLimitMinutes: 60,
+
+  // Set these before this test goes out — see the format guide.
+  startDate: "2026-07-16T18:00:00",
+  deadline: "2026-07-16T19:00:00",
+
+  // Leave OFF for this test: Q1–Q5 and Q6–Q10 each depend on a
+  // shared reading passage — shuffling could separate the passage
+  // from its questions and confuse the taker.
+  shuffleQuestions: false,
+  shuffleOptions: false,
+
+  questions: [
+
+    // =========================
+    // READING — Passage 1 (10 points)
+    // =========================
+
+    {
+      type: "mc",
+      prompt:
+`Read the text:
+
+Since the pandemic, many companies have allowed their employees to work remotely, and this shift has transformed the way people balance their professional and personal lives. Sarah, a marketing manager in London, admits that although she initially struggled with time management, she has now developed a strict routine that keeps her productive. She believes that flexibility has improved her overall well-being, even though she sometimes misses the spontaneous conversations she used to have with colleagues in the office.
+
+According to the text, what has remote work changed?`,
+      points: 2,
+      options: [
+        "People's salaries",
+        "The way people balance work and personal life",
+        "The location of company headquarters",
+        "The number of holidays employees receive"
+      ],
+      correctIndex: 1
+    },
+
+    {
+      type: "mc",
+      prompt: "What was Sarah's initial challenge?",
+      points: 2,
+      options: ["Finding a job", "Time management", "Using new technology", "Communicating with her manager"],
+      correctIndex: 1
+    },
+
+    {
+      type: "mc",
+      prompt: "What does Sarah say has improved her overall well-being?",
+      points: 2,
+      options: ["Her salary", "Flexibility", "Her commute", "Her office environment"],
+      correctIndex: 1
+    },
+
+    {
+      type: "mc",
+      prompt: "What does Sarah sometimes miss from working in an office?",
+      points: 2,
+      options: ["Her old desk", "Spontaneous conversations with colleagues", "Her daily commute", "Structured meetings"],
+      correctIndex: 1
+    },
+
+    {
+      type: "short",
+      prompt: "In one sentence, explain what Sarah misses about working in an office, despite preferring to work remotely.",
+      points: 2,
+      answer: "She misses the spontaneous conversations she used to have with her colleagues in the office."
+    },
+
+    // =========================
+    // READING — Passage 2 (10 points)
+    // =========================
+
+    {
+      type: "mc",
+      prompt:
+`Read the text:
+
+Climate change continues to affect coastal cities around the world, forcing local governments to reconsider their long-term infrastructure plans. In Venice, for instance, authorities have installed a series of movable barriers designed to protect the city from rising sea levels during exceptionally high tides. While environmentalists welcome this initiative, some critics argue that such measures merely delay the inevitable and that more sustainable solutions should be prioritised instead. Local residents, meanwhile, remain divided over whether the spending is justified.
+
+What problem does the passage describe?`,
+      points: 2,
+      options: [
+        "Air pollution in cities",
+        "Coastal cities affected by climate change",
+        "A shortage of housing",
+        "Traffic congestion"
+      ],
+      correctIndex: 1
+    },
+
+    {
+      type: "mc",
+      prompt: "What has Venice installed to address this problem?",
+      points: 2,
+      options: ["New bridges", "Movable barriers", "Solar panels", "A new public transport system"],
+      correctIndex: 1
+    },
+
+    {
+      type: "mc",
+      prompt: "What is the purpose of the barriers?",
+      points: 2,
+      options: [
+        "To attract more tourists",
+        "To protect the city from rising sea levels",
+        "To reduce traffic congestion",
+        "To generate electricity"
+      ],
+      correctIndex: 1
+    },
+
+    {
+      type: "mc",
+      prompt: "What do critics argue about the barriers?",
+      points: 2,
+      options: [
+        "They are too expensive to build",
+        "They merely delay the inevitable",
+        "They don't work at all",
+        "Venice should be abandoned"
+      ],
+      correctIndex: 1
+    },
+
+    {
+      type: "short",
+      prompt: "According to the text, how do local residents feel about the government's spending on this project?",
+      points: 2,
+      answer: "They remain divided over whether the spending is justified given the scale of the challenge."
+    },
+
+    // =========================
+    // GRAMMAR (16 points)
+    // =========================
+
+    {
+      type: "mc",
+      prompt: "If I ____ more time, I would learn to play the piano.",
+      points: 2,
+      options: ["have", "had", "will have", "having"],
+      correctIndex: 1
+    },
+
+    {
+      type: "mc",
+      prompt: "By the time she arrives, we ____ dinner.",
+      points: 2,
+      options: ["will finish", "will have finished", "finish", "finished"],
+      correctIndex: 1
+    },
+
+    {
+      type: "mc",
+      prompt: "The report ____ by the manager before the meeting.",
+      points: 2,
+      options: ["was written", "wrote", "is write", "writes"],
+      correctIndex: 0
+    },
+
+    {
+      type: "mc",
+      prompt: "She said that she ____ tired.",
+      points: 2,
+      options: ["is", "was", "were", "has been"],
+      correctIndex: 1
+    },
+
+    {
+      type: "mc",
+      prompt: "Judging by the empty coffee cups, someone ____ have been working here all night.",
+      points: 2,
+      options: ["must", "might", "can", "should"],
+      correctIndex: 0
+    },
+
+    {
+      type: "short",
+      prompt: "Rewrite in passive voice: \"They will announce the results tomorrow.\"",
+      points: 2,
+      answer: "The results will be announced tomorrow."
+    },
+
+    {
+      type: "short",
+      prompt: "Rewrite in reported speech: He said, \"I am going to the gym.\"",
+      points: 2,
+      answer: "He said (that) he was going to the gym."
+    },
+
+    {
+      type: "mc",
+      prompt: "The book ____ I borrowed from the library was fascinating.",
+      points: 2,
+      options: ["who", "which", "whom", "whose"],
+      correctIndex: 1
+    },
+
+    // =========================
+    // VOCABULARY (12 points)
+    // =========================
+
+    {
+      type: "mc",
+      prompt: "What does the phrasal verb \"give up\" mean?",
+      points: 2,
+      options: ["To start something new", "To stop doing something", "To hurry up", "To arrive late"],
+      correctIndex: 1
+    },
+
+    {
+      type: "mc",
+      prompt: "Choose the best word: The company decided to ____ new employees to meet growing demand.",
+      points: 2,
+      options: ["hire", "fire", "retire", "expire"],
+      correctIndex: 0
+    },
+
+    {
+      type: "mc",
+      prompt: "Which word means \"very tired\"?",
+      points: 2,
+      options: ["Exhausted", "Excited", "Anxious", "Ambitious"],
+      correctIndex: 0
+    },
+
+    {
+      type: "mc",
+      prompt: "\"To make up your mind\" means:",
+      points: 2,
+      options: ["To become confused", "To decide", "To forget something", "To apologise"],
+      correctIndex: 1
+    },
+
+    {
+      type: "mc",
+      prompt: "Choose the correct collocation: She ____ a great effort to finish the project on time.",
+      points: 2,
+      options: ["did", "made", "took", "had"],
+      correctIndex: 1
+    },
+
+    {
+      type: "mc",
+      prompt: "What is the opposite of \"reluctant\"?",
+      points: 2,
+      options: ["Willing", "Nervous", "Careful", "Curious"],
+      correctIndex: 0
+    },
+
+    // =========================
+    // SENTENCE TRANSFORMATION (8 points)
+    // =========================
+
+    {
+      type: "short",
+      prompt: "Combine the sentences using a relative clause: \"The man called me yesterday. He is my neighbour.\"",
+      points: 2,
+      answer: "The man who called me yesterday is my neighbour."
+    },
+
+    {
+      type: "short",
+      prompt: "Rewrite the sentence starting with \"Not only...\": \"She sings well and she dances well too.\"",
+      points: 2,
+      answer: "Not only does she sing well, but she also dances well."
+    },
+
+    {
+      type: "short",
+      prompt: "Rewrite using \"unless\": \"You will fail the exam if you don't study.\"",
+      points: 2,
+      answer: "You will fail the exam unless you study."
+    },
+
+    {
+      type: "short",
+      prompt: "Write one sentence using the linking word \"although\".",
+      points: 2,
+      answer: "Open answer — check for correct use of 'although' introducing a contrasting clause."
+    },
+
+    // =========================
+    // SITUATIONAL ESSAYS (10 points)
+    // =========================
+
+    {
+      type: "short",
+      prompt: "You recently stayed at a hotel and had a disappointing experience. Write an email (120–150 words) to the hotel manager describing what went wrong and requesting a refund.",
+      points: 5,
+      answer: "Open answer — check for a formal register, clear structure (greeting, description of the problem, specific request, polite closing), coherence, and a length close to 120–150 words."
+    },
+
+    {
+      type: "short",
+      prompt: "Your college is organising an environmental awareness campaign. Write a short essay (120–150 words) suggesting three ways students can reduce plastic waste on campus.",
+      points: 5,
+      answer: "Open answer — check for three distinct, relevant suggestions, logical paragraph structure, appropriate linking words, and a length close to 120–150 words."
+    }
+
+  ]
 };
-
-let ADMIN_TOKEN = sessionStorage.getItem('adminToken') || '';
-let currentQuestions = []; // working array while editing a test
-let editingExistingCode = null; // null = creating new, else = editing this testCode
-
-function apiGet(params) {
-  const url = new URL(CONFIG.appsScriptUrl);
-  Object.keys(params).forEach(k => url.searchParams.set(k, params[k]));
-  return fetch(url).then(r => r.json());
-}
-function apiPost(body) {
-  return fetch(CONFIG.appsScriptUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(body)
-  }).then(r => r.json());
-}
-
-/* ---------- Login ---------- */
-document.getElementById('btnLogin').addEventListener('click', async () => {
-  const token = document.getElementById('tokenInput').value.trim();
-  if (!token) return;
-  const errEl = document.getElementById('loginError');
-  errEl.classList.add('hidden');
-  let result;
-  try {
-    result = await apiGet({ action: 'listTests', token });
-  } catch (err) {
-    errEl.textContent = "Couldn't reach the backend at all (network/CORS error): " + err.message +
-      ". This usually means the Apps Script deployment isn't set to \"Anyone\" access, or the appsScriptUrl in this file is wrong/outdated. Check the browser console for details.";
-    errEl.classList.remove('hidden');
-    return;
-  }
-  if (!result || !result.ok) {
-    errEl.textContent = "That token wasn't accepted — check it matches ADMIN_TOKEN in your Apps Script properties exactly (no extra spaces)." +
-      (result && result.error ? (' Backend said: ' + result.error) : '');
-    errEl.classList.remove('hidden');
-    return;
-  }
-  ADMIN_TOKEN = token;
-  sessionStorage.setItem('adminToken', token);
-  document.getElementById('loginScreen').classList.add('hidden');
-  document.getElementById('app').classList.remove('hidden');
-  renderTests(result.tests);
-  loadSettings();
-});
-
-// Auto-login if we already have a token this session
-(async function tryAutoLogin(){
-  if (!ADMIN_TOKEN) return;
-  const result = await apiGet({ action: 'listTests', token: ADMIN_TOKEN });
-  if (result.ok) {
-    document.getElementById('loginScreen').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-    renderTests(result.tests);
-    loadSettings();
-  }
-})();
-
-/* ---------- Settings ---------- */
-async function loadSettings(){
-  const result = await apiGet({ action: 'getSettings', token: ADMIN_TOKEN });
-  if (result.ok) {
-    document.getElementById('siteName').value = result.settings.siteName || '';
-    document.getElementById('siteTagline').value = result.settings.siteTagline || '';
-  }
-}
-document.getElementById('btnSaveSettings').addEventListener('click', async () => {
-  const settings = {
-    siteName: document.getElementById('siteName').value,
-    siteTagline: document.getElementById('siteTagline').value
-  };
-  const result = await apiPost({ action: 'saveSettings', token: ADMIN_TOKEN, settings });
-  const note = document.getElementById('settingsSavedNote');
-  note.textContent = result.ok ? 'Saved.' : 'Could not save — check console.';
-  setTimeout(() => note.textContent = '', 2500);
-});
-
-/* ---------- Test list ---------- */
-function computeStatus(startDate, deadline){
-  const now = Date.now();
-  if (startDate && new Date(startDate).getTime() > now) return 'scheduled';
-  if (deadline && new Date(deadline).getTime() < now) return 'closed';
-  return 'open';
-}
-function fmt(dt){
-  if (!dt) return '—';
-  const d = new Date(dt);
-  if (isNaN(d.getTime())) return dt;
-  return d.toLocaleString(undefined, { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
-}
-function renderTests(tests){
-  const tbody = document.getElementById('testsTableBody');
-  tbody.innerHTML = '';
-  (tests || []).forEach(t => {
-    const status = computeStatus(t.startDate, t.deadline);
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td><code>${t.testCode}</code></td>
-      <td>${t.title || ''}</td>
-      <td>${t.questionCount}</td>
-      <td><span class="tag ${status}">${status}</span></td>
-      <td style="font-size:12px;color:var(--ink-soft);">${fmt(t.startDate)} → ${fmt(t.deadline)}</td>
-      <td style="white-space:nowrap;">
-        <button class="ghost small" data-act="edit" data-code="${t.testCode}">Edit</button>
-        <button class="ghost small" data-act="link" data-code="${t.testCode}">Copy link</button>
-        <button class="danger small" data-act="delete" data-code="${t.testCode}">Delete</button>
-      </td>`;
-    tbody.appendChild(tr);
-  });
-}
-document.getElementById('testsTableBody').addEventListener('click', async (e) => {
-  const btn = e.target.closest('button');
-  if (!btn) return;
-  const code = btn.dataset.code;
-  if (btn.dataset.act === 'edit') {
-    const result = await apiGet({ action: 'getTestForEdit', testCode: code, token: ADMIN_TOKEN });
-    if (result.ok) openEditor(result.test);
-  } else if (btn.dataset.act === 'link') {
-    const link = CONFIG.quizEngineUrl + '?test=' + encodeURIComponent(code);
-    navigator.clipboard.writeText(link).then(() => alert('Link copied:\n' + link));
-  } else if (btn.dataset.act === 'delete') {
-    if (!confirm('Delete test "' + code + '"? This cannot be undone.')) return;
-    const result = await apiPost({ action: 'deleteTest', testCode: code, token: ADMIN_TOKEN });
-    if (result.ok) refreshTestList();
-  }
-});
-async function refreshTestList(){
-  const result = await apiGet({ action: 'listTests', token: ADMIN_TOKEN });
-  if (result.ok) renderTests(result.tests);
-}
-
-/* ---------- Question builder ---------- */
-function addQuestion(type){
-  currentQuestions.push(type === 'mc'
-    ? { type: 'mc', prompt: '', points: 2, options: ['', ''], correctIndex: 0, explanation: '', audioUrl: '' }
-    : { type: 'short', prompt: '', points: 5, answer: '', explanation: '', audioUrl: '' }
-  );
-  renderQuestions();
-}
-function renderQuestions(){
-  const mount = document.getElementById('questionsList');
-  mount.innerHTML = '';
-  currentQuestions.forEach((q, i) => {
-    const card = document.createElement('div');
-    card.className = 'q-card';
-    const head = document.createElement('div');
-    head.className = 'q-card-head';
-    head.innerHTML = `<b>Q${i+1} · ${q.type === 'mc' ? 'Multiple choice' : 'Short answer'}</b>`;
-    const controls = document.createElement('div');
-    controls.style.display = 'flex'; controls.style.gap = '6px';
-    const up = btn('↑', () => { if (i>0){ [currentQuestions[i-1],currentQuestions[i]]=[currentQuestions[i],currentQuestions[i-1]]; renderQuestions(); }});
-    const down = btn('↓', () => { if (i<currentQuestions.length-1){ [currentQuestions[i+1],currentQuestions[i]]=[currentQuestions[i],currentQuestions[i+1]]; renderQuestions(); }});
-    const del = btn('Remove', () => { currentQuestions.splice(i,1); renderQuestions(); });
-    del.classList.add('danger');
-    [up,down,del].forEach(b => { b.classList.add('small'); if(b!==del) b.classList.add('ghost'); controls.appendChild(b); });
-    head.appendChild(controls);
-    card.appendChild(head);
-
-    const promptEl = textarea('Question text', q.prompt, v => q.prompt = v);
-    card.appendChild(promptEl);
-
-    card.appendChild(audioUrlField(q));
-
-    const pointsRow = document.createElement('div');
-    pointsRow.className = 'row';
-    pointsRow.appendChild(labeledInput('Points', 'number', q.points, v => q.points = Number(v)));
-    card.appendChild(pointsRow);
-
-    if (q.type === 'mc') {
-      const optsWrap = document.createElement('div');
-      q.options.forEach((opt, oi) => {
-        const row = document.createElement('div');
-        row.className = 'opt-row';
-        const radio = document.createElement('input');
-        radio.type = 'radio'; radio.name = 'correct-' + i; radio.checked = q.correctIndex === oi;
-        radio.addEventListener('change', () => q.correctIndex = oi);
-        const input = document.createElement('input');
-        input.type = 'text'; input.value = opt; input.placeholder = 'Option ' + String.fromCharCode(65+oi);
-        input.addEventListener('input', () => q.options[oi] = input.value);
-        const rm = btn('✕', () => { q.options.splice(oi,1); if(q.correctIndex>=q.options.length) q.correctIndex=0; renderQuestions(); });
-        rm.classList.add('ghost','small');
-        row.appendChild(radio); row.appendChild(input); row.appendChild(rm);
-        optsWrap.appendChild(row);
-      });
-      card.appendChild(optsWrap);
-      if (q.options.length < 4) {
-        const addOpt = btn('+ Add option', () => { q.options.push(''); renderQuestions(); });
-        addOpt.classList.add('ghost','small');
-        card.appendChild(addOpt);
-      }
-    } else {
-      card.appendChild(textarea('Reference answer (for your review only, not shown to taker)', q.answer, v => q.answer = v));
-    }
-
-    card.appendChild(textarea('Explanation (optional — shown to taker after they submit)', q.explanation, v => q.explanation = v));
-    mount.appendChild(card);
-  });
-}
-function btn(text, onClick){ const b=document.createElement('button'); b.textContent=text; b.type='button'; b.addEventListener('click', onClick); return b; }
-
-/* ---------- Audio URL field (optional, per question) ---------- */
-// Converts common "share" link formats into ones that actually work
-// in an <audio> tag. A normal Google Drive share link opens Drive's
-// viewer page, not the raw audio bytes, so it silently fails if used
-// as-is — same idea for a Dropbox link ending in ?dl=0.
-function normalizeAudioUrl(url){
-  const trimmed = (url || '').trim();
-  const driveMatch = trimmed.match(/drive\.google\.com\/file\/d\/([^/]+)/);
-  if (driveMatch) {
-    return `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
-  }
-  const driveOpenMatch = trimmed.match(/drive\.google\.com\/open\?id=([^&]+)/);
-  if (driveOpenMatch) {
-    return `https://drive.google.com/uc?export=download&id=${driveOpenMatch[1]}`;
-  }
-  if (trimmed.includes('dropbox.com') && trimmed.includes('dl=0')) {
-    return trimmed.replace('dl=0', 'dl=1');
-  }
-  return trimmed;
-}
-
-function audioUrlField(q){
-  const wrap = document.createElement('div');
-  wrap.style.marginBottom = '14px';
-  const l = document.createElement('label');
-  l.textContent = 'Audio URL (optional — for listening comprehension)';
-  const input = document.createElement('input');
-  input.type = 'text';
-  input.value = q.audioUrl || '';
-  input.placeholder = 'Paste a Google Drive, Dropbox, or direct .mp3/.wav link';
-  const hint = document.createElement('div');
-  hint.style.cssText = 'font-size:11px;color:var(--ink-soft);margin:-8px 0 8px;';
-  hint.textContent = 'Google Drive and Dropbox share links are auto-converted to a playable format when you leave this field.';
-  const previewMount = document.createElement('div');
-  previewMount.style.marginBottom = '10px';
-
-  function renderPreview(){
-    previewMount.innerHTML = '';
-    if (q.audioUrl) {
-      const audio = document.createElement('audio');
-      audio.controls = true;
-      audio.style.width = '100%';
-      audio.src = q.audioUrl;
-      previewMount.appendChild(audio);
-    }
-  }
-
-  input.addEventListener('input', () => { q.audioUrl = input.value; });
-  input.addEventListener('blur', () => {
-    const converted = normalizeAudioUrl(input.value);
-    input.value = converted;
-    q.audioUrl = converted;
-    renderPreview();
-  });
-
-  wrap.appendChild(l);
-  wrap.appendChild(input);
-  wrap.appendChild(hint);
-  wrap.appendChild(previewMount);
-  renderPreview();
-  return wrap;
-}
-
-function textarea(labelText, value, onInput){
-  const wrap = document.createElement('div');
-  const l = document.createElement('label'); l.textContent = labelText;
-  const t = document.createElement('textarea'); t.value = value || '';
-  t.addEventListener('input', () => onInput(t.value));
-  wrap.appendChild(l); wrap.appendChild(t);
-  return wrap;
-}
-function labeledInput(labelText, type, value, onInput){
-  const wrap = document.createElement('div');
-  const l = document.createElement('label'); l.textContent = labelText;
-  const i = document.createElement('input'); i.type = type; i.value = value;
-  i.addEventListener('input', () => onInput(i.value));
-  wrap.appendChild(l); wrap.appendChild(i);
-  return wrap;
-}
-document.getElementById('btnAddMc').addEventListener('click', () => addQuestion('mc'));
-document.getElementById('btnAddShort').addEventListener('click', () => addQuestion('short'));
-
-/* ---------- Editor open/close/save ---------- */
-function toLocalInputValue(iso){
-  if (!iso) return '';
-  // datetime-local wants "YYYY-MM-DDTHH:MM", trim any seconds
-  return iso.length >= 16 ? iso.slice(0,16) : iso;
-}
-function openEditor(test){
-  editingExistingCode = test ? test.testCode : null;
-  document.getElementById('editorTitle').textContent = test ? ('Editing ' + test.testCode) : 'New test';
-  document.getElementById('editorNotice').innerHTML = '';
-  document.getElementById('saveResultBox').innerHTML = '';
-  document.getElementById('f_testCode').value = test ? test.testCode : '';
-  document.getElementById('f_testCode').disabled = !!test; // don't let code change on an existing test
-  document.getElementById('f_title').value = test ? test.title : '';
-  document.getElementById('f_intro').value = test ? test.intro : '';
-  document.getElementById('f_timeLimit').value = test ? test.timeLimitMinutes : 30;
-  document.getElementById('f_startDate').value = test ? toLocalInputValue(test.startDate) : '';
-  document.getElementById('f_deadline').value = test ? toLocalInputValue(test.deadline) : '';
-  currentQuestions = test ? JSON.parse(JSON.stringify(test.questions)) : [];
-  renderQuestions();
-  document.getElementById('editorCard').classList.remove('hidden');
-  document.getElementById('editorCard').scrollIntoView({ behavior: 'smooth' });
-}
-document.getElementById('btnNewTest').addEventListener('click', () => openEditor(null));
-document.getElementById('btnCancelEdit').addEventListener('click', () => {
-  document.getElementById('editorCard').classList.add('hidden');
-});
-
-function validateBeforeSave(test){
-  const errs = [];
-  if (!test.testCode) errs.push('Test code is required.');
-  if (!test.title) errs.push('Title is required.');
-  if (!test.deadline) errs.push('Deadline is required.');
-  if (!test.timeLimitMinutes || test.timeLimitMinutes <= 0) errs.push('Time limit must be a positive number.');
-  if (test.questions.length === 0) errs.push('Add at least one question.');
-  test.questions.forEach((q, i) => {
-    if (!q.prompt) errs.push('Q' + (i+1) + ': question text is required.');
-    if (q.type === 'mc') {
-      const filled = q.options.filter(o => o && o.trim() !== '');
-      if (filled.length < 2) errs.push('Q' + (i+1) + ': needs at least 2 options.');
-      if (q.correctIndex === null || q.correctIndex === undefined || !q.options[q.correctIndex]) errs.push('Q' + (i+1) + ': pick which option is correct.');
-    }
-  });
-  return errs;
-}
-
-document.getElementById('btnSaveTest').addEventListener('click', async () => {
-  const test = {
-    testCode: document.getElementById('f_testCode').value.trim(),
-    title: document.getElementById('f_title').value.trim(),
-    intro: document.getElementById('f_intro').value.trim(),
-    timeLimitMinutes: Number(document.getElementById('f_timeLimit').value),
-    startDate: document.getElementById('f_startDate').value ? document.getElementById('f_startDate').value + ':00' : '',
-    deadline: document.getElementById('f_deadline').value ? document.getElementById('f_deadline').value + ':00' : '',
-    shuffleQuestions: false,
-    shuffleOptions: false,
-    questions: currentQuestions
-  };
-  const errs = validateBeforeSave(test);
-  if (errs.length > 0) {
-    document.getElementById('editorNotice').innerHTML = '<div class="notice error">' + errs.join('<br>') + '</div>';
-    return;
-  }
-  const result = await apiPost({ action: 'saveTest', token: ADMIN_TOKEN, test });
-  if (!result.ok) {
-    document.getElementById('editorNotice').innerHTML = '<div class="notice error">Save failed: ' + (result.error || 'unknown error') + '</div>';
-    return;
-  }
-  const link = CONFIG.quizEngineUrl + '?test=' + encodeURIComponent(test.testCode);
-  document.getElementById('saveResultBox').innerHTML =
-    '<div class="notice ok">Saved. Taker link:</div><div class="link-box">' + link + '</div>';
-  refreshTestList();
-});
-
-/* ---------- Paste import (text template OR JS/JSON config) ---------- */
-document.getElementById('btnPasteImport').addEventListener('click', () => {
-  document.getElementById('pasteImportPanel').classList.remove('hidden');
-  document.getElementById('pasteImportText').focus();
-});
-document.getElementById('btnCancelPaste').addEventListener('click', () => {
-  document.getElementById('pasteImportPanel').classList.add('hidden');
-});
-
-function looksLikeJs(text) {
-  const t = text.trim();
-  return t.startsWith('{') || /^const\s+TEST_CONFIG\s*=/.test(t) || /^module\.exports/.test(t);
-}
-
-// Normalizes a parsed JS/JSON test object (which may use the original
-// TEST_CONFIG field names) into exactly the shape the editor/save flow
-// expects. Field names already match 1:1 with what this system uses
-// elsewhere (testCode, title, intro, timeLimitMinutes, startDate,
-// deadline, questions[].type/prompt/points/options/correctIndex/
-// explanation/answer) — so this is mostly pass-through with light
-// defaulting for missing optional fields.
-function normalizeJsTest(obj) {
-  const errors = [];
-  if (!obj.testCode) errors.push('Missing "testCode".');
-  if (!obj.title) errors.push('Missing "title".');
-  if (!obj.timeLimitMinutes) errors.push('Missing "timeLimitMinutes".');
-  if (!obj.deadline) errors.push('Missing "deadline".');
-  if (!Array.isArray(obj.questions) || obj.questions.length === 0) errors.push('Missing or empty "questions" array.');
-
-  (obj.questions || []).forEach((q, i) => {
-    if (!q.type || (q.type !== 'mc' && q.type !== 'short')) errors.push(`Question ${i+1}: type must be "mc" or "short".`);
-    if (!q.prompt) errors.push(`Question ${i+1}: missing prompt.`);
-    if (q.type === 'mc') {
-      if (!Array.isArray(q.options) || q.options.filter(Boolean).length < 2) errors.push(`Question ${i+1}: needs at least 2 options.`);
-      if (q.correctIndex === undefined || q.correctIndex === null) errors.push(`Question ${i+1}: missing correctIndex.`);
-    }
-  });
-
-  if (errors.length > 0) return { ok: false, errors };
-
-  return {
-    ok: true,
-    test: {
-      testCode: obj.testCode,
-      title: obj.title,
-      intro: obj.intro || '',
-      timeLimitMinutes: Number(obj.timeLimitMinutes),
-      startDate: obj.startDate || '',
-      deadline: obj.deadline,
-      shuffleQuestions: !!obj.shuffleQuestions,
-      shuffleOptions: !!obj.shuffleOptions,
-      questions: obj.questions.map(q => q.type === 'mc'
-        ? { type: 'mc', prompt: q.prompt, points: Number(q.points) || 0, options: q.options, correctIndex: Number(q.correctIndex), explanation: q.explanation || '', audioUrl: q.audioUrl || '' }
-        : { type: 'short', prompt: q.prompt, points: Number(q.points) || 0, answer: q.answer || '', explanation: q.explanation || '', audioUrl: q.audioUrl || '' }
-      )
-    }
-  };
-}
-
-function parseJsConfig(text) {
-  // Strip a leading "const TEST_CONFIG = " and a trailing ";" if present,
-  // so both a bare object and the full declaration style both work.
-  let cleaned = text.trim()
-    .replace(/^const\s+TEST_CONFIG\s*=\s*/, '')
-    .replace(/^module\.exports\s*=\s*/, '')
-    .replace(/;\s*$/, '');
-  try {
-    // Using Function(), not eval — still executes the pasted text, but
-    // this is the admin's own trusted input (same trust level as them
-    // typing directly into the form), not third-party/untrusted content.
-    const obj = Function('"use strict"; return (' + cleaned + ')')();
-    return { ok: true, obj };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
-}
-
-document.getElementById('btnParsePasted').addEventListener('click', () => {
-  const text = document.getElementById('pasteImportText').value;
-  const noticeEl = document.getElementById('importNotice');
-  if (!text.trim()) return;
-
-  if (looksLikeJs(text)) {
-    const parsed = parseJsConfig(text);
-    if (!parsed.ok) {
-      noticeEl.innerHTML = '<div class="notice error"><b>Could not parse this as JS:</b><br>' + parsed.error + '</div>';
-      return;
-    }
-    const normalized = normalizeJsTest(parsed.obj);
-    if (!normalized.ok) {
-      noticeEl.innerHTML = '<div class="notice error"><b>This JS object is missing required fields:</b><br>' + normalized.errors.join('<br>') + '</div>';
-      return;
-    }
-    noticeEl.innerHTML = '<div class="notice ok">Imported "' + normalized.test.title + '" from pasted JS — review below, then click Save test.</div>';
-    document.getElementById('pasteImportPanel').classList.add('hidden');
-    document.getElementById('pasteImportText').value = '';
-    openEditor(normalized.test);
-  } else {
-    const result = parseTestDocument(text);
-    if (!result.ok) {
-      noticeEl.innerHTML = '<div class="notice error"><b>Could not parse this as template text:</b><br>' + result.errors.join('<br>') + '</div>';
-      return;
-    }
-    noticeEl.innerHTML = '<div class="notice ok">Imported "' + result.test.title + '" from pasted text — review below, then click Save test.</div>';
-    document.getElementById('pasteImportPanel').classList.add('hidden');
-    document.getElementById('pasteImportText').value = '';
-    openEditor(result.test);
-  }
-});
-
-/* ---------- Word import ---------- */
-document.getElementById('btnImportWord').addEventListener('click', () => {
-  document.getElementById('wordFileInput').click();
-});
-document.getElementById('wordFileInput').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const noticeEl = document.getElementById('importNotice');
-  noticeEl.innerHTML = '<div class="notice">Reading document…</div>';
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-    const { value: text } = await mammoth.extractRawText({ arrayBuffer });
-    const result = parseTestDocument(text);
-    if (!result.ok) {
-      noticeEl.innerHTML = '<div class="notice error"><b>Could not import this document:</b><br>' + result.errors.join('<br>') + '</div>';
-      return;
-    }
-    noticeEl.innerHTML = '<div class="notice ok">Imported "' + result.test.title + '" — review it below, then click Save test.</div>';
-    openEditor(result.test);
-  } catch (err) {
-    noticeEl.innerHTML = '<div class="notice error">Something went wrong reading that file: ' + err.message + '</div>';
-  } finally {
-    e.target.value = ''; // allow re-selecting the same file later
-  }
-});
-
-/* ============================================================
-   parseTestDocument — converts the fixed-template raw text
-   (as extracted by mammoth.js) into a test object. Keep this
-   in sync with the standalone parseTestDocument.js used to
-   test the template — this is the same logic, inlined here so
-   admin.html stays a single self-contained file.
-   ============================================================ */
-function parseTestDocument(rawText) {
-  const errors = [];
-  const lines = rawText.split('\n').map(l => l.trim());
-
-  const dividerIdx = lines.findIndex(l => /^={3,}$/.test(l));
-  if (dividerIdx === -1) {
-    errors.push('Could not find the "===" divider line that separates the header section from the questions.');
-    return { ok: false, errors };
-  }
-  const headerLines = lines.slice(0, dividerIdx).filter(l => l !== '');
-  const bodyLines = lines.slice(dividerIdx + 1);
-
-  const header = {};
-  const labelMap = {
-    'TEST CODE': 'testCode', 'TITLE': 'title', 'INTRO': 'intro',
-    'TIME LIMIT (MINUTES)': 'timeLimitMinutes', 'START DATE': 'startDate', 'DEADLINE': 'deadline'
-  };
-  headerLines.forEach(line => {
-    const m = line.match(/^([A-Z][A-Z() ]*):\s*(.*)$/);
-    if (!m) return;
-    const label = m[1].trim();
-    const value = m[2].trim();
-    const key = labelMap[label];
-    if (!key) { errors.push(`Unrecognized header label "${label}:".`); return; }
-    header[key] = value;
-  });
-  ['testCode','title','intro','timeLimitMinutes'].forEach(req => {
-    if (!header[req]) errors.push(`Missing required header field: ${req}.`);
-  });
-  if (header.timeLimitMinutes && isNaN(parseInt(header.timeLimitMinutes, 10))) {
-    errors.push(`TIME LIMIT (MINUTES) must be a plain number, got "${header.timeLimitMinutes}".`);
-  }
-  function normalizeDate(val) {
-    if (!val) return '';
-    const m = val.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(:\d{2})?$/);
-    if (m) return `${m[1]}T${m[2]}${m[3] || ':00'}`;
-    return val;
-  }
-
-  const qStartRegex = /^Q(\d+)\s*\[(MC|SHORT)\]\s*\[(\d+)\s*pts?\]\s*$/i;
-  const blocks = [];
-  let current = null;
-  let stopped = false;
-  for (const line of bodyLines) {
-    if (stopped) break;
-    if (/^END$/i.test(line)) { stopped = true; break; }
-    const m = line.match(qStartRegex);
-    if (m) {
-      if (current) blocks.push(current);
-      current = { qNum: m[1], type: m[2].toUpperCase(), points: parseInt(m[3], 10), lines: [] };
-    } else if (current) {
-      current.lines.push(line);
-    } else if (line !== '') {
-      errors.push(`Found text before the first question header: "${line}".`);
-    }
-  }
-  if (current) blocks.push(current);
-  if (blocks.length === 0) errors.push('No questions were found.');
-
-  const questions = blocks.map(block => {
-    const nonEmpty = block.lines.filter(l => l !== '');
-    const q = { type: block.type === 'MC' ? 'mc' : 'short', points: block.points };
-    if (block.type === 'MC') {
-      const optionRegex = /^(\*)?\s*([A-D])\)\s*(.*)$/;
-      const promptLines = []; const options = [];
-      let correctIndex = null, explanation = null, inExplanation = false, audioUrl = null;
-      nonEmpty.forEach(line => {
-        const om = line.match(optionRegex);
-        const em = line.match(/^Explanation:\s*(.*)$/i);
-        const am = line.match(/^Audio:\s*(.*)$/i);
-        if (am) { inExplanation = false; audioUrl = am[1].trim(); }
-        else if (em) { inExplanation = true; explanation = em[1]; }
-        else if (inExplanation) explanation += ' ' + line;
-        else if (om) { const idx = om[2].charCodeAt(0)-65; if (om[1]==='*') correctIndex=idx; options[idx]=om[3]; }
-        else promptLines.push(line);
-      });
-      q.prompt = promptLines.join(' ').trim();
-      q.options = options;
-      q.correctIndex = correctIndex;
-      if (explanation) q.explanation = explanation.trim();
-      if (audioUrl) q.audioUrl = audioUrl;
-      if (!q.prompt) errors.push(`Q${block.qNum}: no prompt text found.`);
-      if (options.filter(Boolean).length < 2) errors.push(`Q${block.qNum}: needs at least two options.`);
-      if (correctIndex === null) errors.push(`Q${block.qNum}: no option marked correct (use *B) style).`);
-    } else {
-      const promptLines = []; let referenceAnswer=null, explanation=null, audioUrl=null, mode='prompt';
-      nonEmpty.forEach(line => {
-        const rm = line.match(/^Reference answer:\s*(.*)$/i);
-        const em = line.match(/^Explanation:\s*(.*)$/i);
-        const am = line.match(/^Audio:\s*(.*)$/i);
-        if (am) { audioUrl = am[1].trim(); }
-        else if (rm) { mode='ref'; referenceAnswer=rm[1]; }
-        else if (em) { mode='exp'; explanation=em[1]; }
-        else if (mode==='ref') referenceAnswer += ' ' + line;
-        else if (mode==='exp') explanation += ' ' + line;
-        else promptLines.push(line);
-      });
-      q.prompt = promptLines.join(' ').trim();
-      if (referenceAnswer) q.answer = referenceAnswer.trim();
-      if (explanation) q.explanation = explanation.trim();
-      if (audioUrl) q.audioUrl = audioUrl;
-      if (!q.prompt) errors.push(`Q${block.qNum}: no prompt text found.`);
-    }
-    return q;
-  });
-
-  if (errors.length > 0) return { ok: false, errors };
-  return {
-    ok: true, errors: [],
-    test: {
-      testCode: header.testCode, title: header.title, intro: header.intro,
-      timeLimitMinutes: parseInt(header.timeLimitMinutes, 10),
-      startDate: normalizeDate(header.startDate || ''), deadline: normalizeDate(header.deadline || ''),
-      shuffleQuestions: false, shuffleOptions: false, questions
-    }
-  };
-}
-</script>
-</body>
-</html>
