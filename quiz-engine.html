@@ -121,6 +121,8 @@ button.ghost:hover{ border-color: var(--ink-soft); color: var(--ink); }
 .tag.correct{ background: #E7F0EA; color: var(--accent-calm); }
 .tag.incorrect{ background: #FBEEEC; color: var(--accent-alert); }
 .tag.ungraded{ background: var(--paper); color: var(--ink-soft); }
+.correct-answer{ color: var(--accent-calm); font-weight: 600; }
+.your-answer-correct{ color: var(--accent-calm); font-weight: 600; }
 .explanation-box{ margin-top: 10px; padding: 10px 12px; background: var(--paper); border-left: 3px solid var(--ink-soft); font-size: 14px; line-height: 1.5; color: var(--ink); }
 .explanation-box b{ font-family: var(--mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); display:block; margin-bottom: 4px; }
 .sync-status{ font-family: var(--mono); font-size: 12px; color: var(--ink-soft); text-align:center; padding: 8px 0 0; }
@@ -752,8 +754,8 @@ function renderResults(payload){
     item.innerHTML = `${tag}
       <div class="q-prompt" style="font-size:16px;">${a.prompt}</div>
       <div style="font-size:14px;color:var(--ink-soft);">
-        Answer given: ${a.answerGiven ? a.answerGiven : '<em>no answer</em>'}
-        ${a.correctAnswer ? '<br>Correct answer: ' + a.correctAnswer : ''}
+        Answer given: ${a.answerGiven ? (a.correct ? '<span class="your-answer-correct">' + a.answerGiven + '</span>' : a.answerGiven) : '<em>no answer</em>'}
+        ${a.correctAnswer ? '<br><span class="correct-answer">Correct answer: ' + a.correctAnswer + '</span>' : ''}
         ${a.referenceAnswer ? '<br>Reference answer: ' + a.referenceAnswer : ''}
       </div>
       ${a.explanation ? '<div class="explanation-box"><b>Explanation</b>' + a.explanation + '</div>' : ''}`;
@@ -789,8 +791,12 @@ async function submitTest(autoSubmitted){
 
   let downloadedOk = true;
   try{
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+      throw new Error('PDF library not loaded');
+    }
     downloadPdf(resultsPayload);
   }catch(err){
+    console.error('PDF download failed:', err);
     downloadedOk = false;
   }
 
