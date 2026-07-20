@@ -106,6 +106,8 @@ button.ghost:hover{ border-color: var(--ink-soft); color: var(--ink); }
 .q-number{ font-family: var(--mono); font-size: 12px; color: var(--ink-soft); letter-spacing: 0.06em; }
 .q-prompt{ font-family: var(--serif); font-size: 19px; font-weight: 500; line-height: 1.4; margin: 6px 0 16px; }
 .q-audio{ width: 100%; display: block; margin: 0 0 16px; }
+.passage-block{ background: var(--paper); border-left: 3px solid var(--ink-soft); padding: 16px 20px; }
+.passage-text{ white-space: pre-wrap; }
 .q-points{ color: var(--ink-soft); font-weight: 400; font-size: 14px; }
 .option{ display:flex; align-items:flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--paper-line); margin-bottom: 8px; cursor: pointer; font-size: 15px; }
 .option:hover{ border-color: var(--ink-soft); }
@@ -204,7 +206,7 @@ footer.actions{ display:flex; justify-content: flex-end; padding: 20px 32px 28px
    and setup steps).
    ============================================================ */
 const ENGINE_CONFIG = {
-  appsScriptUrl: "https://script.google.com/macros/s/AKfycbx8_AAZkrvQGIvmORUN1wya8kcyzeOL-GTb3lzaFHnladKfpg4iaZ-ttpo9YfBJ8Z0x/exec"
+  appsScriptUrl: "PASTE_YOUR_WEB_APP_URL_HERE"
 };
 
 /* ============================================================
@@ -520,11 +522,14 @@ async function checkAlreadySubmitted(email){
 }
 
 /* ---------- Progress indicator ---------- */
+function answerableIndices(){
+  return TEST_CONFIG.questions.map((q, i) => i).filter(i => TEST_CONFIG.questions[i].type !== 'passage');
+}
 function countAnswered(){
-  return answers.filter(a => a !== null && String(a).trim() !== '').length;
+  return answerableIndices().filter(i => answers[i] !== null && String(answers[i]).trim() !== '').length;
 }
 function updateProgressLabel(){
-  els.progressLabel.textContent = countAnswered() + ' of ' + TEST_CONFIG.questions.length + ' answered';
+  els.progressLabel.textContent = countAnswered() + ' of ' + answerableIndices().length + ' answered';
 }
 
 /* ---------- Questions ---------- */
@@ -532,13 +537,39 @@ function buildQuestions(restoreAnswers){
   els.questionsMount.innerHTML = "";
   answers = restoreAnswers ? restoreAnswers.slice() : TEST_CONFIG.questions.map(() => null);
 
-  questionOrder.forEach((qi, displayIdx) => {
+  let questionNumber = 0; // only increments for answerable items — passages are unnumbered
+  questionOrder.forEach((qi) => {
     const q = TEST_CONFIG.questions[qi];
     const wrap = document.createElement('div');
-    wrap.className = 'question';
+    wrap.className = q.type === 'passage' ? 'question passage-block' : 'question';
+
+    if (q.type === 'passage') {
+      const label = document.createElement('div');
+      label.className = 'q-number';
+      label.textContent = q.audioUrl && q.prompt ? 'READING & LISTENING' : q.audioUrl ? 'LISTENING' : 'READING';
+      wrap.appendChild(label);
+      if (q.prompt) {
+        const text = document.createElement('div');
+        text.className = 'q-prompt passage-text';
+        text.textContent = q.prompt;
+        wrap.appendChild(text);
+      }
+      if (q.audioUrl) {
+        const audio = document.createElement('audio');
+        audio.controls = true;
+        audio.preload = 'none';
+        audio.className = 'q-audio';
+        audio.src = normalizeAudioUrl(q.audioUrl);
+        wrap.appendChild(audio);
+      }
+      els.questionsMount.appendChild(wrap);
+      return;
+    }
+
+    questionNumber++;
     const num = document.createElement('div');
     num.className = 'q-number';
-    num.textContent = 'Q' + pad(displayIdx + 1);
+    num.textContent = 'Q' + pad(questionNumber);
     wrap.appendChild(num);
     const prompt = document.createElement('div');
     prompt.className = 'q-prompt';
@@ -654,8 +685,12 @@ function updateClock(remaining, startSeconds){
 }
 
 function gradeAndBuildResults(autoSubmitted){
-  let earned = 0, possible = 0, gradedQuestions = 0;
+  let earned = 0, possible = 0, gradedQuestions = 0, questionNumber = 0;
   const review = TEST_CONFIG.questions.map((q, i) => {
+    if (q.type === 'passage') {
+      return { type: 'passage', prompt: q.prompt, audioUrl: q.audioUrl || null };
+    }
+    questionNumber++;
     possible += q.points;
     let correct = null;
     if (q.type === 'mc') {
@@ -664,7 +699,7 @@ function gradeAndBuildResults(autoSubmitted){
       gradedQuestions++;
     }
     return {
-      number: i+1, type: q.type, prompt: q.prompt, points: q.points,
+      number: questionNumber, type: q.type, prompt: q.prompt, points: q.points,
       answerGiven: q.type === 'mc' ? (answers[i] === null ? null : q.options[answers[i]]) : (answers[i] || ""),
       correctAnswer: q.type === 'mc' ? q.options[q.correctIndex] : null,
       referenceAnswer: q.type === 'short' ? (q.answer || null) : null,
@@ -700,6 +735,15 @@ function renderResults(payload){
   payload.answers.forEach(a => {
     const item = document.createElement('div');
     item.className = 'review-item';
+
+    if (a.type === 'passage') {
+      item.innerHTML = `<span class="tag ungraded">${a.audioUrl && a.prompt ? 'READING & LISTENING' : a.audioUrl ? 'LISTENING' : 'READING'}</span>
+        ${a.prompt ? '<div class="q-prompt" style="font-size:15px;">' + a.prompt + '</div>' : ''}
+        ${a.audioUrl ? '<audio controls preload="none" class="q-audio" src="' + normalizeAudioUrl(a.audioUrl) + '"></audio>' : ''}`;
+      els.reviewMount.appendChild(item);
+      return;
+    }
+
     let tag = '<span class="tag ungraded">Q' + pad(a.number) + ' · to review</span>';
     if (a.type === 'mc') {
       tag = a.correct
@@ -801,7 +845,7 @@ els.btnStart.addEventListener('click', async () => {
 });
 
 els.btnSubmit.addEventListener('click', () => {
-  const unanswered = TEST_CONFIG.questions.length - countAnswered();
+  const unanswered = answerableIndices().length - countAnswered();
   if (unanswered > 0) {
     const proceed = confirm(
       'You have ' + unanswered + ' unanswered question' + (unanswered === 1 ? '' : 's') + '. Submit anyway?'
@@ -817,6 +861,13 @@ function escapeHtml(str){
 
 function buildReportHtml(payload){
   const rows = payload.answers.map(a => {
+    if (a.type === 'passage') {
+      return `
+      <p style="font-weight:bold;margin-bottom:4px;">${a.audioUrl && a.prompt ? 'Reading &amp; Listening Passage' : a.audioUrl ? 'Listening Passage' : 'Reading Passage'}</p>
+      ${a.prompt ? '<p>' + escapeHtml(a.prompt).replace(/\n/g,'<br>') + '</p>' : ''}
+      ${a.audioUrl ? '<p><i>Audio clip: ' + escapeHtml(a.audioUrl) + ' (not embedded in this file — open the link to listen)</i></p>' : ''}
+      <hr>`;
+    }
     let correction;
     if (a.type === 'mc') {
       correction = `<p style="color:${a.correct ? '#3C6E52' : '#C4453A'};"><b>${a.correct ? 'Correct' : 'Incorrect'}</b> — correct answer: ${escapeHtml(a.correctAnswer)}</p>`;
@@ -873,6 +924,12 @@ function buildReportText(payload){
   lines.push('='.repeat(60));
   payload.answers.forEach(a => {
     lines.push('');
+    if (a.type === 'passage') {
+      lines.push((a.audioUrl && a.prompt ? 'READING & LISTENING PASSAGE' : a.audioUrl ? 'LISTENING PASSAGE' : 'READING PASSAGE'));
+      if (a.prompt) lines.push(a.prompt);
+      if (a.audioUrl) lines.push('Audio clip: ' + a.audioUrl + ' (open the link to listen)');
+      return;
+    }
     lines.push('Q' + pad(a.number) + '. ' + a.prompt);
     lines.push('Answer given: ' + (a.answerGiven || '(no answer)'));
     if (a.type === 'mc') {
