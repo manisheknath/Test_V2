@@ -63,7 +63,7 @@ th{font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:u
   <div id="loginScreen" class="card">
     <h2>Admin access</h2>
     <label for="tokenInput">Admin token</label>
-    <input type="password" id="tokenInput" placeholder="Ironfist@198">
+    <input type="password" id="tokenInput" placeholder="Paste your ADMIN_TOKEN">
     <div id="loginError" class="notice error hidden"></div>
     <button class="primary" id="btnLogin">Enter</button>
   </div>
@@ -184,10 +184,21 @@ function apiPost(body) {
 document.getElementById('btnLogin').addEventListener('click', async () => {
   const token = document.getElementById('tokenInput').value.trim();
   if (!token) return;
-  const result = await apiGet({ action: 'listTests', token });
-  if (!result.ok) {
-    document.getElementById('loginError').textContent = "That token wasn't accepted — check it matches ADMIN_TOKEN in your Apps Script properties.";
-    document.getElementById('loginError').classList.remove('hidden');
+  const errEl = document.getElementById('loginError');
+  errEl.classList.add('hidden');
+  let result;
+  try {
+    result = await apiGet({ action: 'listTests', token });
+  } catch (err) {
+    errEl.textContent = "Couldn't reach the backend at all (network/CORS error): " + err.message +
+      ". This usually means the Apps Script deployment isn't set to \"Anyone\" access, or the appsScriptUrl in this file is wrong/outdated. Check the browser console for details.";
+    errEl.classList.remove('hidden');
+    return;
+  }
+  if (!result || !result.ok) {
+    errEl.textContent = "That token wasn't accepted — check it matches ADMIN_TOKEN in your Apps Script properties exactly (no extra spaces)." +
+      (result && result.error ? (' Backend said: ' + result.error) : '');
+    errEl.classList.remove('hidden');
     return;
   }
   ADMIN_TOKEN = token;
