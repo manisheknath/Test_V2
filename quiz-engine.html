@@ -105,6 +105,7 @@ button.ghost:hover{ border-color: var(--ink-soft); color: var(--ink); }
 .question:last-of-type{ border-bottom: none; }
 .q-number{ font-family: var(--mono); font-size: 12px; color: var(--ink-soft); letter-spacing: 0.06em; }
 .q-prompt{ font-family: var(--serif); font-size: 19px; font-weight: 500; line-height: 1.4; margin: 6px 0 16px; }
+.q-audio{ width: 100%; display: block; margin: 0 0 16px; }
 .q-points{ color: var(--ink-soft); font-weight: 400; font-size: 14px; }
 .option{ display:flex; align-items:flex-start; gap: 10px; padding: 10px 12px; border: 1px solid var(--paper-line); margin-bottom: 8px; cursor: pointer; font-size: 15px; }
 .option:hover{ border-color: var(--ink-soft); }
@@ -371,6 +372,20 @@ function shuffleArray(arr){
 
 function pad(n){ return String(n).padStart(2,'0'); }
 
+// Safety net matching admin.html's conversion — normally audio URLs are
+// already converted to a playable form by the time they're saved, but
+// this guards against a raw Drive/Dropbox link reaching the engine some
+// other way (e.g. saved via direct API call rather than through the form).
+function normalizeAudioUrl(url){
+  const trimmed = (url || '').trim();
+  const driveMatch = trimmed.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  if (driveMatch) return `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
+  const driveOpenMatch = trimmed.match(/drive\.google\.com\/open\?id=([^&]+)/);
+  if (driveOpenMatch) return `https://drive.google.com/uc?export=download&id=${driveOpenMatch[1]}`;
+  if (trimmed.includes('dropbox.com') && trimmed.includes('dl=0')) return trimmed.replace('dl=0', 'dl=1');
+  return trimmed;
+}
+
 // Fixed format everywhere, regardless of the viewer's browser/locale
 // settings: "25 Jun 2026, 6:00 PM"
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -529,6 +544,14 @@ function buildQuestions(restoreAnswers){
     prompt.className = 'q-prompt';
     prompt.innerHTML = q.prompt + ' <span class="q-points">(' + q.points + (q.points===1?' pt':' pts') + ')</span>';
     wrap.appendChild(prompt);
+    if (q.audioUrl) {
+      const audio = document.createElement('audio');
+      audio.controls = true;
+      audio.preload = 'none';
+      audio.className = 'q-audio';
+      audio.src = normalizeAudioUrl(q.audioUrl);
+      wrap.appendChild(audio);
+    }
     if (q.type === 'mc') {
       const order = optionOrders[qi] || q.options.map((_, oi) => oi);
       order.forEach(oi => {
