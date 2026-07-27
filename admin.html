@@ -297,7 +297,7 @@
           <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
             <button class="ghost" id="btnAddMc">+ Add multiple choice</button>
             <button class="ghost" id="btnAddShort">+ Add short answer</button>
-            <button class="ghost" id="btnAddPassage">+ Add reading/listening passage</button>
+            <button class="ghost" id="btnAddPassage">+ Add section</button>
           </div>
           <div class="actions-bar">
             <button class="ghost" id="btnCancelEdit">Cancel</button>
@@ -646,8 +646,8 @@ function renderQuestions(){
     card.className = 'q-card';
     const head = document.createElement('div');
     head.className = 'q-card-head';
-    const typeLabel = q.type === 'mc' ? 'Multiple choice' : q.type === 'short' ? 'Short answer' : 'Reading/Listening passage';
-    head.innerHTML = `<b>${q.type === 'passage' ? 'Passage' : 'Q' + (i+1)} · ${typeLabel}</b>`;
+    const typeLabel = q.type === 'mc' ? 'Multiple choice' : q.type === 'short' ? 'Short answer' : 'Section';
+    head.innerHTML = `<b>${q.type === 'passage' ? 'Section' : 'Q' + (i+1)} · ${typeLabel}</b>`;
     const controls = document.createElement('div');
     controls.style.display = 'flex'; controls.style.gap = '6px';
     const up = btn('↑', () => { if (i>0){ [currentQuestions[i-1],currentQuestions[i]]=[currentQuestions[i],currentQuestions[i-1]]; renderQuestions(); }});
@@ -659,11 +659,11 @@ function renderQuestions(){
     card.appendChild(head);
 
     if (q.type === 'passage') {
-      card.appendChild(textarea('Passage text (leave blank for an audio-only clip)', q.prompt, v => q.prompt = v));
+      card.appendChild(textarea('Section text — a full reading passage (pinned beside its questions), OR a short heading like "Part 2 — Vocabulary". Leave blank for an audio-only clip.', q.prompt, v => q.prompt = v));
       card.appendChild(audioUrlField(q));
       const note = document.createElement('div');
       note.style.cssText = 'font-size:11px;color:var(--muted);margin-top:-6px;';
-      note.textContent = 'Shown once, followed by whichever questions come right after it — move questions with ↑↓ to keep them grouped with this passage. Avoid enabling shuffle on tests that use passages.';
+      note.textContent = 'A section owns every question after it until the next section. A long passage or audio pins on the left while its questions scroll; a short heading just labels the group. Add a new section wherever a new part begins (e.g. before Vocabulary, Grammar, Writing). Use ↑↓ to keep questions under the right section, and avoid shuffle on tests with sections.';
       card.appendChild(note);
       mount.appendChild(card);
       return;

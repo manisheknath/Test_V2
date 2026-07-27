@@ -179,9 +179,9 @@ body{ display:block; padding:0 0 80px; background-image:none; }
    timer bar and passage columns from sticking. */
 .sheet{ width:calc(100% - 32px); max-width:720px; margin:26px auto; border:1px solid var(--paper-line);
   border-radius:14px; box-shadow:0 4px 16px -6px rgba(20,40,30,.14); }
-/* Tests with reading/listening passages get a wider sheet so the two-column
-   part layout (passage + questions) has room to breathe. */
-.sheet.wide{ max-width:1000px; }
+/* Tests with reading/listening sections get a much wider sheet so the
+   two-column layout (passage + questions) uses the horizontal space. */
+.sheet.wide{ max-width:1160px; }
 
 header.masthead h1{ font-weight:700; letter-spacing:-.02em; }
 .q-prompt{ font-weight:600; }
@@ -227,9 +227,19 @@ button.ghost:hover{ border-color:var(--ink-soft); background:var(--paper); }
 .part-passage{ flex:0 0 42%; }
 .part-passage-inner{ position:sticky; top:var(--stick-top,150px);
   max-height:calc(100vh - var(--stick-top,150px) - 16px); overflow-y:auto; }
-.part-passage-inner .passage-block{ margin:0; }
+.part-passage-inner .passage-block{ margin:0; border-radius:10px; }
 .part-questions{ flex:1 1 auto; min-width:0; }
-.part-plain .part-questions{ width:100%; }
+/* Plain lists and banner-section questions stay at a comfortable reading
+   width, centred inside the wider sheet. */
+.part-plain .part-questions, .part-banner .part-questions{ max-width:740px; margin:0 auto; }
+/* A heading-only section (no long passage, no audio): a full-width banner
+   above its questions instead of a sticky side column. */
+.part-banner{ margin-top:8px; }
+.section-banner{ max-width:740px; margin:0 auto 10px; background:var(--accent-soft);
+  border:1px solid var(--paper-line); border-left:3px solid var(--accent-calm);
+  border-radius:10px; padding:14px 18px; }
+.section-banner .passage-text{ font-weight:600; font-size:17px; margin-bottom:0; }
+.section-banner .q-number{ color:var(--accent-calm); }
 
 @media (max-width:760px){
   /* Stack on small screens: passage on top (not pinned), questions below. */
@@ -698,12 +708,13 @@ function buildQuestions(restoreAnswers){
   // we lay it out as two columns — a sticky passage on the left, its
   // questions on the right (see the .part-split CSS).
   let currentQuestionsCol = null;
-  function makePart(passageWrap){
+  function makePart(passageWrap, split){
     const part = document.createElement('div');
-    part.className = 'part ' + (passageWrap ? 'part-split' : 'part-plain');
+    part.className = 'part ' + (passageWrap ? (split ? 'part-split' : 'part-banner') : 'part-plain');
     const qcol = document.createElement('div');
     qcol.className = 'part-questions';
-    if (passageWrap){
+    if (passageWrap && split){
+      // Reading/listening section: passage pinned on the left.
       const pcol = document.createElement('div');
       pcol.className = 'part-passage';
       const inner = document.createElement('div');
@@ -711,8 +722,15 @@ function buildQuestions(restoreAnswers){
       inner.appendChild(passageWrap);
       pcol.appendChild(inner);
       part.appendChild(pcol);
+      part.appendChild(qcol);
+    } else if (passageWrap){
+      // Heading-only section: full-width banner above the questions.
+      passageWrap.classList.add('section-banner');
+      part.appendChild(passageWrap);
+      part.appendChild(qcol);
+    } else {
+      part.appendChild(qcol);
     }
-    part.appendChild(qcol);
     els.questionsMount.appendChild(part);
     return qcol;
   }
@@ -726,9 +744,12 @@ function buildQuestions(restoreAnswers){
     wrap.className = q.type === 'passage' ? 'question passage-block' : 'question';
 
     if (q.type === 'passage') {
+      // A section with audio or a long passage gets the sticky two-column
+      // layout; a short heading-only section becomes a full-width banner.
+      const isReading = !!q.audioUrl || (q.prompt || '').length > 160;
       const label = document.createElement('div');
       label.className = 'q-number';
-      label.textContent = q.audioUrl && q.prompt ? 'READING & LISTENING' : q.audioUrl ? 'LISTENING' : 'READING';
+      label.textContent = q.audioUrl && q.prompt ? 'READING & LISTENING' : q.audioUrl ? 'LISTENING' : (isReading ? 'READING' : 'SECTION');
       wrap.appendChild(label);
       if (q.prompt) {
         const text = document.createElement('div');
@@ -744,7 +765,7 @@ function buildQuestions(restoreAnswers){
         audio.src = normalizeAudioUrl(q.audioUrl);
         wrap.appendChild(audio);
       }
-      currentQuestionsCol = makePart(wrap);
+      currentQuestionsCol = makePart(wrap, isReading);
       return;
     }
 
