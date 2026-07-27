@@ -1,11 +1,36 @@
 /* ============================================================
    Code.gs — Quiz Platform Backend
    ============================================================
-   Replaces the older per-test backend. This is now the single
-   source of truth for every test: test metadata, questions,
-   test-takers, site-wide settings, and submitted results all
-   live in ONE Google Sheet, edited only through the Admin page
-   (admin.html) — never by hand.
+   Single source of truth for every test: test metadata,
+   questions, test-takers, site-wide settings, and submitted
+   results all live in ONE Google Sheet, edited only through the
+   Admin page (admin.html) — never by hand.
+
+   ---------------------------------------------------------
+   HEADER-DRIVEN READS AND WRITES
+   ---------------------------------------------------------
+   Every read AND write goes through the header row:
+     • ensureColumns_() adds any missing column to a sheet that
+       already has data, so new columns (audioUrl, assignedTo,
+       takerId, the whole Takers sheet) get created automatically
+       instead of needing to be added by hand.
+     • rowFromObject_() places each value under its own header,
+       wherever that header happens to be.
+   Column order in the sheet no longer matters. Adding a new
+   column in the middle can no longer corrupt saves.
+
+   ---------------------------------------------------------
+   TEST-TAKER PORTAL (home.html)
+   ---------------------------------------------------------
+   Takers sign in at home.html with an ID + password and see only
+   the tests assigned to them. Added in this version:
+     • A Takers sheet (salted SHA-256 password hashes).
+     • assignedTo column on Tests, takerId column on Results.
+     • Signed session tokens (HMAC) so a browser can stay logged
+       in without ever holding the password, and can't read
+       another taker's data.
+     • Endpoints: takerLogin, whoami, listTestsForMe, getMyResult,
+       and admin listTakers / saveTaker / deleteTaker.
 
    ---------------------------------------------------------
    ONE-TIME SETUP
@@ -14,84 +39,171 @@
       (the long string between /d/ and /edit).
    2. Extensions → Apps Script. Delete any starter code and
       paste this whole file in.
-   3. Go to Project Settings (gear icon) → Script Properties →
-      add three properties:
+   3. Project Settings (gear icon) → Script Properties → add:
          SPREADSHEET_ID   = <the ID you copied>
-         ADMIN_TOKEN      = <make up a long random password>
-         SESSION_SECRET   = <make up a DIFFERENT long random string>
-      The ADMIN_TOKEN protects the Admin page. The SESSION_SECRET
-      is used to sign test-taker login tokens — keep it secret and
-      never change it casually (changing it logs everyone out).
-      If SESSION_SECRET is missing the code falls back to
-      ADMIN_TOKEN so logins still work, but setting a separate one
-      is strongly recommended.
-   4. Run the `setup` function once (select it in the dropdown
-      next to Run, click Run). It creates the Tests, Questions,
-      Takers, Results, and Settings tabs with the right headers,
-      and migrates older sheets by adding any missing columns.
-      The first run will ask you to authorize the script — that's
-      expected, click through it.
+         ADMIN_TOKEN      = <a long random password>
+         SESSION_SECRET   = <a DIFFERENT long random string>
+      ADMIN_TOKEN protects the Admin page. SESSION_SECRET signs
+      taker login tokens — keep it secret; changing it logs every
+      taker out. If it's missing, the code falls back to
+      ADMIN_TOKEN so logins still work, but a separate value is
+      strongly recommended.
+   4. Run the `setup` function once. It creates the Tests,
+      Questions, Takers, Results and Settings tabs with correct
+      headers. Authorize when prompted.
    5. Deploy → New deployment → type: Web app.
          Execute as: Me
          Who has access: Anyone
-      Deploy, then copy the /exec URL. Paste that URL into
-      admin.html, quiz-engine.html, AND home.html.
-   6. Any time you edit this file afterwards: Deploy → Manage
-      deployments → pencil icon → New version → Deploy. Saving
-      alone does NOT update the live URL.
+      Copy the /exec URL into admin.html, quiz-engine.html AND
+      home.html.
+   6. AFTER EVERY EDIT TO THIS FILE: Deploy → Manage deployments
+      → pencil icon → Version: New version → Deploy.
+      Saving alone does NOT update the live URL.
+
+   ---------------------------------------------------------
+   IF AN EXISTING SHEET IS MISSING COLUMNS
+   ---------------------------------------------------------
+   Select `repairHeaders` in the function dropdown and click Run.
+   It adds any missing columns (and the Takers sheet) without
+   touching your data, and logs what it added.
    ============================================================ */
 
+const TESTS_HEADERS = ['testCode','title','intro','timeLimitMinutes','startDate','deadline','shuffleQuestions','shuffleOptions','updatedAt','assignedTo'];
+const QUESTIONS_HEADERS = ['testCode','qOrder','type','prompt','optionA','optionB','optionC','optionD','correctIndex','points','explanation','referenceAnswer','audioUrl'];
+const TAKERS_HEADERS = ['takerId','name','email','passwordHash','salt','groups'];
+const RESULTS_HEADERS = ['timestamp','testCode','testTitle','takerId','takerName','takerEmail','earned','possible','autoSubmitted','fullscreenExitCount','tabSwitchCount','payloadJson'];
+const SETTINGS_HEADERS = ['key','value'];
+
+/* ============================================================
+   Setup and repair
+   ============================================================ */
 function setup() {
   const ss = SpreadsheetApp.openById(getProp_('SPREADSHEET_ID'));
 
   const tests = getOrCreateSheet_(ss, 'Tests');
-  setHeaderIfEmpty_(tests, ['testCode','title','intro','timeLimitMinutes','startDate','deadline','shuffleQuestions','shuffleOptions','updatedAt','assignedTo']);
-  // Migrate older sheets that predate the assignedTo column.
-  ensureColumn_(tests, 'assignedTo');
-  // Force these two columns to stay plain TEXT — otherwise Sheets can
-  // silently reinterpret "2026-08-01T09:00:00" as a real Date cell in
-  // the spreadsheet's timezone, which can then read back shifted if
-  // the script's execution timezone differs. Keeping them as text
-  // means what you wrote is exactly what you get back, always.
-  tests.getRange('E2:F10000').setNumberFormat('@');
+  const testsMap = ensureColumns_(tests, TESTS_HEADERS);
+  forceTextFormat_(tests, testsMap, ['startDate','deadline']);
 
   const questions = getOrCreateSheet_(ss, 'Questions');
-  setHeaderIfEmpty_(questions, ['testCode','qOrder','type','prompt','optionA','optionB','optionC','optionD','correctIndex','points','explanation','referenceAnswer']);
+  ensureColumns_(questions, QUESTIONS_HEADERS);
 
-  // Takers — the test-taker registry. Passwords are stored only as a
-  // salted SHA-256 hash; the plaintext is never written to the sheet.
   const takers = getOrCreateSheet_(ss, 'Takers');
-  setHeaderIfEmpty_(takers, ['takerId','name','email','passwordHash','salt','groups']);
+  ensureColumns_(takers, TAKERS_HEADERS);
 
   const results = getOrCreateSheet_(ss, 'Results');
-  setHeaderIfEmpty_(results, ['timestamp','testCode','testTitle','takerId','takerName','takerEmail','earned','possible','autoSubmitted','fullscreenExitCount','tabSwitchCount','payloadJson']);
-  // Migrate older Results sheets that predate the takerId column.
-  ensureColumn_(results, 'takerId');
+  ensureColumns_(results, RESULTS_HEADERS);
 
   const settings = getOrCreateSheet_(ss, 'Settings');
-  setHeaderIfEmpty_(settings, ['key','value']);
+  ensureColumns_(settings, SETTINGS_HEADERS);
   ensureSettingRow_(settings, 'siteName', 'Test Portal');
   ensureSettingRow_(settings, 'siteTagline', '');
 
   Logger.log('Setup complete.');
 }
 
+/**
+ * Run this by hand from the editor if an existing sheet is missing
+ * columns (for example an older sheet with no audioUrl / assignedTo /
+ * takerId column, or no Takers sheet). Adds only what is missing;
+ * never deletes, moves or overwrites.
+ */
+function repairHeaders() {
+  const ss = SpreadsheetApp.openById(getProp_('SPREADSHEET_ID'));
+  const report = [];
+
+  [['Tests', TESTS_HEADERS], ['Questions', QUESTIONS_HEADERS], ['Takers', TAKERS_HEADERS],
+   ['Results', RESULTS_HEADERS], ['Settings', SETTINGS_HEADERS]].forEach(pair => {
+    const name = pair[0], required = pair[1];
+    const sheet = getOrCreateSheet_(ss, name); // create Takers if missing
+    const before = Object.keys(headerMap_(sheet));
+    ensureColumns_(sheet, required);
+    const after = Object.keys(headerMap_(sheet));
+    const added = after.filter(h => before.indexOf(h) === -1);
+    report.push(name + ': ' + (added.length ? 'added ' + added.join(', ') : 'already complete'));
+  });
+
+  const tests = ss.getSheetByName('Tests');
+  if (tests) forceTextFormat_(tests, headerMap_(tests), ['startDate','deadline']);
+
+  const msg = report.join('\n');
+  Logger.log(msg);
+  return msg;
+}
+
+/* ============================================================
+   Header-driven sheet helpers
+   ============================================================ */
 function getOrCreateSheet_(ss, name) {
   return ss.getSheetByName(name) || ss.insertSheet(name);
 }
-function setHeaderIfEmpty_(sheet, headers) {
-  if (sheet.getLastRow() === 0) sheet.appendRow(headers);
-}
-// Append a column header if the sheet doesn't already have it. Safe to
-// run repeatedly. All reads/writes below look columns up BY NAME
-// (headers.indexOf), so a column added at the end never breaks them.
-function ensureColumn_(sheet, colName) {
+
+/**
+ * Returns { headerName: zeroBasedColumnIndex } for row 1.
+ */
+function headerMap_(sheet) {
   const lastCol = sheet.getLastColumn();
+  if (lastCol === 0 || sheet.getLastRow() === 0) return {};
   const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
-  if (headers.indexOf(colName) === -1) {
-    sheet.getRange(1, lastCol + 1).setValue(colName);
-  }
+  const map = {};
+  headers.forEach((h, i) => {
+    const key = String(h == null ? '' : h).trim();
+    if (key !== '' && !(key in map)) map[key] = i;
+  });
+  return map;
 }
+
+/**
+ * Guarantees every required header exists on the sheet.
+ * Empty sheet  → writes the full header row.
+ * Sheet with data → appends only the missing headers on the right,
+ * leaving existing columns and their data exactly where they are.
+ * Returns the resulting header map.
+ */
+function ensureColumns_(sheet, required) {
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, required.length).setValues([required]);
+    SpreadsheetApp.flush();
+    return headerMap_(sheet);
+  }
+  const map = headerMap_(sheet);
+  const missing = required.filter(h => !(h in map));
+  if (missing.length) {
+    const startCol = sheet.getLastColumn() + 1;
+    sheet.getRange(1, startCol, 1, missing.length).setValues([missing]);
+    SpreadsheetApp.flush();
+    return headerMap_(sheet);
+  }
+  return map;
+}
+
+/**
+ * Builds a row array by placing each object value under its own
+ * header, wherever that header sits. Unknown keys are ignored;
+ * headers with no matching key become empty strings.
+ */
+function rowFromObject_(map, obj) {
+  let width = 0;
+  Object.keys(map).forEach(k => { if (map[k] + 1 > width) width = map[k] + 1; });
+  const row = new Array(width).fill('');
+  Object.keys(obj).forEach(k => {
+    if (k in map) row[map[k]] = obj[k];
+  });
+  return row;
+}
+
+/**
+ * Keeps date-like columns as plain TEXT. Otherwise Sheets can
+ * silently reinterpret "2026-08-01T09:00:00" as a real Date in the
+ * spreadsheet timezone, which then reads back shifted if the
+ * script timezone differs.
+ */
+function forceTextFormat_(sheet, map, columnNames) {
+  columnNames.forEach(name => {
+    if (!(name in map)) return;
+    sheet.getRange(2, map[name] + 1, 10000, 1).setNumberFormat('@');
+  });
+}
+
 function ensureSettingRow_(sheet, key, defaultValue) {
   const data = sheet.getDataRange().getValues();
   const exists = data.some(r => r[0] === key);
@@ -113,10 +225,20 @@ function checkToken_(token) {
   return token && token === getProp_('ADMIN_TOKEN');
 }
 
+/**
+ * Test codes arrive from URLs as strings, but Sheets stores a purely
+ * numeric code (e.g. 1213) as a NUMBER. A strict === between the two
+ * is always false, which made numeric test codes impossible to find.
+ * Normalize both sides to a trimmed string before every comparison.
+ */
+function codeKey_(v) {
+  return String(v == null ? '' : v).trim();
+}
+
 /* ============================================================
    doGet — public reads (getTest, check) + taker reads
-   (listTestsForMe, getMyResult) + admin reads (listTests,
-   getTestForEdit, getSettings, listTakers), gated by token.
+   (listTestsForMe, getMyResult, whoami) + admin reads
+   (listTests, getTestForEdit, getSettings, listTakers).
    ============================================================ */
 function doGet(e) {
   const action = e.parameter.action;
@@ -162,13 +284,12 @@ function doGet(e) {
 
 /* ============================================================
    doPost — three shapes land here:
-   1. Taker login: { action: 'takerLogin', id, password } — public,
-      returns a signed session token on success.
-   2. Admin actions: JSON body with an "action" field
-      (saveTest / deleteTest / saveSettings / saveTaker /
-      deleteTaker), always ADMIN_TOKEN-gated.
+   1. Taker login: { action:'takerLogin', id, password } — public.
+   2. Admin actions: JSON body with an "action" field (saveTest /
+      deleteTest / saveSettings / saveTaker / deleteTaker),
+      always ADMIN_TOKEN-gated.
    3. Results submissions: JSON body with NO "action" field —
-      this is exactly what quiz-engine.html sends.
+      exactly what quiz-engine.html already sends.
    ============================================================ */
 function doPost(e) {
   try {
@@ -205,7 +326,7 @@ function doPost(e) {
       return json_({ ok: true });
     }
 
-    // No 'action' field => this is a results submission from quiz-engine.html
+    // No 'action' field => results submission from quiz-engine.html
     recordResult_(body);
     return json_({ ok: true });
 
@@ -217,14 +338,9 @@ function doPost(e) {
 /* ============================================================
    Security helpers — password hashing + signed session tokens
    ============================================================
-   Passwords: salted SHA-256. Each taker has a random per-user
-   salt, so identical passwords produce different hashes and the
-   sheet never contains anything reversible.
-
-   Session tokens: "<base64(takerId|expiryMs)>.<hmac>". The HMAC
-   is signed with SESSION_SECRET, so the browser can hold the
-   token but cannot forge one for another taker or extend its
-   expiry. Tokens are stateless — nothing is stored server-side.
+   Passwords: salted SHA-256, one random salt per taker. Session
+   tokens: "<base64(takerId|expiryMs)>.<hmac>", signed with
+   SESSION_SECRET, stateless and unforgeable.
    ============================================================ */
 function sessionSecret_() {
   return getProp_('SESSION_SECRET') || getProp_('ADMIN_TOKEN') || 'CHANGE_ME_SESSION_SECRET';
@@ -276,18 +392,19 @@ function verifySessionToken_(token) {
    Takers registry
    ============================================================ */
 function takersData_() {
-  const data = sheet_('Takers').getDataRange().getValues();
-  return { headers: data[0], rows: data.slice(1) };
+  const sheet = sheet_('Takers');
+  const data = sheet.getDataRange().getValues();
+  return { map: headerMap_(sheet), rows: data.length > 1 ? data.slice(1) : [] };
 }
 // Case-insensitive lookup by takerId. Returns a plain object incl. hash/salt.
 function findTaker_(takerId) {
   if (!takerId) return null;
-  const { headers, rows } = takersData_();
-  const idCol = headers.indexOf('takerId');
+  const { map, rows } = takersData_();
+  const idCol = map['takerId'];
   const wanted = String(takerId).trim().toLowerCase();
   const row = rows.find(r => String(r[idCol]).trim().toLowerCase() === wanted);
   if (!row) return null;
-  const get = (c) => row[headers.indexOf(c)];
+  const get = (c) => (c in map ? row[map[c]] : '');
   return {
     takerId: get('takerId'),
     name: get('name'),
@@ -299,8 +416,8 @@ function findTaker_(takerId) {
 }
 // Admin listing — never exposes the hash or salt.
 function listTakers_() {
-  const { headers, rows } = takersData_();
-  const get = (r, c) => r[headers.indexOf(c)];
+  const { map, rows } = takersData_();
+  const get = (r, c) => (c in map ? r[map[c]] : '');
   return rows
     .filter(r => String(get(r, 'takerId')).trim() !== '')
     .map(r => ({
@@ -319,47 +436,47 @@ function saveTaker_(taker) {
   if (!takerId) takerId = 'T-' + Utilities.getUuid().slice(0, 8).toUpperCase();
 
   const sheet = sheet_('Takers');
+  const map = ensureColumns_(sheet, TAKERS_HEADERS);
   const data = sheet.getDataRange().getValues();
-  const headers = data[0];
-  const idCol = headers.indexOf('takerId');
+  const idCol = map['takerId'];
   const rowIndex = data.findIndex((r, i) => i > 0 && String(r[idCol]).trim().toLowerCase() === takerId.toLowerCase());
   const existing = rowIndex > 0 ? data[rowIndex] : null;
 
-  let passwordHash = existing ? existing[headers.indexOf('passwordHash')] : '';
-  let salt = existing ? existing[headers.indexOf('salt')] : '';
+  let passwordHash = existing ? existing[map['passwordHash']] : '';
+  let salt = existing ? existing[map['salt']] : '';
   if (taker.password && String(taker.password).length > 0) {
     salt = makeSalt_();
     passwordHash = hashPassword_(String(taker.password), salt);
   }
 
-  const rowValues = [
-    takerId,
-    taker.name || '',
-    taker.email || '',
-    passwordHash || '',
-    salt || '',
-    taker.groups || ''
-  ];
+  const row = rowFromObject_(map, {
+    takerId: takerId,
+    name: taker.name || '',
+    email: taker.email || '',
+    passwordHash: passwordHash || '',
+    salt: salt || '',
+    groups: taker.groups || ''
+  });
 
   if (!existing) {
-    sheet.appendRow(rowValues);
+    sheet.appendRow(row);
   } else {
-    sheet.getRange(rowIndex + 1, 1, 1, rowValues.length).setValues([rowValues]);
+    sheet.getRange(rowIndex + 1, 1, 1, row.length).setValues([row]);
   }
   return { ok: true, takerId: takerId };
 }
 function deleteTaker_(takerId) {
   const sheet = sheet_('Takers');
+  const map = headerMap_(sheet);
   const data = sheet.getDataRange().getValues();
-  const idCol = data[0].indexOf('takerId');
+  const idCol = map['takerId'];
   const wanted = String(takerId).trim().toLowerCase();
   for (let i = data.length - 1; i >= 1; i--) {
     if (String(data[i][idCol]).trim().toLowerCase() === wanted) sheet.deleteRow(i + 1);
   }
 }
 // Verify credentials and hand back a session token. The error message is
-// deliberately identical for "no such id" and "wrong password" so the
-// endpoint doesn't reveal which IDs exist.
+// deliberately identical for "no such id" and "wrong password".
 function takerLogin_(id, password) {
   const taker = findTaker_(id);
   const bad = { ok: false, error: 'Invalid ID or password.' };
@@ -367,10 +484,8 @@ function takerLogin_(id, password) {
   if (hashPassword_(String(password || ''), taker.salt) !== taker.passwordHash) return bad;
   return { ok: true, token: makeSessionToken_(taker.takerId), takerId: taker.takerId, name: taker.name };
 }
-
-// Resolve a login token to the taker's identity — used by quiz-engine.html
-// to pre-fill and lock the name/email when a test is launched from the
-// homepage. Never returns the password hash.
+// Resolve a login token to identity — used by quiz-engine.html to lock
+// the taker's name/email when a test is launched from the portal.
 function whoami_(token) {
   const takerId = verifySessionToken_(token);
   if (!takerId) return { ok: false, error: 'unauthorized' };
@@ -409,35 +524,36 @@ function listTestsForMe_(token) {
   const taker = findTaker_(takerId);
   if (!taker) return { ok: false, error: 'unauthorized' };
 
-  const data = sheet_('Tests').getDataRange().getValues();
-  if (data.length < 2) return { ok: true, name: taker.name, tests: [] };
-  const headers = data[0];
-  const get = (r, c) => r[headers.indexOf(c)];
+  const testsSheet = sheet_('Tests');
+  const data = testsSheet.getDataRange().getValues();
+  if (data.length < 2) return { ok: true, name: taker.name, takerId: taker.takerId, tests: [] };
+  const map = headerMap_(testsSheet);
+  const get = (r, c) => (c in map ? r[map[c]] : '');
 
   const submissions = submissionMapForTaker_(takerId);
 
   const tests = data.slice(1)
-    .filter(r => String(get(r, 'testCode')).trim() !== '')
+    .filter(r => codeKey_(get(r, 'testCode')) !== '')
     .filter(r => testAssignedToTaker_(get(r, 'assignedTo'), taker))
     .map(r => {
       const testCode = get(r, 'testCode');
       const startDate = formatSheetDate_(get(r, 'startDate'));
       const deadline = formatSheetDate_(get(r, 'deadline'));
-      const sub = submissions[testCode];
+      const sub = submissions[codeKey_(testCode)];
       return {
-        testCode,
+        testCode: testCode,
         title: get(r, 'title'),
         intro: get(r, 'intro'),
         timeLimitMinutes: Number(get(r, 'timeLimitMinutes')) || 0,
-        startDate,
-        deadline,
+        startDate: startDate,
+        deadline: deadline,
         status: statusFor_(startDate, deadline, !!sub),
         score: sub ? { earned: sub.earned, possible: sub.possible } : null,
         submittedAt: sub ? sub.submittedAt : null
       };
     });
 
-  return { ok: true, name: taker.name, takerId: taker.takerId, tests };
+  return { ok: true, name: taker.name, takerId: taker.takerId, tests: tests };
 }
 // Full result payload for one of the taker's own completed tests.
 function getMyResult_(token, testCode) {
@@ -445,16 +561,16 @@ function getMyResult_(token, testCode) {
   if (!takerId) return { ok: false, error: 'unauthorized' };
   if (!testCode) return { ok: false, error: 'missing_testCode' };
 
-  const data = sheet_('Results').getDataRange().getValues();
-  const headers = data[0];
-  const idCol = headers.indexOf('takerId');
-  const codeCol = headers.indexOf('testCode');
-  const payloadCol = headers.indexOf('payloadJson');
+  const sheet = sheet_('Results');
+  const data = sheet.getDataRange().getValues();
+  const map = headerMap_(sheet);
+  const idCol = map['takerId'];
+  const codeCol = map['testCode'];
+  const payloadCol = map['payloadJson'];
   const wanted = String(takerId).trim().toLowerCase();
 
-  // Most recent matching submission wins (scan bottom-up).
   for (let i = data.length - 1; i >= 1; i--) {
-    if (String(data[i][idCol]).trim().toLowerCase() === wanted && data[i][codeCol] === testCode) {
+    if (String(data[i][idCol]).trim().toLowerCase() === wanted && codeKey_(data[i][codeCol]) === codeKey_(testCode)) {
       try {
         return { ok: true, result: JSON.parse(data[i][payloadCol]) };
       } catch (err) {
@@ -466,19 +582,20 @@ function getMyResult_(token, testCode) {
 }
 // testCode -> {earned, possible, submittedAt} for a taker's submissions.
 function submissionMapForTaker_(takerId) {
-  const data = sheet_('Results').getDataRange().getValues();
+  const sheet = sheet_('Results');
+  const data = sheet.getDataRange().getValues();
   if (data.length < 2) return {};
-  const headers = data[0];
-  const idCol = headers.indexOf('takerId');
-  const codeCol = headers.indexOf('testCode');
-  const earnedCol = headers.indexOf('earned');
-  const possibleCol = headers.indexOf('possible');
-  const tsCol = headers.indexOf('timestamp');
+  const map = headerMap_(sheet);
+  const idCol = map['takerId'];
+  const codeCol = map['testCode'];
+  const earnedCol = map['earned'];
+  const possibleCol = map['possible'];
+  const tsCol = map['timestamp'];
   const wanted = String(takerId).trim().toLowerCase();
   const out = {};
   data.slice(1).forEach(r => {
     if (String(r[idCol]).trim().toLowerCase() === wanted) {
-      out[r[codeCol]] = {
+      out[codeKey_(r[codeCol])] = {
         earned: r[earnedCol],
         possible: r[possibleCol],
         submittedAt: r[tsCol] instanceof Date ? r[tsCol].toISOString() : String(r[tsCol])
@@ -489,16 +606,19 @@ function submissionMapForTaker_(takerId) {
 }
 
 /* ============================================================
-   Tests / Questions
+   Tests / Questions — reads
    ============================================================ */
 function getTest_(testCode) {
   if (!testCode) return { ok: false, error: 'missing_testCode' };
-  const testsData = sheet_('Tests').getDataRange().getValues();
-  const headers = testsData[0];
-  const row = testsData.slice(1).find(r => r[headers.indexOf('testCode')] === testCode);
+
+  const testsSheet = sheet_('Tests');
+  const testsData = testsSheet.getDataRange().getValues();
+  if (testsData.length < 2) return { ok: false, error: 'not_found' };
+  const tMap = headerMap_(testsSheet);
+  const row = testsData.slice(1).find(r => codeKey_(r[tMap['testCode']]) === codeKey_(testCode));
   if (!row) return { ok: false, error: 'not_found' };
 
-  const get = (col) => row[headers.indexOf(col)];
+  const get = (col) => (col in tMap ? row[tMap[col]] : '');
   const test = {
     ok: true,
     testCode: get('testCode'),
@@ -513,22 +633,48 @@ function getTest_(testCode) {
     questions: []
   };
 
-  const qData = sheet_('Questions').getDataRange().getValues();
-  const qHeaders = qData[0];
-  const qRows = qData.slice(1)
-    .filter(r => r[qHeaders.indexOf('testCode')] === testCode)
-    .sort((a, b) => Number(a[qHeaders.indexOf('qOrder')]) - Number(b[qHeaders.indexOf('qOrder')]));
+  const qSheet = sheet_('Questions');
+  const qData = qSheet.getDataRange().getValues();
+  const qMap = headerMap_(qSheet);
+  const qGet = (r, col) => (col in qMap ? r[qMap[col]] : '');
 
-  const qGet = (r, col) => r[qHeaders.indexOf(col)];
+  const qRows = qData.slice(1)
+    .filter(r => codeKey_(qGet(r, 'testCode')) === codeKey_(testCode))
+    .sort((a, b) => Number(qGet(a, 'qOrder')) - Number(qGet(b, 'qOrder')));
+
   test.questions = qRows.map(r => {
     const type = qGet(r, 'type');
     const points = Number(qGet(r, 'points'));
     const explanation = qGet(r, 'explanation') || undefined;
-    if (type === 'mc') {
-      const options = [qGet(r,'optionA'), qGet(r,'optionB'), qGet(r,'optionC'), qGet(r,'optionD')].filter(v => v !== '' && v !== null && v !== undefined);
-      return { type: 'mc', prompt: qGet(r, 'prompt'), points, options, correctIndex: Number(qGet(r, 'correctIndex')), explanation };
+    const audioUrl = qGet(r, 'audioUrl') || undefined;
+
+    // Passages are context blocks, not questions: no points, no answer
+    // field. Without this branch they fall through to 'short' and render
+    // as a numbered question with a text box.
+    if (type === 'passage') {
+      return { type: 'passage', prompt: qGet(r, 'prompt'), points: 0, audioUrl: audioUrl };
     }
-    return { type: 'short', prompt: qGet(r, 'prompt'), points, answer: qGet(r, 'referenceAnswer') || undefined, explanation };
+    if (type === 'mc') {
+      const options = [qGet(r,'optionA'), qGet(r,'optionB'), qGet(r,'optionC'), qGet(r,'optionD')]
+        .filter(v => v !== '' && v !== null && v !== undefined);
+      return {
+        type: 'mc',
+        prompt: qGet(r, 'prompt'),
+        points: points,
+        options: options,
+        correctIndex: Number(qGet(r, 'correctIndex')),
+        explanation: explanation,
+        audioUrl: audioUrl
+      };
+    }
+    return {
+      type: 'short',
+      prompt: qGet(r, 'prompt'),
+      points: points,
+      answer: qGet(r, 'referenceAnswer') || undefined,
+      explanation: explanation,
+      audioUrl: audioUrl
+    };
   });
 
   const settings = getSettings_();
@@ -541,8 +687,6 @@ function getTest_(testCode) {
 function formatSheetDate_(val) {
   if (!val) return '';
   if (val instanceof Date) {
-    // Sheets stores this as a real Date object — convert back to the
-    // "YYYY-MM-DDTHH:MM:SS" string format the engine expects.
     const pad = n => String(n).padStart(2, '0');
     return val.getFullYear() + '-' + pad(val.getMonth()+1) + '-' + pad(val.getDate())
       + 'T' + pad(val.getHours()) + ':' + pad(val.getMinutes()) + ':' + pad(val.getSeconds());
@@ -551,17 +695,22 @@ function formatSheetDate_(val) {
 }
 
 function listTests_() {
-  const data = sheet_('Tests').getDataRange().getValues();
+  const testsSheet = sheet_('Tests');
+  const data = testsSheet.getDataRange().getValues();
   if (data.length < 2) return [];
-  const headers = data[0];
-  const qData = sheet_('Questions').getDataRange().getValues();
-  const qHeaders = qData[0];
+  const tMap = headerMap_(testsSheet);
+
+  const qSheet = sheet_('Questions');
+  const qData = qSheet.getDataRange().getValues();
+  const qMap = headerMap_(qSheet);
+  const qCodeCol = qMap['testCode'];
+
   return data.slice(1).map(row => {
-    const get = (col) => row[headers.indexOf(col)];
+    const get = (col) => (col in tMap ? row[tMap[col]] : '');
     const testCode = get('testCode');
-    const qCount = qData.slice(1).filter(r => r[qHeaders.indexOf('testCode')] === testCode).length;
+    const qCount = qData.slice(1).filter(r => codeKey_(r[qCodeCol]) === codeKey_(testCode)).length;
     return {
-      testCode,
+      testCode: testCode,
       title: get('title'),
       timeLimitMinutes: get('timeLimitMinutes'),
       startDate: formatSheetDate_(get('startDate')),
@@ -573,76 +722,102 @@ function listTests_() {
   });
 }
 
+/* ============================================================
+   Tests / Questions — writes (header-driven)
+   ============================================================ */
 function saveTest_(test) {
   if (!test || !test.testCode) throw new Error('test.testCode is required');
-  const testsSheet = sheet_('Tests');
-  const data = testsSheet.getDataRange().getValues();
-  const headers = data[0];
-  const codeCol = headers.indexOf('testCode');
-  let rowIndex = data.findIndex((r, i) => i > 0 && r[codeCol] === test.testCode);
 
-  const rowValues = [
-    test.testCode,
-    test.title || '',
-    test.intro || '',
-    test.timeLimitMinutes || 0,
-    test.startDate || '',
-    test.deadline || '',
-    !!test.shuffleQuestions,
-    !!test.shuffleOptions,
-    new Date(),
-    test.assignedTo || ''
-  ];
+  // --- Tests sheet ---
+  const testsSheet = sheet_('Tests');
+  const tMap = ensureColumns_(testsSheet, TESTS_HEADERS);
+  forceTextFormat_(testsSheet, tMap, ['startDate','deadline']);
+
+  const testsData = testsSheet.getDataRange().getValues();
+  const codeCol = tMap['testCode'];
+  const rowIndex = testsData.findIndex((r, i) => i > 0 && codeKey_(r[codeCol]) === codeKey_(test.testCode));
+
+  const testRow = rowFromObject_(tMap, {
+    testCode: test.testCode,
+    title: test.title || '',
+    intro: test.intro || '',
+    timeLimitMinutes: test.timeLimitMinutes || 0,
+    startDate: test.startDate || '',
+    deadline: test.deadline || '',
+    shuffleQuestions: !!test.shuffleQuestions,
+    shuffleOptions: !!test.shuffleOptions,
+    updatedAt: new Date(),
+    assignedTo: test.assignedTo || ''
+  });
 
   if (rowIndex === -1) {
-    testsSheet.appendRow(rowValues);
+    testsSheet.appendRow(testRow);
   } else {
-    testsSheet.getRange(rowIndex + 1, 1, 1, rowValues.length).setValues([rowValues]);
+    testsSheet.getRange(rowIndex + 1, 1, 1, testRow.length).setValues([testRow]);
   }
 
-  // Replace all questions for this test — simplest correct approach:
-  // delete existing rows for this testCode, then append fresh ones
-  // in the order given.
+  // --- Questions sheet ---
+  // Replace all questions for this test: delete existing rows, then
+  // write the new set in the order given.
   const qSheet = sheet_('Questions');
+  const qMap = ensureColumns_(qSheet, QUESTIONS_HEADERS);
+  const qCodeCol = qMap['testCode'];
+
   const qData = qSheet.getDataRange().getValues();
-  const qHeaders = qData[0];
-  const qCodeCol = qHeaders.indexOf('testCode');
-  // Delete bottom-up so row indices don't shift under us
-  for (let i = qData.length - 1; i >= 1; i--) {
-    if (qData[i][qCodeCol] === test.testCode) qSheet.deleteRow(i + 1);
+  const doomed = [];
+  for (let i = 1; i < qData.length; i++) {
+    if (codeKey_(qData[i][qCodeCol]) === codeKey_(test.testCode)) doomed.push(i + 1); // 1-based row
+  }
+  // Delete bottom-up, collapsing contiguous runs into single calls so a
+  // 30-question test does not cost 30 separate API round trips.
+  for (let i = doomed.length - 1; i >= 0; i--) {
+    let end = doomed[i];
+    let start = end;
+    while (i > 0 && doomed[i - 1] === start - 1) { start = doomed[i - 1]; i--; }
+    qSheet.deleteRows(start, end - start + 1);
   }
 
-  (test.questions || []).forEach((q, i) => {
-    const options = q.type === 'mc' ? (q.options || []) : [];
-    qSheet.appendRow([
-      test.testCode,
-      i,
-      q.type,
-      q.prompt || '',
-      options[0] || '',
-      options[1] || '',
-      options[2] || '',
-      options[3] || '',
-      q.type === 'mc' ? q.correctIndex : '',
-      q.points || 0,
-      q.explanation || '',
-      q.type === 'short' ? (q.answer || '') : ''
-    ]);
-  });
+  const questions = test.questions || [];
+  if (questions.length) {
+    const rows = questions.map((q, i) => {
+      const options = q.type === 'mc' ? (q.options || []) : [];
+      return rowFromObject_(qMap, {
+        testCode: test.testCode,
+        qOrder: i,
+        type: q.type,
+        prompt: q.prompt || '',
+        optionA: options[0] || '',
+        optionB: options[1] || '',
+        optionC: options[2] || '',
+        optionD: options[3] || '',
+        correctIndex: q.type === 'mc' ? q.correctIndex : '',
+        points: q.type === 'passage' ? 0 : (q.points || 0),
+        explanation: q.explanation || '',
+        referenceAnswer: q.type === 'short' ? (q.answer || '') : '',
+        audioUrl: q.audioUrl || ''
+      });
+    });
+    // Single batched write instead of one appendRow per question.
+    const startRow = qSheet.getLastRow() + 1;
+    qSheet.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
+  }
 }
 
 function deleteTest_(testCode) {
   const testsSheet = sheet_('Tests');
-  const data = testsSheet.getDataRange().getValues();
-  const codeCol = data[0].indexOf('testCode');
-  for (let i = data.length - 1; i >= 1; i--) {
-    if (data[i][codeCol] === testCode) testsSheet.deleteRow(i + 1);
+  const tMap = headerMap_(testsSheet);
+  const testsData = testsSheet.getDataRange().getValues();
+  const codeCol = tMap['testCode'];
+  for (let i = testsData.length - 1; i >= 1; i--) {
+    if (codeKey_(testsData[i][codeCol]) === codeKey_(testCode)) testsSheet.deleteRow(i + 1);
   }
+
   const qSheet = sheet_('Questions');
+  const qMap = headerMap_(qSheet);
   const qData = qSheet.getDataRange().getValues();
-  const qCodeCol = qData[0].indexOf('testCode');
+  const qCodeCol = qMap['testCode'];
   for (let i = qData.length - 1; i >= 1; i--) {
-    if (qData[i][qCodeCol] === testCode) qSheet.deleteRow(i + 1);
+    if (codeKey_(qData[i][qCodeCol]) === codeKey_(testCode)) qSheet.deleteRow(i + 1);
   }
 }
 
@@ -657,6 +832,7 @@ function getSettings_() {
 }
 function saveSettings_(settings) {
   const sheet = sheet_('Settings');
+  ensureColumns_(sheet, SETTINGS_HEADERS);
   Object.keys(settings || {}).forEach(key => {
     const data = sheet.getDataRange().getValues();
     const rowIndex = data.findIndex((r, i) => i > 0 && r[0] === key);
@@ -669,26 +845,28 @@ function saveSettings_(settings) {
 }
 
 /* ============================================================
-   Results (unchanged in spirit from the old backend — this is
-   what quiz-engine.html's sendToBackend() posts). Now also
-   records takerId so the taker homepage can find a person's
-   own past results reliably.
+   Results — what quiz-engine.html's sendToBackend() posts.
+   Now also records takerId so the taker portal can find a
+   person's own past results reliably.
    ============================================================ */
 function hasSubmitted_(email, testCode) {
   if (!email || !testCode) return false;
-  const data = sheet_('Results').getDataRange().getValues();
-  const headers = data[0];
-  const emailCol = headers.indexOf('takerEmail');
-  const codeCol = headers.indexOf('testCode');
+  const sheet = sheet_('Results');
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return false;
+  const map = headerMap_(sheet);
+  const emailCol = map['takerEmail'];
+  const codeCol = map['testCode'];
   return data.slice(1).some(r =>
-    String(r[emailCol]).toLowerCase() === String(email).toLowerCase() && r[codeCol] === testCode
+    String(r[emailCol]).toLowerCase() === String(email).toLowerCase() &&
+    codeKey_(r[codeCol]) === codeKey_(testCode)
   );
 }
+
 function recordResult_(payload) {
   const sheet = sheet_('Results');
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  // Build the row by header name so column order/additions never misalign.
-  const values = {
+  const map = ensureColumns_(sheet, RESULTS_HEADERS);
+  const row = rowFromObject_(map, {
     timestamp: new Date(),
     testCode: payload.testCode || '',
     testTitle: payload.testTitle || '',
@@ -701,7 +879,6 @@ function recordResult_(payload) {
     fullscreenExitCount: payload.fullscreenExitCount || 0,
     tabSwitchCount: payload.tabSwitchCount || 0,
     payloadJson: JSON.stringify(payload)
-  };
-  const row = headers.map(h => (h in values ? values[h] : ''));
+  });
   sheet.appendRow(row);
 }

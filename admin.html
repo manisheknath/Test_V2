@@ -4,220 +4,384 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Test Admin</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <style>
-:root{
-  --ink:#1C2E3A; --ink-soft:#435363; --paper:#ECEFEA; --paper-line:#D3D9CE; --card:#FFFFFF;
-  --accent-calm:#3C6E52; --accent-warn:#C98A2C; --accent-alert:#C4453A;
-  --mono:'IBM Plex Mono',ui-monospace,monospace; --sans:'IBM Plex Sans',system-ui,sans-serif; --serif:'Fraunces',Georgia,serif;
-}
-*{box-sizing:border-box;}
-html,body{margin:0;padding:0;}
-body{background:var(--paper);font-family:var(--sans);color:var(--ink);min-height:100vh;padding:32px 20px 96px;}
-.wrap{max-width:920px;margin:0 auto;}
-h1{font-family:var(--serif);font-size:32px;font-weight:600;margin:0 0 4px;}
-.sub{color:var(--ink-soft);font-size:14px;margin:0 0 24px;}
-.card{background:var(--card);border:1px solid var(--paper-line);box-shadow:0 1px 0 var(--paper-line);padding:24px;margin-bottom:24px;}
-.card h2{font-family:var(--serif);font-size:20px;font-weight:600;margin:0 0 16px;}
-label{display:block;font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:6px;}
-input[type=text],input[type=password],input[type=number],input[type=datetime-local],textarea,select{
-  width:100%;border:1px solid var(--paper-line);background:var(--paper);padding:9px 10px;font-family:var(--sans);font-size:14px;color:var(--ink);margin-bottom:14px;
-}
-textarea{min-height:60px;resize:vertical;}
-.row{display:flex;gap:14px;flex-wrap:wrap;}
-.row > div{flex:1;min-width:180px;}
-button{font-family:var(--mono);font-size:12px;letter-spacing:0.06em;text-transform:uppercase;cursor:pointer;border:none;padding:10px 16px;}
-button.primary{background:var(--ink);color:var(--paper);}
-button.primary:hover{background:var(--ink-soft);}
-button.ghost{background:transparent;border:1px solid var(--paper-line);color:var(--ink-soft);}
-button.ghost:hover{border-color:var(--ink-soft);color:var(--ink);}
-button.danger{background:transparent;border:1px solid var(--accent-alert);color:var(--accent-alert);}
-button.small{padding:6px 10px;font-size:11px;}
-table{width:100%;border-collapse:collapse;font-size:14px;}
-th,td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--paper-line);}
-th{font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--ink-soft);}
-.tag{font-family:var(--mono);font-size:10px;letter-spacing:0.06em;text-transform:uppercase;padding:2px 8px;display:inline-block;}
-.tag.open{background:#E7F0EA;color:var(--accent-calm);}
-.tag.scheduled{background:#FBF1E1;color:var(--accent-warn);}
-.tag.closed{background:#F0F0F0;color:var(--ink-soft);}
-.q-card{border:1px solid var(--paper-line);padding:16px;margin-bottom:14px;background:var(--paper);}
-.q-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
-.q-card-head b{font-family:var(--mono);font-size:12px;color:var(--ink-soft);}
-.opt-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
-.opt-row input[type=radio]{margin:0;}
-.opt-row input[type=text]{margin-bottom:0;flex:1;}
-.notice{font-size:13px;line-height:1.5;padding:12px 14px;margin-bottom:16px;}
-.notice.error{background:#FBEEEC;color:#7A2E27;border-left:3px solid var(--accent-alert);}
-.notice.ok{background:#E7F0EA;color:#254A38;border-left:3px solid var(--accent-calm);}
-.hidden{display:none;}
-.link-box{font-family:var(--mono);font-size:13px;background:var(--paper);border:1px solid var(--paper-line);padding:10px;word-break:break-all;margin-bottom:10px;}
-.actions-bar{display:flex;justify-content:flex-end;gap:10px;margin-top:8px;}
+  :root{
+    --bg:#F4F7F5; --surface:#FFFFFF; --surface-2:#FAFBFA; --surface-3:#F1F4F2;
+    --border:#E4E9E5; --border-strong:#D3DAD5;
+    --text:#16211C; --muted:#5F6B65; --faint:#8A948E;
+    --accent:#147A57; --accent-hover:#0F6146; --accent-soft:#E4F1EB; --on-accent:#FFFFFF;
+    --amber-bg:#FBF0DA; --amber-tx:#946213;
+    --slate-bg:#EDF0F2; --slate-tx:#586572;
+    --rose-bg:#FBE8E6; --rose-tx:#B0463B;
+    --shadow-sm:0 1px 2px rgba(20,40,30,.06), 0 1px 3px rgba(20,40,30,.04);
+    --shadow-md:0 4px 12px -4px rgba(20,40,30,.12), 0 2px 6px -2px rgba(20,40,30,.08);
+    --radius:9px; --radius-sm:6px;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --bg:#0E1411; --surface:#161D19; --surface-2:#1A221D; --surface-3:#202A24;
+      --border:#26302A; --border-strong:#334038;
+      --text:#E9EEEB; --muted:#9BA8A1; --faint:#71807A;
+      --accent:#3FB488; --accent-hover:#57C79A; --accent-soft:#173028; --on-accent:#08130E;
+      --amber-bg:#33280F; --amber-tx:#E4B463; --slate-bg:#222B31; --slate-tx:#9FB0BC;
+      --rose-bg:#331E1C; --rose-tx:#E39189;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.3); --shadow-md:0 6px 18px -6px rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg:#F4F7F5; --surface:#FFFFFF; --surface-2:#FAFBFA; --surface-3:#F1F4F2;
+    --border:#E4E9E5; --border-strong:#D3DAD5; --text:#16211C; --muted:#5F6B65; --faint:#8A948E;
+    --accent:#147A57; --accent-hover:#0F6146; --accent-soft:#E4F1EB; --on-accent:#FFFFFF;
+    --amber-bg:#FBF0DA; --amber-tx:#946213; --slate-bg:#EDF0F2; --slate-tx:#586572; --rose-bg:#FBE8E6; --rose-tx:#B0463B;
+  }
+  :root[data-theme="dark"]{
+    --bg:#0E1411; --surface:#161D19; --surface-2:#1A221D; --surface-3:#202A24;
+    --border:#26302A; --border-strong:#334038; --text:#E9EEEB; --muted:#9BA8A1; --faint:#71807A;
+    --accent:#3FB488; --accent-hover:#57C79A; --accent-soft:#173028; --on-accent:#08130E;
+    --amber-bg:#33280F; --amber-tx:#E4B463; --slate-bg:#222B31; --slate-tx:#9FB0BC; --rose-bg:#331E1C; --rose-tx:#E39189;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{background:var(--bg);font-family:var(--sans);color:var(--text);font-size:14px;line-height:1.45;
+    min-height:100vh;-webkit-font-smoothing:antialiased;}
+  .hidden{display:none !important;}
+  .tnum{font-variant-numeric:tabular-nums;}
+
+  /* ---------- Buttons ---------- */
+  button{font-family:inherit;cursor:pointer;border:none;font-size:13.5px;font-weight:600;
+    padding:9px 15px;border-radius:8px;background:var(--surface-3);color:var(--text);}
+  button.primary{background:var(--accent);color:var(--on-accent);}
+  button.primary:hover{background:var(--accent-hover);}
+  button.ghost{background:var(--surface);border:1px solid var(--border-strong);color:var(--text);}
+  button.ghost:hover{background:var(--surface-3);}
+  button.danger{background:var(--surface);border:1px solid var(--rose-tx);color:var(--rose-tx);}
+  button.danger:hover{background:var(--rose-bg);}
+  button.small{padding:6px 10px;font-size:12px;border-radius:6px;}
+
+  /* ---------- Inputs ---------- */
+  label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;}
+  input[type=text],input[type=password],input[type=number],input[type=datetime-local],textarea,select{
+    width:100%;border:1px solid var(--border);background:var(--surface-2);border-radius:8px;
+    padding:10px 12px;font-family:var(--sans);font-size:14px;color:var(--text);margin-bottom:14px;}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  textarea{min-height:70px;resize:vertical;line-height:1.5;}
+  .row{display:flex;gap:14px;flex-wrap:wrap;}
+  .row > div{flex:1;min-width:180px;}
+  .sub{color:var(--muted);font-size:13.5px;margin:0 0 20px;}
+  code,.code{font-family:var(--mono);font-size:12px;color:var(--muted);background:var(--surface-3);
+    padding:2px 7px;border-radius:5px;}
+
+  /* ---------- Login ---------- */
+  #loginScreen{min-height:100vh;display:grid;place-items:center;padding:24px;}
+  .login-card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--border);
+    border-radius:14px;box-shadow:var(--shadow-md);padding:32px 30px;}
+  .login-brand{display:flex;align-items:center;gap:11px;margin-bottom:22px;}
+  .login-card h2{margin:0 0 4px;font-size:20px;font-weight:700;letter-spacing:-.02em;}
+  .login-card .lede{margin:0 0 20px;color:var(--muted);font-size:13.5px;}
+  .logo{width:34px;height:34px;border-radius:9px;background:linear-gradient(145deg,var(--accent),var(--accent-hover));
+    display:grid;place-items:center;color:var(--on-accent);font-weight:800;font-size:17px;flex-shrink:0;}
+  .login-brand .nm{font-weight:700;font-size:17px;letter-spacing:-.01em;}
+
+  /* ---------- App shell ---------- */
+  .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;height:56px;
+    padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border);}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:-.01em;}
+  .brand .logo{width:27px;height:27px;border-radius:8px;font-size:14px;}
+  .tag-pill{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);
+    background:var(--surface-3);border:1px solid var(--border);padding:2px 8px;border-radius:5px;}
+  .spacer{flex:1;}
+  .who{display:flex;align-items:center;gap:9px;}
+  .avatar{width:32px;height:32px;border-radius:50%;background:var(--accent-soft);color:var(--accent);
+    display:grid;place-items:center;font-weight:700;font-size:12px;}
+  .who .nm{font-size:13px;font-weight:600;line-height:1.1;}
+  .who .role{font-size:11px;color:var(--faint);}
+  .link-btn{background:none;border:1px solid var(--border);color:var(--muted);font-size:13px;font-weight:600;padding:7px 12px;border-radius:8px;}
+  .link-btn:hover{color:var(--text);border-color:var(--border-strong);background:var(--surface-3);}
+
+  .shell{display:flex;min-height:calc(100vh - 56px);}
+  .sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;padding:16px 12px;position:sticky;top:56px;height:calc(100vh - 56px);}
+  .nav-label{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding:8px 10px 6px;}
+  .nav-item{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:8px;color:var(--muted);
+    font-weight:500;font-size:13.5px;margin-bottom:2px;width:100%;text-align:left;background:none;border:none;}
+  .nav-item svg{width:18px;height:18px;flex-shrink:0;stroke-width:1.8;}
+  .nav-item:hover{background:var(--surface-3);color:var(--text);}
+  .nav-item.active{background:var(--accent-soft);color:var(--accent);font-weight:600;}
+  .nav-item .cnt{margin-left:auto;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;}
+  .nav-item.active .cnt{color:var(--accent);}
+  .sidebar .foot{margin-top:auto;border-top:1px solid var(--border);padding-top:12px;display:flex;align-items:center;gap:9px;}
+
+  .main{flex:1;min-width:0;padding:26px 30px 70px;}
+  .view[hidden]{display:none;}
+  .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap;}
+  .page-head h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em;}
+  .page-head .sub{margin:4px 0 0;}
+  .head-actions{display:flex;gap:10px;flex-wrap:wrap;}
+
+  .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:15px 16px;box-shadow:var(--shadow-sm);}
+  .stat .k{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:7px;}
+  .stat .v{font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1;}
+
+  /* ---------- Cards & tables ---------- */
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow-sm);padding:20px 22px;margin-bottom:22px;}
+  .card > h2{margin:0 0 16px;font-size:16px;font-weight:650;}
+  .table-wrap{overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  th{text-align:left;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);
+    padding:9px 10px;border-bottom:1px solid var(--border);}
+  td{padding:12px 10px;border-bottom:1px solid var(--border);vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--surface-2);}
+
+  .tag{font-size:11px;font-weight:600;letter-spacing:.02em;padding:3px 9px;border-radius:20px;display:inline-block;text-transform:capitalize;}
+  .tag.open{background:var(--accent-soft);color:var(--accent);}
+  .tag.scheduled{background:var(--amber-bg);color:var(--amber-tx);}
+  .tag.closed{background:var(--slate-bg);color:var(--slate-tx);}
+
+  .q-card{border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:14px;background:var(--surface-2);}
+  .q-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:10px;}
+  .q-card-head b{font-size:12.5px;color:var(--muted);font-weight:700;}
+  .opt-row{display:flex;gap:8px;align-items:center;margin-bottom:8px;}
+  .opt-row input[type=radio]{margin:0;width:auto;flex-shrink:0;}
+  .opt-row input[type=text]{margin-bottom:0;flex:1;}
+
+  .notice{font-size:13px;line-height:1.5;padding:11px 14px;border-radius:8px;margin-bottom:16px;}
+  .notice.error{background:var(--rose-bg);color:var(--rose-tx);}
+  .notice.ok{background:var(--accent-soft);color:var(--accent);}
+  .link-box{font-family:var(--mono);font-size:12.5px;background:var(--surface-2);border:1px solid var(--border);
+    border-radius:8px;padding:10px 12px;word-break:break-all;margin-bottom:12px;color:var(--muted);}
+  .actions-bar{display:flex;justify-content:flex-end;gap:10px;margin-top:8px;}
+
+  @media (max-width:820px){
+    .sidebar{display:none;}
+    .stat-row{grid-template-columns:repeat(2,1fr);}
+    .main{padding:20px 16px 60px;}
+    .who .nm,.who .role{display:none;}
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
 
-  <!-- ============ LOGIN SCREEN ============ -->
-  <div id="loginScreen" class="card">
+<!-- ============ LOGIN SCREEN ============ -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="login-brand"><span class="logo">T</span><span class="nm">TestPortal</span></div>
     <h2>Admin access</h2>
+    <p class="lede">Enter your admin token to manage tests and people.</p>
+    <div id="loginError" class="notice error hidden"></div>
     <label for="tokenInput">Admin token</label>
     <input type="password" id="tokenInput" placeholder="Paste your ADMIN_TOKEN">
-    <div id="loginError" class="notice error hidden"></div>
-    <button class="primary" id="btnLogin">Enter</button>
+    <button class="primary" id="btnLogin" style="width:100%;">Enter</button>
+  </div>
+</div>
+
+<!-- ============ MAIN APP (hidden until logged in) ============ -->
+<div id="app" class="hidden">
+  <div class="topbar">
+    <div class="brand"><span class="logo">T</span>TestPortal<span class="tag-pill">Admin</span></div>
+    <div class="spacer"></div>
+    <div class="who">
+      <div class="avatar">AD</div>
+      <div><div class="nm">Administrator</div><div class="role">Signed in</div></div>
+    </div>
+    <button class="link-btn" id="btnSignOut">Sign out</button>
   </div>
 
-  <!-- ============ MAIN APP (hidden until logged in) ============ -->
-  <div id="app" class="hidden">
-    <h1>Test Admin</h1>
-    <p class="sub">Create, edit, and schedule tests. Test takers only ever see the link, never this page.</p>
-
-    <div class="card">
-      <h2>Site settings</h2>
-      <div class="row">
-        <div>
-          <label for="siteName">Site name (shown above every test)</label>
-          <input type="text" id="siteName" placeholder="e.g. Acme Training Portal">
-        </div>
-        <div>
-          <label for="siteTagline">Tagline (optional)</label>
-          <input type="text" id="siteTagline" placeholder="e.g. Internal assessments">
-        </div>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="nav-label">Manage</div>
+      <button class="nav-item active" data-view="tests">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
+        Tests<span class="cnt" id="navTestsCount"></span>
+      </button>
+      <button class="nav-item" data-view="people">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M17 7.5a3 3 0 0 1 0 5.6M21 20c0-2.4-1.2-4.2-3-5"/></svg>
+        People<span class="cnt" id="navPeopleCount"></span>
+      </button>
+      <div class="nav-label" style="margin-top:10px;">Setup</div>
+      <button class="nav-item" data-view="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.2-1.3L14 2h-4l-.3 2.2a7 7 0 0 0-2.2 1.3l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.2 1.3L10 22h4l.3-2.2a7 7 0 0 0 2.2-1.3l2.3 1 2-3.4-2-1.5c.1-.4.1-.9.1-1.3Z"/></svg>
+        Site settings
+      </button>
+      <div class="foot">
+        <div class="avatar">AD</div>
+        <div style="flex:1;min-width:0;"><div class="nm" style="font-size:12.5px;font-weight:600;">Administrator</div></div>
       </div>
-      <button class="ghost" id="btnSaveSettings">Save site settings</button>
-      <span id="settingsSavedNote" style="margin-left:10px;font-size:12px;color:var(--ink-soft);"></span>
-    </div>
+    </aside>
 
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-        <h2 style="margin:0;">Tests</h2>
-        <div style="display:flex;gap:10px;">
-          <button class="ghost" id="btnPasteImport">Paste text / JS</button>
-          <button class="ghost" id="btnImportWord">Import from Word</button>
-          <button class="primary" id="btnNewTest">+ New test</button>
-        </div>
-      </div>
-      <input type="file" id="wordFileInput" accept=".docx" class="hidden">
-      <div id="importNotice"></div>
+    <main class="main">
 
-      <!-- Paste import panel (hidden until opened) -->
-      <div id="pasteImportPanel" class="q-card hidden" style="margin-bottom:16px;">
-        <p style="font-size:13px;color:var(--ink-soft);margin-top:0;">
-          Paste either: the same plain-text template format used for Word import (TEST CODE: ... === ... Q1 [MC] [2 pts] ...),
-          <b>or</b> a JS/JSON test object like <code>{ testCode: "...", title: "...", questions: [...] }</code> (the same shape
-          used elsewhere in this system — a <code>const TEST_CONFIG = {...}</code> block works too, the <code>const TEST_CONFIG =</code>
-          part is stripped automatically). The format is auto-detected.
-        </p>
-        <textarea id="pasteImportText" style="min-height:220px;font-family:var(--mono);font-size:12px;" placeholder="Paste template text or a TEST_CONFIG-style JS object here..."></textarea>
-        <div style="display:flex;gap:10px;">
-          <button class="primary" id="btnParsePasted">Parse</button>
-          <button class="ghost" id="btnCancelPaste">Cancel</button>
-        </div>
-      </div>
-      <table id="testsTable">
-        <thead><tr><th>Code</th><th>Title</th><th>Questions</th><th>Status</th><th>Opens / Closes</th><th></th></tr></thead>
-        <tbody id="testsTableBody"></tbody>
-      </table>
-    </div>
-
-    <!-- ============ PEOPLE (TEST TAKERS) ============ -->
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <h2 style="margin:0;">People (test takers)</h2>
-        <button class="primary" id="btnNewPerson">+ Add person</button>
-      </div>
-      <p class="sub" style="margin-top:0;">Each person signs in at the portal with their ID + password to see the tests assigned to them.</p>
-      <div class="link-box" id="portalLinkBox" style="margin-bottom:14px;"></div>
-      <div id="peopleNotice"></div>
-      <table id="takersTable">
-        <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Groups</th><th>Password</th><th></th></tr></thead>
-        <tbody id="takersTableBody"></tbody>
-      </table>
-
-      <!-- Person editor (hidden until opened) -->
-      <div id="personEditor" class="q-card hidden" style="margin-top:16px;">
-        <div class="q-card-head"><b id="personEditorTitle">New person</b></div>
-        <div id="personNotice"></div>
-        <div class="row">
-          <div>
-            <label for="p_takerId">Test-taker ID (unique, no spaces — blank auto-generates one)</label>
-            <input type="text" id="p_takerId" placeholder="e.g. T-4821">
-          </div>
-          <div>
-            <label for="p_groups">Groups (comma-separated, optional)</label>
-            <input type="text" id="p_groups" placeholder="e.g. ClassA, Cohort3">
+      <!-- ===== TESTS VIEW ===== -->
+      <section class="view" id="view-tests">
+        <div class="page-head">
+          <div><h1>Tests</h1><p class="sub">Create, schedule, and assign assessments to people and groups.</p></div>
+          <div class="head-actions">
+            <button class="ghost" id="btnPasteImport">Paste text / JS</button>
+            <button class="ghost" id="btnImportWord">Import from Word</button>
+            <button class="primary" id="btnNewTest">+ New test</button>
           </div>
         </div>
-        <div class="row">
-          <div>
-            <label for="p_name">Name</label>
-            <input type="text" id="p_name" placeholder="e.g. Jordan Lee">
+
+        <div class="stat-row">
+          <div class="stat"><div class="k">Total tests</div><div class="v tnum" id="statTotal">0</div></div>
+          <div class="stat"><div class="k">Active now</div><div class="v tnum" id="statActive">0</div></div>
+          <div class="stat"><div class="k">Scheduled</div><div class="v tnum" id="statScheduled">0</div></div>
+          <div class="stat"><div class="k">People</div><div class="v tnum" id="statPeople">0</div></div>
+        </div>
+
+        <input type="file" id="wordFileInput" accept=".docx" class="hidden">
+        <div id="importNotice"></div>
+
+        <!-- Paste import panel (hidden until opened) -->
+        <div id="pasteImportPanel" class="q-card hidden" style="margin-bottom:16px;">
+          <p style="font-size:13px;color:var(--muted);margin-top:0;">
+            Paste either: the same plain-text template format used for Word import (TEST CODE: ... === ... Q1 [MC] [2 pts] ...),
+            <b>or</b> a JS/JSON test object like <code>{ testCode: "...", title: "...", questions: [...] }</code> (the same shape
+            used elsewhere in this system — a <code>const TEST_CONFIG = {...}</code> block works too, the <code>const TEST_CONFIG =</code>
+            part is stripped automatically). The format is auto-detected.
+          </p>
+          <textarea id="pasteImportText" style="min-height:220px;font-family:var(--mono);font-size:12px;" placeholder="Paste template text or a TEST_CONFIG-style JS object here..."></textarea>
+          <div style="display:flex;gap:10px;">
+            <button class="primary" id="btnParsePasted">Parse</button>
+            <button class="ghost" id="btnCancelPaste">Cancel</button>
           </div>
-          <div>
-            <label for="p_email">Email (optional — labels their result)</label>
-            <input type="text" id="p_email" placeholder="e.g. jordan@email.com">
+        </div>
+
+        <div class="card">
+          <div class="table-wrap">
+            <table id="testsTable">
+              <thead><tr><th>Code</th><th>Title</th><th>Questions</th><th>Status</th><th>Opens / Closes</th><th></th></tr></thead>
+              <tbody id="testsTableBody"></tbody>
+            </table>
           </div>
         </div>
-        <label for="p_password" id="p_passwordLabel">Password</label>
-        <input type="text" id="p_password" placeholder="Set a password">
-        <div style="font-size:12px;color:var(--ink-soft);margin:-4px 0 12px;">
-          Shown as plain text so you can share it with the taker. It is stored only as a salted hash — you won't be able to read it back later, only reset it.
-        </div>
-        <div class="actions-bar">
-          <button class="ghost" id="btnCancelPerson">Cancel</button>
-          <button class="primary" id="btnSavePerson">Save person</button>
-        </div>
-      </div>
-    </div>
 
-    <!-- ============ TEST EDITOR ============ -->
-    <div class="card hidden" id="editorCard">
-      <h2 id="editorTitle">New test</h2>
-      <div id="editorNotice"></div>
+        <!-- ===== TEST EDITOR ===== -->
+        <div class="card hidden" id="editorCard">
+          <h2 id="editorTitle">New test</h2>
+          <div id="editorNotice"></div>
+          <div class="row">
+            <div>
+              <label for="f_testCode">Test code (unique, no spaces)</label>
+              <input type="text" id="f_testCode" placeholder="e.g. FR-A2-002">
+            </div>
+            <div>
+              <label for="f_timeLimit">Time limit (minutes)</label>
+              <input type="number" id="f_timeLimit" placeholder="45">
+            </div>
+          </div>
+          <label for="f_title">Title</label>
+          <input type="text" id="f_title" placeholder="e.g. French A2 Placement Test">
+          <label for="f_intro">Instructions shown before the test starts</label>
+          <textarea id="f_intro" placeholder="Read each question carefully..."></textarea>
+          <div class="row">
+            <div>
+              <label for="f_startDate">Start date (optional — blank = open immediately)</label>
+              <input type="datetime-local" id="f_startDate">
+            </div>
+            <div>
+              <label for="f_deadline">Deadline (required)</label>
+              <input type="datetime-local" id="f_deadline">
+            </div>
+          </div>
+          <label for="f_assignedTo">Assign to (comma-separated group names and/or taker IDs — blank or "all" = every taker)</label>
+          <input type="text" id="f_assignedTo" placeholder="e.g. ClassA, Cohort3, T-4821">
 
-      <div class="row">
-        <div>
-          <label for="f_testCode">Test code (unique, no spaces)</label>
-          <input type="text" id="f_testCode" placeholder="e.g. FR-A2-002">
+          <h2 style="margin-top:24px;font-size:16px;font-weight:650;">Questions</h2>
+          <div id="questionsList"></div>
+          <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+            <button class="ghost" id="btnAddMc">+ Add multiple choice</button>
+            <button class="ghost" id="btnAddShort">+ Add short answer</button>
+            <button class="ghost" id="btnAddPassage">+ Add reading/listening passage</button>
+          </div>
+          <div class="actions-bar">
+            <button class="ghost" id="btnCancelEdit">Cancel</button>
+            <button class="primary" id="btnSaveTest">Save test</button>
+          </div>
+          <div id="saveResultBox"></div>
         </div>
-        <div>
-          <label for="f_timeLimit">Time limit (minutes)</label>
-          <input type="number" id="f_timeLimit" placeholder="45">
-        </div>
-      </div>
-      <label for="f_title">Title</label>
-      <input type="text" id="f_title" placeholder="e.g. French A2 Placement Test">
-      <label for="f_intro">Instructions shown before the test starts</label>
-      <textarea id="f_intro" placeholder="Read each question carefully..."></textarea>
-      <div class="row">
-        <div>
-          <label for="f_startDate">Start date (optional — blank = open immediately)</label>
-          <input type="datetime-local" id="f_startDate">
-        </div>
-        <div>
-          <label for="f_deadline">Deadline (required)</label>
-          <input type="datetime-local" id="f_deadline">
-        </div>
-      </div>
-      <label for="f_assignedTo">Assign to (comma-separated group names and/or taker IDs — blank or "all" = every taker)</label>
-      <input type="text" id="f_assignedTo" placeholder="e.g. ClassA, Cohort3, T-4821">
+      </section>
 
-      <h2 style="margin-top:24px;">Questions</h2>
-      <div id="questionsList"></div>
-      <div style="display:flex;gap:10px;margin-bottom:20px;">
-        <button class="ghost" id="btnAddMc">+ Add multiple choice</button>
-        <button class="ghost" id="btnAddShort">+ Add short answer</button>
-        <button class="ghost" id="btnAddPassage">+ Add reading/listening passage</button>
-      </div>
+      <!-- ===== PEOPLE VIEW ===== -->
+      <section class="view" id="view-people" hidden>
+        <div class="page-head">
+          <div><h1>People</h1><p class="sub">Each person signs in at the portal with their ID + password to see the tests assigned to them.</p></div>
+          <div class="head-actions"><button class="primary" id="btnNewPerson">+ Add person</button></div>
+        </div>
+        <div class="link-box" id="portalLinkBox"></div>
+        <div id="peopleNotice"></div>
+        <div class="card">
+          <div class="table-wrap">
+            <table id="takersTable">
+              <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Groups</th><th>Password</th><th></th></tr></thead>
+              <tbody id="takersTableBody"></tbody>
+            </table>
+          </div>
+        </div>
 
-      <div class="actions-bar">
-        <button class="ghost" id="btnCancelEdit">Cancel</button>
-        <button class="primary" id="btnSaveTest">Save test</button>
-      </div>
-      <div id="saveResultBox"></div>
-    </div>
+        <!-- Person editor (hidden until opened) -->
+        <div id="personEditor" class="card hidden">
+          <h2 id="personEditorTitle">New person</h2>
+          <div id="personNotice"></div>
+          <div class="row">
+            <div>
+              <label for="p_takerId">Test-taker ID (unique, no spaces — blank auto-generates one)</label>
+              <input type="text" id="p_takerId" placeholder="e.g. T-4821">
+            </div>
+            <div>
+              <label for="p_groups">Groups (comma-separated, optional)</label>
+              <input type="text" id="p_groups" placeholder="e.g. ClassA, Cohort3">
+            </div>
+          </div>
+          <div class="row">
+            <div>
+              <label for="p_name">Name</label>
+              <input type="text" id="p_name" placeholder="e.g. Jordan Lee">
+            </div>
+            <div>
+              <label for="p_email">Email (optional — labels their result)</label>
+              <input type="text" id="p_email" placeholder="e.g. jordan@email.com">
+            </div>
+          </div>
+          <label for="p_password" id="p_passwordLabel">Password</label>
+          <input type="text" id="p_password" placeholder="Set a password">
+          <div style="font-size:12px;color:var(--muted);margin:-6px 0 12px;">
+            Shown as plain text so you can share it with the taker. It is stored only as a salted hash — you won't be able to read it back later, only reset it.
+          </div>
+          <div class="actions-bar">
+            <button class="ghost" id="btnCancelPerson">Cancel</button>
+            <button class="primary" id="btnSavePerson">Save person</button>
+          </div>
+        </div>
+      </section>
 
+      <!-- ===== SETTINGS VIEW ===== -->
+      <section class="view" id="view-settings" hidden>
+        <div class="page-head"><div><h1>Site settings</h1><p class="sub">Branding shown above every test.</p></div></div>
+        <div class="card">
+          <div class="row">
+            <div>
+              <label for="siteName">Site name (shown above every test)</label>
+              <input type="text" id="siteName" placeholder="e.g. Acme Training Portal">
+            </div>
+            <div>
+              <label for="siteTagline">Tagline (optional)</label>
+              <input type="text" id="siteTagline" placeholder="e.g. Internal assessments">
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px;">
+            <button class="primary" id="btnSaveSettings">Save site settings</button>
+            <span id="settingsSavedNote" style="font-size:12px;color:var(--muted);"></span>
+          </div>
+        </div>
+      </section>
+
+    </main>
   </div>
 </div>
 
@@ -338,7 +502,7 @@ function renderTests(tests){
       <td>${t.title || ''}</td>
       <td>${t.questionCount}</td>
       <td><span class="tag ${status}">${status}</span></td>
-      <td style="font-size:12px;color:var(--ink-soft);">${fmt(t.startDate)} → ${fmt(t.deadline)}</td>
+      <td style="font-size:12px;color:var(--muted);">${fmt(t.startDate)} → ${fmt(t.deadline)}</td>
       <td style="white-space:nowrap;">
         <button class="ghost small" data-act="edit" data-code="${t.testCode}">Edit</button>
         <button class="ghost small" data-act="link" data-code="${t.testCode}">Copy link</button>
@@ -379,7 +543,7 @@ function renderTakers(takers){
   const tbody = document.getElementById('takersTableBody');
   tbody.innerHTML = '';
   if (!takers || !takers.length){
-    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--ink-soft);font-size:13px;">No people yet. Click "Add person" to create the first account.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);font-size:13px;">No people yet. Click "Add person" to create the first account.</td></tr>';
     return;
   }
   takers.forEach(t => {
@@ -387,7 +551,7 @@ function renderTakers(takers){
     tr.innerHTML =
       '<td><code>' + pEsc(t.takerId) + '</code></td>' +
       '<td>' + pEsc(t.name || '') + '</td>' +
-      '<td style="font-size:12px;color:var(--ink-soft);">' + pEsc(t.email || '') + '</td>' +
+      '<td style="font-size:12px;color:var(--muted);">' + pEsc(t.email || '') + '</td>' +
       '<td style="font-size:12px;">' + pEsc(t.groups || '') + '</td>' +
       '<td>' + (t.hasPassword ? '<span class="tag open">set</span>' : '<span class="tag closed">none</span>') + '</td>' +
       '<td style="white-space:nowrap;">' +
@@ -498,7 +662,7 @@ function renderQuestions(){
       card.appendChild(textarea('Passage text (leave blank for an audio-only clip)', q.prompt, v => q.prompt = v));
       card.appendChild(audioUrlField(q));
       const note = document.createElement('div');
-      note.style.cssText = 'font-size:11px;color:var(--ink-soft);margin-top:-6px;';
+      note.style.cssText = 'font-size:11px;color:var(--muted);margin-top:-6px;';
       note.textContent = 'Shown once, followed by whichever questions come right after it — move questions with ↑↓ to keep them grouped with this passage. Avoid enabling shuffle on tests that use passages.';
       card.appendChild(note);
       mount.appendChild(card);
@@ -587,7 +751,7 @@ function audioUrlField(q){
   input.value = q.audioUrl || '';
   input.placeholder = 'Paste a Google Drive, Dropbox, or direct .mp3/.wav link';
   const hint = document.createElement('div');
-  hint.style.cssText = 'font-size:11px;color:var(--ink-soft);margin:-8px 0 8px;';
+  hint.style.cssText = 'font-size:11px;color:var(--muted);margin:-8px 0 8px;';
   hint.textContent = 'Google Drive and Dropbox share links are auto-converted to a playable format when you leave this field.';
   const previewMount = document.createElement('div');
   previewMount.style.marginBottom = '10px';
@@ -1053,6 +1217,44 @@ function parseTestDocument(rawText) {
     }
   };
 }
+</script>
+
+<script>
+/* ============================================================
+   Shell chrome — sidebar view switching, sign out, and the
+   dashboard stat row. Kept separate from the logic above so
+   none of the existing behaviour changes.
+   ============================================================ */
+document.querySelectorAll('.nav-item[data-view]').forEach(item => {
+  item.addEventListener('click', () => {
+    const view = item.dataset.view;
+    document.querySelectorAll('.nav-item[data-view]').forEach(n => n.classList.toggle('active', n === item));
+    document.querySelectorAll('.view').forEach(v => { v.hidden = (v.id !== 'view-' + view); });
+    window.scrollTo(0, 0);
+  });
+});
+
+document.getElementById('btnSignOut').addEventListener('click', () => {
+  sessionStorage.removeItem('adminToken');
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('loginScreen').classList.remove('hidden');
+});
+
+// Stat row + sidebar counts, recomputed whenever the tests or people
+// tables change. Reads the rendered rows so it never duplicates logic.
+function updateStats(){
+  const testsBody = document.getElementById('testsTableBody');
+  const takersBody = document.getElementById('takersTableBody');
+  const total = testsBody.querySelectorAll('button[data-act="edit"]').length;
+  const active = testsBody.querySelectorAll('.tag.open').length;
+  const scheduled = testsBody.querySelectorAll('.tag.scheduled').length;
+  const people = takersBody.querySelectorAll('button[data-pact="edit"]').length;
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('statTotal', total); set('statActive', active); set('statScheduled', scheduled); set('statPeople', people);
+  set('navTestsCount', total || ''); set('navPeopleCount', people || '');
+}
+new MutationObserver(updateStats).observe(document.getElementById('testsTableBody'), { childList: true });
+new MutationObserver(updateStats).observe(document.getElementById('takersTableBody'), { childList: true });
 </script>
 </body>
 </html>
