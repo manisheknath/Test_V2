@@ -175,8 +175,13 @@ body{ display:block; padding:0 0 80px; background-image:none; }
   color:#fff; font-weight:800; font-size:14px; }
 .qe-topbar .qe-brand{ font-family:var(--sans); font-weight:700; font-size:16px; letter-spacing:-.01em; color:var(--ink); }
 
+/* No overflow:hidden here — it would clip position:sticky and stop the
+   timer bar and passage columns from sticking. */
 .sheet{ width:calc(100% - 32px); max-width:720px; margin:26px auto; border:1px solid var(--paper-line);
-  border-radius:14px; box-shadow:0 4px 16px -6px rgba(20,40,30,.14); overflow:hidden; }
+  border-radius:14px; box-shadow:0 4px 16px -6px rgba(20,40,30,.14); }
+/* Tests with reading/listening passages get a wider sheet so the two-column
+   part layout (passage + questions) has room to breathe. */
+.sheet.wide{ max-width:1000px; }
 
 header.masthead h1{ font-weight:700; letter-spacing:-.02em; }
 .q-prompt{ font-weight:600; }
@@ -206,6 +211,31 @@ button.ghost:hover{ border-color:var(--ink-soft); background:var(--paper); }
 
 .timer-fill{ border-radius:2px; }
 .preview-banner{ background:var(--accent-calm); }
+
+/* ---- Timer bar sits just below the sticky top bar (56px) ---- */
+.timer-bar{ top:56px; }
+
+/* ============================================================
+   Parts — a passage plus the questions that belong to it. On wide
+   screens the passage stays pinned on the left (position:sticky)
+   while its questions scroll on the right; when the part scrolls
+   past, the next part's passage takes over. --stick-top is set by
+   JS to (top bar + timer bar) height so the passage pins right
+   under them.
+   ============================================================ */
+.part-split{ display:flex; gap:26px; align-items:flex-start; }
+.part-passage{ flex:0 0 42%; }
+.part-passage-inner{ position:sticky; top:var(--stick-top,150px);
+  max-height:calc(100vh - var(--stick-top,150px) - 16px); overflow-y:auto; }
+.part-passage-inner .passage-block{ margin:0; }
+.part-questions{ flex:1 1 auto; min-width:0; }
+.part-plain .part-questions{ width:100%; }
+
+@media (max-width:760px){
+  /* Stack on small screens: passage on top (not pinned), questions below. */
+  .part-split{ display:block; }
+  .part-passage-inner{ position:static; max-height:none; overflow:visible; margin-bottom:4px; }
+}
 </style>
 </head>
 <body>
@@ -662,6 +692,34 @@ function buildQuestions(restoreAnswers){
   answers = restoreAnswers ? restoreAnswers.slice() : TEST_CONFIG.questions.map(() => null);
 
   let questionNumber = 0; // only increments for answerable items — passages are unnumbered
+
+  // A "part" groups a passage with the questions that follow it (until the
+  // next passage). makePart() builds the container; when it has a passage
+  // we lay it out as two columns — a sticky passage on the left, its
+  // questions on the right (see the .part-split CSS).
+  let currentQuestionsCol = null;
+  function makePart(passageWrap){
+    const part = document.createElement('div');
+    part.className = 'part ' + (passageWrap ? 'part-split' : 'part-plain');
+    const qcol = document.createElement('div');
+    qcol.className = 'part-questions';
+    if (passageWrap){
+      const pcol = document.createElement('div');
+      pcol.className = 'part-passage';
+      const inner = document.createElement('div');
+      inner.className = 'part-passage-inner';
+      inner.appendChild(passageWrap);
+      pcol.appendChild(inner);
+      part.appendChild(pcol);
+    }
+    part.appendChild(qcol);
+    els.questionsMount.appendChild(part);
+    return qcol;
+  }
+  // Wider sheet only when the test actually uses passages.
+  const sheetEl = document.querySelector('.sheet');
+  if (sheetEl) sheetEl.classList.toggle('wide', TEST_CONFIG.questions.some(q => q.type === 'passage'));
+
   questionOrder.forEach((qi) => {
     const q = TEST_CONFIG.questions[qi];
     const wrap = document.createElement('div');
@@ -686,7 +744,7 @@ function buildQuestions(restoreAnswers){
         audio.src = normalizeAudioUrl(q.audioUrl);
         wrap.appendChild(audio);
       }
-      els.questionsMount.appendChild(wrap);
+      currentQuestionsCol = makePart(wrap);
       return;
     }
 
@@ -735,11 +793,24 @@ function buildQuestions(restoreAnswers){
       ta.addEventListener('input', () => { answers[qi] = ta.value; saveSession(); updateProgressLabel(); });
       wrap.appendChild(ta);
     }
-    els.questionsMount.appendChild(wrap);
+    if (!currentQuestionsCol) currentQuestionsCol = makePart(null);
+    currentQuestionsCol.appendChild(wrap);
   });
 
   updateProgressLabel();
 }
+
+// Pin passages just below the sticky top bar + timer bar. Recomputed when
+// the quiz view appears and on resize, since the timer bar's height isn't
+// measurable until the quiz screen is actually visible.
+function updateStickyOffset(){
+  const topbar = document.querySelector('.qe-topbar');
+  const timerBar = document.querySelector('.timer-bar');
+  const tb = topbar ? topbar.offsetHeight : 0;
+  const tm = (timerBar && timerBar.offsetParent !== null) ? timerBar.offsetHeight : 0;
+  document.documentElement.style.setProperty('--stick-top', (tb + tm + 14) + 'px');
+}
+window.addEventListener('resize', updateStickyOffset);
 
 /* ---------- Timer / start / submit ---------- */
 function startTest(resumedSession){
@@ -772,6 +843,7 @@ function startTest(resumedSession){
   els.screenStart.hidden = true;
   els.screenQuiz.hidden = false;
   quizInProgress = true;
+  requestAnimationFrame(updateStickyOffset);
 
   if (!resumedSession) {
     saveSession(); // fullscreen was already requested synchronously in the click handler, before this ran
