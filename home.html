@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Tests</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:        #1C2E3A;
+  --ink-soft:   #435363;
+  --paper:      #ECEFEA;
+  --paper-line: #D3D9CE;
+  --card:       #FFFFFF;
+  --accent-calm:  #3C6E52;
+  --accent-warn:  #C98A2C;
+  --accent-alert: #C4453A;
+  --mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --serif: 'Fraunces', Georgia, serif;
+}
+*{ box-sizing: border-box; }
+html,body{ margin:0; padding:0; }
+body{
+  background: var(--paper);
+  background-image: linear-gradient(var(--paper-line) 1px, transparent 1px);
+  background-size: 100% 32px;
+  font-family: var(--sans);
+  color: var(--ink);
+  min-height: 100vh;
+  display:flex;
+  justify-content:center;
+  padding: 48px 20px 96px;
+}
+.sheet{
+  width:100%;
+  max-width: 680px;
+  background: var(--card);
+  border: 1px solid var(--paper-line);
+  box-shadow: 0 1px 0 var(--paper-line), 0 24px 48px -32px rgba(28,46,58,0.35);
+}
+.eyebrow{
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--ink-soft); padding: 18px 32px 0;
+}
+header.masthead{ padding: 6px 32px 24px; border-bottom: 1px solid var(--paper-line); }
+header.masthead h1{ font-family: var(--serif); font-weight: 600; font-size: 32px; line-height: 1.15; margin: 4px 0 10px; }
+header.masthead p{ color: var(--ink-soft); font-size: 15px; line-height: 1.5; margin: 0; }
+.screen{ padding: 32px; }
+.screen[hidden]{ display:none; }
+.field{ margin-bottom: 22px; }
+.field label{ display:block; font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 8px; }
+.field input{
+  width:100%; border: 1px solid var(--paper-line); background: var(--paper);
+  padding: 11px 12px; font-family: var(--sans); font-size: 15px; color: var(--ink);
+}
+.field input:focus{ outline: 2px solid var(--ink); outline-offset: 1px; }
+button.primary{
+  font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
+  background: var(--ink); color: var(--paper); border: none; padding: 14px 24px; cursor: pointer;
+}
+button.primary:hover{ background: var(--ink-soft); }
+button.primary:disabled{ background: var(--paper-line); color: var(--ink-soft); cursor: not-allowed; }
+button.ghost{
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
+  background: transparent; color: var(--ink-soft); border: 1px solid var(--paper-line);
+  padding: 10px 16px; cursor: pointer;
+}
+button.ghost:hover{ border-color: var(--ink-soft); color: var(--ink); }
+.notice{
+  font-size: 14px; line-height: 1.5; padding: 14px 16px;
+  border-left: 3px solid var(--accent-alert); background: #FBEEEC; color: #7A2E27; margin-bottom: 20px;
+}
+.notice[hidden]{ display:none; }
+.notice.info{ border-left-color: var(--ink-soft); background: var(--paper); color: var(--ink-soft); }
+
+/* ---- Dashboard header row ---- */
+.dash-top{
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding: 16px 32px; border-bottom: 1px solid var(--paper-line);
+  font-family: var(--mono); font-size: 12px; color: var(--ink-soft);
+}
+.dash-top b{ color: var(--ink); font-weight:600; }
+
+/* ---- Sections + tiles ---- */
+.section{ padding: 22px 32px 4px; }
+.section-label{
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--ink-soft); margin-bottom: 12px; display:flex; align-items:center; gap:8px;
+}
+.section-label .count{ color: var(--ink); }
+.tile{
+  border: 1px solid var(--paper-line); background: var(--card);
+  padding: 16px 18px; margin-bottom: 12px;
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+.tile.clickable{ cursor:pointer; }
+.tile.clickable:hover{ border-color: var(--ink); box-shadow: 0 8px 24px -18px rgba(28,46,58,0.5); }
+.tile.locked{ opacity: 0.85; }
+.tile-main{ min-width:0; }
+.tile-title{ font-family: var(--serif); font-size: 20px; font-weight: 600; line-height:1.2; margin-bottom: 6px; }
+.tile-meta{ font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft); letter-spacing: 0.03em; }
+.tile-meta span{ margin-right: 14px; white-space: nowrap; }
+.tile-right{ text-align:right; flex-shrink:0; }
+.badge{
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 3px 9px; display:inline-block; white-space:nowrap;
+}
+.badge.available{ background:#E7F0EA; color: var(--accent-calm); }
+.badge.scheduled{ background:#FBF1DE; color: var(--accent-warn); }
+.badge.completed{ background: var(--paper); color: var(--ink-soft); }
+.badge.closed{ background:#FBEEEC; color: var(--accent-alert); }
+.tile-score{ font-family: var(--serif); font-size: 22px; font-weight:600; margin-top: 8px; }
+.tile-cta{ font-family: var(--mono); font-size: 11px; color: var(--ink-soft); margin-top: 6px; }
+.empty{ font-family: var(--sans); font-size: 14px; color: var(--ink-soft); padding: 6px 0 18px; }
+
+/* ---- Modal ---- */
+.modal-overlay{
+  position: fixed; inset: 0; background: rgba(28,46,58,0.45);
+  display:flex; align-items:center; justify-content:center; padding: 24px; z-index: 50;
+}
+.modal-overlay[hidden]{ display:none; }
+.modal{
+  background: var(--card); border: 1px solid var(--paper-line);
+  width:100%; max-width: 640px; max-height: 88vh; overflow-y: auto;
+  box-shadow: 0 24px 64px -24px rgba(28,46,58,0.6);
+}
+.modal-head{
+  padding: 20px 24px; border-bottom: 1px solid var(--paper-line);
+  display:flex; align-items:flex-start; justify-content:space-between; gap:16px;
+}
+.modal-head h2{ font-family: var(--serif); font-size: 24px; font-weight:600; margin:0; }
+.modal-head .eyebrow{ padding:0; }
+.modal-body{ padding: 22px 24px; }
+.modal-body p{ font-size: 15px; line-height: 1.55; color: var(--ink); margin: 0 0 12px; }
+.modal-foot{ padding: 16px 24px 22px; text-align:right; }
+.big-time{
+  font-family: var(--serif); font-size: 26px; font-weight:600; color: var(--ink);
+  margin: 6px 0 4px; line-height:1.2;
+}
+.x-close{ background:none; border:none; font-size: 22px; line-height:1; cursor:pointer; color: var(--ink-soft); }
+.x-close:hover{ color: var(--ink); }
+
+/* ---- Result review (reused look from the engine) ---- */
+.score-block{ text-align:center; padding: 8px 0 20px; }
+.score-num{ font-family: var(--serif); font-size: 46px; font-weight: 600; }
+.score-label{ font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); }
+.review-item{ padding: 16px 0; border-bottom: 1px solid var(--paper-line); }
+.review-item:last-child{ border-bottom:none; }
+.review-item .tag{ font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 8px; display: inline-block; margin-bottom: 8px; }
+.tag.correct{ background: #E7F0EA; color: var(--accent-calm); }
+.tag.incorrect{ background: #FBEEEC; color: var(--accent-alert); }
+.tag.ungraded{ background: var(--paper); color: var(--ink-soft); }
+.r-prompt{ font-family: var(--serif); font-size: 17px; font-weight:500; line-height:1.35; margin: 2px 0 8px; }
+.r-line{ font-size: 14px; color: var(--ink-soft); line-height:1.5; }
+.r-line .good{ color: var(--accent-calm); font-weight:600; }
+.spinner{ font-family: var(--mono); font-size: 13px; color: var(--ink-soft); text-align:center; padding: 20px; }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="eyebrow" id="siteEyebrow">Test Portal</div>
+
+  <!-- ============ LOGIN ============ -->
+  <div id="screenLogin" class="screen">
+    <header class="masthead" style="border-bottom:none; padding-left:0; padding-right:0;">
+      <h1>Sign in</h1>
+      <p>Enter your test-taker ID and password to see the tests assigned to you.</p>
+    </header>
+    <div class="notice" id="loginError" hidden></div>
+    <form id="loginForm">
+      <div class="field">
+        <label for="loginId">Test-taker ID</label>
+        <input type="text" id="loginId" autocomplete="username" placeholder="e.g. T-4821" required>
+      </div>
+      <div class="field">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="primary" id="loginBtn">Sign in</button>
+    </form>
+  </div>
+
+  <!-- ============ DASHBOARD ============ -->
+  <div id="screenDash" class="screen" hidden style="padding:0;">
+    <div class="dash-top">
+      <div>Signed in as <b id="dashName">—</b> <span id="dashId" style="opacity:.7"></span></div>
+      <button class="ghost" id="logoutBtn">Sign out</button>
+    </div>
+    <div id="dashError" class="notice" hidden style="margin:20px 32px 0;"></div>
+    <div id="dashSections"></div>
+    <div id="dashEmpty" class="empty" hidden style="padding:32px;">No tests have been assigned to you yet. Check back later.</div>
+  </div>
+</div>
+
+<!-- ============ MODAL ============ -->
+<div id="modal" class="modal-overlay" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="eyebrow" id="modalEyebrow"></div>
+        <h2 id="modalTitle"></h2>
+      </div>
+      <button class="x-close" id="modalClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG — paste the SAME Apps Script /exec URL used in
+   quiz-engine.html and admin.html.
+   ============================================================ */
+const CONFIG = {
+  appsScriptUrl: "https://script.google.com/macros/s/AKfycbx8_AAZkrvQGIvmORUN1wya8kcyzeOL-GTb3lzaFHnladKfpg4iaZ-ttpo9YfBJ8Z0x/exec"
+};
+const TOKEN_KEY = 'takerToken';
+
+const els = {
+  siteEyebrow: document.getElementById('siteEyebrow'),
+  screenLogin: document.getElementById('screenLogin'),
+  screenDash: document.getElementById('screenDash'),
+  loginForm: document.getElementById('loginForm'),
+  loginId: document.getElementById('loginId'),
+  loginPassword: document.getElementById('loginPassword'),
+  loginBtn: document.getElementById('loginBtn'),
+  loginError: document.getElementById('loginError'),
+  dashName: document.getElementById('dashName'),
+  dashId: document.getElementById('dashId'),
+  dashError: document.getElementById('dashError'),
+  dashSections: document.getElementById('dashSections'),
+  dashEmpty: document.getElementById('dashEmpty'),
+  logoutBtn: document.getElementById('logoutBtn'),
+  modal: document.getElementById('modal'),
+  modalEyebrow: document.getElementById('modalEyebrow'),
+  modalTitle: document.getElementById('modalTitle'),
+  modalBody: document.getElementById('modalBody'),
+  modalFoot: document.getElementById('modalFoot'),
+  modalClose: document.getElementById('modalClose')
+};
+
+function getToken(){ try { return sessionStorage.getItem(TOKEN_KEY); } catch(e){ return null; } }
+function setToken(t){ try { sessionStorage.setItem(TOKEN_KEY, t); } catch(e){} }
+function clearToken(){ try { sessionStorage.removeItem(TOKEN_KEY); } catch(e){} }
+
+/* ---------- Date formatting: "25 Jun 2026, 6:00 PM" ---------- */
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function pad(n){ return String(n).padStart(2,'0'); }
+function fmt(input){
+  if (!input) return '';
+  const d = (input instanceof Date) ? input : new Date(input);
+  if (isNaN(d.getTime())) return String(input);
+  let h = d.getHours(); const ampm = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12;
+  return d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear() + ', ' + h + ':' + pad(d.getMinutes()) + ' ' + ampm;
+}
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* ---------- Backend calls (text/plain avoids CORS preflight) ---------- */
+async function apiPost(payload){
+  const res = await fetch(CONFIG.appsScriptUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  });
+  return res.json();
+}
+async function apiGet(params){
+  const url = new URL(CONFIG.appsScriptUrl);
+  Object.keys(params).forEach(k => url.searchParams.set(k, params[k]));
+  const res = await fetch(url);
+  return res.json();
+}
+
+/* ---------- Login ---------- */
+els.loginForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  els.loginError.hidden = true;
+  els.loginBtn.disabled = true;
+  els.loginBtn.textContent = 'Signing in…';
+  try {
+    const data = await apiPost({ action: 'takerLogin', id: els.loginId.value.trim(), password: els.loginPassword.value });
+    if (!data.ok) {
+      els.loginError.textContent = data.error || 'Sign-in failed. Please try again.';
+      els.loginError.hidden = false;
+    } else {
+      setToken(data.token);
+      els.loginPassword.value = '';
+      await showDashboard();
+    }
+  } catch (err) {
+    els.loginError.textContent = 'Could not reach the server. Check your connection and try again.';
+    els.loginError.hidden = false;
+  } finally {
+    els.loginBtn.disabled = false;
+    els.loginBtn.textContent = 'Sign in';
+  }
+});
+
+els.logoutBtn.addEventListener('click', () => {
+  clearToken();
+  els.screenDash.hidden = true;
+  els.screenLogin.hidden = false;
+});
+
+/* ---------- Dashboard ---------- */
+async function showDashboard(){
+  els.screenLogin.hidden = true;
+  els.screenDash.hidden = false;
+  els.dashSections.innerHTML = '<div class="spinner">Loading your tests…</div>';
+  els.dashEmpty.hidden = true;
+  els.dashError.hidden = true;
+
+  let data;
+  try {
+    data = await apiGet({ action: 'listTestsForMe', token: getToken() });
+  } catch (err) {
+    els.dashSections.innerHTML = '';
+    els.dashError.textContent = 'Could not load your tests. Please try again.';
+    els.dashError.hidden = false;
+    return;
+  }
+  if (!data.ok) {
+    if (data.error === 'unauthorized') { clearToken(); els.screenDash.hidden = true; els.screenLogin.hidden = false; return; }
+    els.dashSections.innerHTML = '';
+    els.dashError.textContent = 'Could not load your tests: ' + (data.error || 'unknown error');
+    els.dashError.hidden = false;
+    return;
+  }
+
+  els.dashName.textContent = data.name || '(unnamed)';
+  els.dashId.textContent = data.takerId ? '· ' + data.takerId : '';
+  renderTests(data.tests || []);
+}
+
+function renderTests(tests){
+  els.dashSections.innerHTML = '';
+  if (!tests.length){ els.dashEmpty.hidden = false; return; }
+
+  const groups = [
+    { key: 'available', label: 'Available now',  order: t => -(new Date(t.deadline || 0)) },
+    { key: 'scheduled', label: 'Scheduled',      order: t => new Date(t.startDate || 0) },
+    { key: 'completed', label: 'Completed',      order: t => -(new Date(t.submittedAt || 0)) },
+    { key: 'closed',    label: 'Closed / missed', order: t => -(new Date(t.deadline || 0)) }
+  ];
+
+  groups.forEach(g => {
+    const items = tests.filter(t => t.status === g.key);
+    if (!items.length) return;
+    items.sort((a,b) => g.order(a) - g.order(b));
+
+    const sec = document.createElement('div');
+    sec.className = 'section';
+    sec.innerHTML = '<div class="section-label">' + g.label + ' <span class="count">(' + items.length + ')</span></div>';
+    items.forEach(t => sec.appendChild(tileFor(t)));
+    els.dashSections.appendChild(sec);
+  });
+}
+
+function tileFor(t){
+  const tile = document.createElement('div');
+  const meta = [];
+  if (t.timeLimitMinutes) meta.push('<span>' + t.timeLimitMinutes + ' min</span>');
+
+  let badge = '', right = '', clickable = false, handler = null;
+
+  if (t.status === 'available'){
+    if (t.deadline) meta.push('<span>Closes ' + esc(fmt(t.deadline)) + '</span>');
+    badge = '<span class="badge available">Available</span>';
+    right = badge + '<div class="tile-cta">Click to start →</div>';
+    clickable = true;
+    handler = () => startTest(t.testCode);
+  } else if (t.status === 'scheduled'){
+    meta.push('<span>Opens ' + esc(fmt(t.startDate)) + '</span>');
+    badge = '<span class="badge scheduled">Scheduled</span>';
+    right = badge + '<div class="tile-cta">Not open yet</div>';
+    clickable = true; // clickable to show the "opens at" popup
+    handler = () => scheduledPopup(t);
+  } else if (t.status === 'completed'){
+    if (t.submittedAt) meta.push('<span>Submitted ' + esc(fmt(t.submittedAt)) + '</span>');
+    badge = '<span class="badge completed">Completed</span>';
+    const scoreStr = (t.score && t.score.possible !== '' && t.score.possible != null)
+      ? t.score.earned + ' / ' + t.score.possible : '';
+    right = badge + (scoreStr ? '<div class="tile-score">' + esc(scoreStr) + '</div>' : '') + '<div class="tile-cta">View result →</div>';
+    clickable = true;
+    handler = () => viewResult(t);
+  } else { // closed
+    if (t.deadline) meta.push('<span>Closed ' + esc(fmt(t.deadline)) + '</span>');
+    badge = '<span class="badge closed">Closed</span>';
+    right = badge + '<div class="tile-cta">Missed</div>';
+    clickable = true;
+    handler = () => closedPopup(t);
+  }
+
+  tile.className = 'tile' + (clickable ? ' clickable' : '') + (t.status === 'scheduled' || t.status === 'closed' ? ' locked' : '');
+  tile.innerHTML =
+    '<div class="tile-main">' +
+      '<div class="tile-title">' + esc(t.title || t.testCode) + '</div>' +
+      '<div class="tile-meta">' + meta.join('') + '</div>' +
+    '</div>' +
+    '<div class="tile-right">' + right + '</div>';
+  if (handler) tile.addEventListener('click', handler);
+  return tile;
+}
+
+/* ---------- Actions ---------- */
+function startTest(testCode){
+  const url = 'quiz-engine.html?test=' + encodeURIComponent(testCode) + '&token=' + encodeURIComponent(getToken());
+  window.location.href = url;
+}
+
+function scheduledPopup(t){
+  openModal({
+    eyebrow: 'Not open yet',
+    title: t.title || t.testCode,
+    bodyHtml: '<p>This test hasn\'t opened yet. It becomes available at:</p>' +
+              '<div class="big-time">' + esc(fmt(t.startDate)) + '</div>' +
+              (t.deadline ? '<p style="color:var(--ink-soft);font-size:13px;">Closes ' + esc(fmt(t.deadline)) + '</p>' : ''),
+    footHtml: '<button class="primary" onclick="closeModal()">Got it</button>'
+  });
+}
+function closedPopup(t){
+  openModal({
+    eyebrow: 'Closed',
+    title: t.title || t.testCode,
+    bodyHtml: '<p>This test has closed' + (t.deadline ? ' (deadline was <b>' + esc(fmt(t.deadline)) + '</b>)' : '') +
+              ' and can no longer be taken. If you think this is a mistake, contact your administrator.</p>',
+    footHtml: '<button class="primary" onclick="closeModal()">Close</button>'
+  });
+}
+
+async function viewResult(t){
+  openModal({
+    eyebrow: 'Result',
+    title: t.title || t.testCode,
+    bodyHtml: '<div class="spinner">Loading your result…</div>',
+    footHtml: ''
+  });
+  let data;
+  try {
+    data = await apiGet({ action: 'getMyResult', token: getToken(), testCode: t.testCode });
+  } catch (err) {
+    els.modalBody.innerHTML = '<p>Could not load this result. Please try again.</p>';
+    return;
+  }
+  if (!data.ok || !data.result){
+    els.modalBody.innerHTML = '<p>' + (data.error === 'not_found' ? 'No stored result was found for this test.' : 'Could not load this result: ' + esc(data.error || 'unknown error')) + '</p>';
+    return;
+  }
+  els.modalBody.innerHTML = renderResultHtml(data.result);
+  els.modalFoot.innerHTML = '<button class="primary" onclick="closeModal()">Close</button>';
+}
+
+function renderResultHtml(p){
+  const s = p.score || {};
+  const hasGraded = s.gradableQuestionCount > 0;
+  let html = '<div class="score-block">';
+  if (hasGraded){
+    html += '<div class="score-num">' + esc(s.earned) + ' / ' + esc(s.possible) + '</div>' +
+            '<div class="score-label">Auto-graded score' + (p.autoSubmittedOnTimeout ? ' · time expired' : '') + '</div>';
+  } else {
+    html += '<div class="score-num">Submitted</div><div class="score-label">Free-text answers reviewed manually</div>';
+  }
+  html += '</div>';
+
+  (p.answers || []).forEach(a => {
+    if (a.type === 'passage') return;
+    let tag, cls;
+    if (a.type === 'mc'){
+      cls = a.correct ? 'correct' : 'incorrect';
+      tag = 'Q' + pad(a.number) + ' · ' + (a.correct ? 'correct' : 'incorrect');
+    } else {
+      cls = 'ungraded'; tag = 'Q' + pad(a.number) + ' · manually graded';
+    }
+    html += '<div class="review-item">' +
+      '<span class="tag ' + cls + '">' + tag + '</span>' +
+      '<div class="r-prompt">' + esc(a.prompt) + '</div>' +
+      '<div class="r-line">Your answer: ' + (a.answerGiven
+          ? (a.correct ? '<span class="good">' + esc(a.answerGiven) + '</span>' : esc(a.answerGiven))
+          : '<em>no answer</em>') + '</div>' +
+      (a.type === 'mc' && !a.correct && a.correctAnswer ? '<div class="r-line">Correct answer: <span class="good">' + esc(a.correctAnswer) + '</span></div>' : '') +
+      (a.referenceAnswer ? '<div class="r-line">Reference answer: ' + esc(a.referenceAnswer) + '</div>' : '') +
+      (a.explanation ? '<div class="r-line" style="margin-top:6px;"><b>Explanation:</b> ' + esc(a.explanation) + '</div>' : '') +
+    '</div>';
+  });
+  return html;
+}
+
+/* ---------- Modal plumbing ---------- */
+function openModal(opts){
+  els.modalEyebrow.textContent = opts.eyebrow || '';
+  els.modalTitle.textContent = opts.title || '';
+  els.modalBody.innerHTML = opts.bodyHtml || '';
+  els.modalFoot.innerHTML = opts.footHtml || '';
+  els.modal.hidden = false;
+}
+function closeModal(){ els.modal.hidden = true; }
+els.modalClose.addEventListener('click', closeModal);
+els.modal.addEventListener('click', (e) => { if (e.target === els.modal) closeModal(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+/* ---------- Boot ---------- */
+(async function init(){
+  // Allow ?id=T-4821 to pre-fill the ID field from a bookmarked link.
+  const preId = new URLSearchParams(window.location.search).get('id');
+  if (preId) els.loginId.value = preId;
+
+  if (getToken()){
+    await showDashboard();
+  } else {
+    els.screenLogin.hidden = false;
+  }
+})();
+</script>
+</body>
+</html>

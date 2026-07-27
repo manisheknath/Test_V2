@@ -196,6 +196,7 @@ footer.actions{ display:flex; justify-content: flex-end; padding: 20px 32px 28px
     <div class="sync-status" id="syncStatus"></div>
     <footer class="actions" style="padding:24px 0 0; gap:10px;">
       <button class="ghost" id="btnDownloadPdf">Download report (.pdf)</button>
+      <button class="ghost" id="btnBackHome" hidden style="margin-left:0;">← Back to my tests</button>
     </footer>
   </section>
 </div>
@@ -234,6 +235,49 @@ function loadQuestionsConfig(){
     }
     TEST_CONFIG = data;
   });
+}
+
+/* ============================================================
+   Test-taker identity. When this test is launched from the
+   homepage (home.html), the URL carries a ?token=... login
+   token. We resolve it to the signed-in taker so they don't
+   re-type their name/email, and so the result is stamped with
+   their takerId (which links it back to their dashboard).
+   Opened directly without a token, the engine still works the
+   old way: the taker types their name/email manually.
+   ============================================================ */
+let LOGGED_IN_TAKER = null;
+async function resolveTaker(){
+  const token = new URLSearchParams(window.location.search).get('token');
+  if (!token || !backendConfigured()) return;
+  try{
+    const url = new URL(ENGINE_CONFIG.appsScriptUrl);
+    url.searchParams.set('action', 'whoami');
+    url.searchParams.set('token', token);
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.ok){
+      LOGGED_IN_TAKER = { takerId: data.takerId, name: data.name, email: data.email, token };
+    }
+  }catch(err){ /* fail open — manual entry still works */ }
+}
+function applyIdentityLock(){
+  if (!LOGGED_IN_TAKER) return;
+  els.takerName.value = LOGGED_IN_TAKER.name || '';
+  els.takerEmail.value = LOGGED_IN_TAKER.email || '';
+  [els.takerName, els.takerEmail].forEach(inp => {
+    inp.readOnly = true;
+    inp.tabIndex = -1;
+    inp.style.background = 'var(--card)';
+    inp.style.color = 'var(--ink-soft)';
+  });
+  const note = document.createElement('p');
+  note.className = 'notice info';
+  note.innerHTML = 'Signed in as <b>' + escapeHtml(LOGGED_IN_TAKER.name || LOGGED_IN_TAKER.takerId) +
+    '</b> (' + escapeHtml(LOGGED_IN_TAKER.takerId) + '). Your identity is set from your account.';
+  els.screenStart.insertBefore(note, els.screenStart.firstChild);
+  const back = document.getElementById('btnBackHome');
+  if (back) back.hidden = false;
 }
 /* ============================================================
    ENGINE — you shouldn't need to edit anything below this line.
@@ -385,6 +429,15 @@ function normalizeAudioUrl(url){
   if (driveMatch) return `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`;
   const driveOpenMatch = trimmed.match(/drive\.google\.com\/open\?id=([^&]+)/);
   if (driveOpenMatch) return `https://drive.google.com/uc?export=download&id=${driveOpenMatch[1]}`;
+  // A GitHub "blob" link is the HTML file-viewer page (Content-Type
+  // text/html), so an <audio> tag receives a web page, not audio bytes,
+  // and stays silent. The raw host serves it as audio/mpeg with range
+  // support, which is what playback actually needs.
+  const ghBlobMatch = trimmed.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/);
+  if (ghBlobMatch) {
+    const path = ghBlobMatch[3].split(/[?#]/)[0];
+    return `https://raw.githubusercontent.com/${ghBlobMatch[1]}/${ghBlobMatch[2]}/${path}`;
+  }
   if (trimmed.includes('dropbox.com') && trimmed.includes('dl=0')) return trimmed.replace('dl=0', 'dl=1');
   return trimmed;
 }
@@ -712,6 +765,7 @@ function gradeAndBuildResults(autoSubmitted){
     testCode: TEST_CONFIG.testCode,
     testTitle: TEST_CONFIG.title,
     testDeadline: TEST_CONFIG.deadline,
+    takerId: LOGGED_IN_TAKER ? LOGGED_IN_TAKER.takerId : "",
     takerName: els.takerName.value || "(name not entered)",
     takerEmail: els.takerEmail.value || "(email not entered)",
     submittedAt: new Date().toISOString(),
@@ -984,16 +1038,26 @@ els.btnDownloadPdf.addEventListener('click', () => {
   downloadPdf(resultsPayload);
 });
 
+document.getElementById('btnBackHome').addEventListener('click', () => {
+  window.location.href = 'home.html';
+});
+
 async function init(){
   try{
     await loadQuestionsConfig();
     renderStaticInfo();
+    await resolveTaker();
+    applyIdentityLock();
     if (els.btnStart.disabled) return; // deadline invalid or already passed — nothing to resume into
 
     const existing = loadSession();
     if (existing) {
-      els.takerName.value = existing.takerName || '';
-      els.takerEmail.value = existing.takerEmail || '';
+      // A logged-in taker's account identity always wins over whatever
+      // was saved in a resumed session.
+      if (!LOGGED_IN_TAKER) {
+        els.takerName.value = existing.takerName || '';
+        els.takerEmail.value = existing.takerEmail || '';
+      }
       if (existing.deadlineForThisAttempt > Date.now()) {
         // Still within time — resume exactly where they left off.
         startTest(existing);

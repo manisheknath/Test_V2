@@ -121,6 +121,56 @@ th{font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:u
       </table>
     </div>
 
+    <!-- ============ PEOPLE (TEST TAKERS) ============ -->
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h2 style="margin:0;">People (test takers)</h2>
+        <button class="primary" id="btnNewPerson">+ Add person</button>
+      </div>
+      <p class="sub" style="margin-top:0;">Each person signs in at the portal with their ID + password to see the tests assigned to them.</p>
+      <div class="link-box" id="portalLinkBox" style="margin-bottom:14px;"></div>
+      <div id="peopleNotice"></div>
+      <table id="takersTable">
+        <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Groups</th><th>Password</th><th></th></tr></thead>
+        <tbody id="takersTableBody"></tbody>
+      </table>
+
+      <!-- Person editor (hidden until opened) -->
+      <div id="personEditor" class="q-card hidden" style="margin-top:16px;">
+        <div class="q-card-head"><b id="personEditorTitle">New person</b></div>
+        <div id="personNotice"></div>
+        <div class="row">
+          <div>
+            <label for="p_takerId">Test-taker ID (unique, no spaces — blank auto-generates one)</label>
+            <input type="text" id="p_takerId" placeholder="e.g. T-4821">
+          </div>
+          <div>
+            <label for="p_groups">Groups (comma-separated, optional)</label>
+            <input type="text" id="p_groups" placeholder="e.g. ClassA, Cohort3">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label for="p_name">Name</label>
+            <input type="text" id="p_name" placeholder="e.g. Jordan Lee">
+          </div>
+          <div>
+            <label for="p_email">Email (optional — labels their result)</label>
+            <input type="text" id="p_email" placeholder="e.g. jordan@email.com">
+          </div>
+        </div>
+        <label for="p_password" id="p_passwordLabel">Password</label>
+        <input type="text" id="p_password" placeholder="Set a password">
+        <div style="font-size:12px;color:var(--ink-soft);margin:-4px 0 12px;">
+          Shown as plain text so you can share it with the taker. It is stored only as a salted hash — you won't be able to read it back later, only reset it.
+        </div>
+        <div class="actions-bar">
+          <button class="ghost" id="btnCancelPerson">Cancel</button>
+          <button class="primary" id="btnSavePerson">Save person</button>
+        </div>
+      </div>
+    </div>
+
     <!-- ============ TEST EDITOR ============ -->
     <div class="card hidden" id="editorCard">
       <h2 id="editorTitle">New test</h2>
@@ -150,6 +200,8 @@ th{font-family:var(--mono);font-size:11px;letter-spacing:0.06em;text-transform:u
           <input type="datetime-local" id="f_deadline">
         </div>
       </div>
+      <label for="f_assignedTo">Assign to (comma-separated group names and/or taker IDs — blank or "all" = every taker)</label>
+      <input type="text" id="f_assignedTo" placeholder="e.g. ClassA, Cohort3, T-4821">
 
       <h2 style="margin-top:24px;">Questions</h2>
       <div id="questionsList"></div>
@@ -177,7 +229,10 @@ const CONFIG = {
   appsScriptUrl: "https://script.google.com/macros/s/AKfycbx8_AAZkrvQGIvmORUN1wya8kcyzeOL-GTb3lzaFHnladKfpg4iaZ-ttpo9YfBJ8Z0x/exec",
   // Where quiz-engine.html is hosted, WITHOUT a trailing slash or
   // query string — e.g. "https://yoursite.com/quiz-engine.html"
-  quizEngineUrl: "https://manisheknath.github.io/Test_V2/quiz-engine.html"
+  quizEngineUrl: "https://manisheknath.github.io/Test_V2/quiz-engine.html",
+  // Where home.html (the test-taker portal) is hosted — same folder as
+  // quiz-engine.html. Used to show/copy the portal link.
+  homeUrl: "https://manisheknath.github.io/Test_V2/home.html"
 };
 
 let ADMIN_TOKEN = sessionStorage.getItem('adminToken') || '';
@@ -224,6 +279,7 @@ document.getElementById('btnLogin').addEventListener('click', async () => {
   document.getElementById('app').classList.remove('hidden');
   renderTests(result.tests);
   loadSettings();
+  refreshTakerList();
 });
 
 // Auto-login if we already have a token this session
@@ -235,6 +291,7 @@ document.getElementById('btnLogin').addEventListener('click', async () => {
     document.getElementById('app').classList.remove('hidden');
     renderTests(result.tests);
     loadSettings();
+    refreshTakerList();
   }
 })();
 
@@ -310,6 +367,102 @@ async function refreshTestList(){
   const result = await apiGet({ action: 'listTests', token: ADMIN_TOKEN });
   if (result.ok) renderTests(result.tests);
 }
+
+/* ---------- People (test takers) ---------- */
+let editingTakerId = null;
+function pEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+function renderPortalLink(){
+  document.getElementById('portalLinkBox').textContent = 'Taker portal: ' + CONFIG.homeUrl;
+}
+function renderTakers(takers){
+  const tbody = document.getElementById('takersTableBody');
+  tbody.innerHTML = '';
+  if (!takers || !takers.length){
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--ink-soft);font-size:13px;">No people yet. Click "Add person" to create the first account.</td></tr>';
+    return;
+  }
+  takers.forEach(t => {
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td><code>' + pEsc(t.takerId) + '</code></td>' +
+      '<td>' + pEsc(t.name || '') + '</td>' +
+      '<td style="font-size:12px;color:var(--ink-soft);">' + pEsc(t.email || '') + '</td>' +
+      '<td style="font-size:12px;">' + pEsc(t.groups || '') + '</td>' +
+      '<td>' + (t.hasPassword ? '<span class="tag open">set</span>' : '<span class="tag closed">none</span>') + '</td>' +
+      '<td style="white-space:nowrap;">' +
+        '<button class="ghost small" data-pact="edit" data-id="' + pEsc(t.takerId) + '">Edit</button>' +
+        '<button class="danger small" data-pact="delete" data-id="' + pEsc(t.takerId) + '">Delete</button>' +
+      '</td>';
+    tbody.appendChild(tr);
+  });
+}
+async function refreshTakerList(){
+  renderPortalLink();
+  const result = await apiGet({ action: 'listTakers', token: ADMIN_TOKEN });
+  if (result.ok) renderTakers(result.takers);
+}
+function openPersonEditor(taker){
+  editingTakerId = taker ? taker.takerId : null;
+  document.getElementById('personEditorTitle').textContent = taker ? ('Editing ' + taker.takerId) : 'New person';
+  document.getElementById('personNotice').innerHTML = '';
+  document.getElementById('p_takerId').value = taker ? taker.takerId : '';
+  document.getElementById('p_takerId').disabled = !!taker; // never change an existing ID
+  document.getElementById('p_name').value = taker ? (taker.name || '') : '';
+  document.getElementById('p_email').value = taker ? (taker.email || '') : '';
+  document.getElementById('p_groups').value = taker ? (taker.groups || '') : '';
+  document.getElementById('p_password').value = '';
+  document.getElementById('p_passwordLabel').textContent = taker ? 'Reset password (leave blank to keep current)' : 'Password';
+  document.getElementById('p_password').placeholder = taker ? 'Leave blank to keep existing' : 'Set a password';
+  document.getElementById('personEditor').classList.remove('hidden');
+  document.getElementById('personEditor').scrollIntoView({ behavior: 'smooth' });
+}
+document.getElementById('btnNewPerson').addEventListener('click', () => openPersonEditor(null));
+document.getElementById('btnCancelPerson').addEventListener('click', () => {
+  document.getElementById('personEditor').classList.add('hidden');
+});
+document.getElementById('takersTableBody').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  const id = btn.dataset.id;
+  if (btn.dataset.pact === 'edit'){
+    const result = await apiGet({ action: 'listTakers', token: ADMIN_TOKEN });
+    if (result.ok){
+      const taker = (result.takers || []).find(t => t.takerId === id);
+      if (taker) openPersonEditor(taker);
+    }
+  } else if (btn.dataset.pact === 'delete'){
+    if (!confirm('Delete person "' + id + '"? Their login stops working. Past results stay in the sheet. This cannot be undone.')) return;
+    const result = await apiPost({ action: 'deleteTaker', token: ADMIN_TOKEN, takerId: id });
+    if (result.ok) refreshTakerList();
+  }
+});
+document.getElementById('btnSavePerson').addEventListener('click', async () => {
+  const isNew = !editingTakerId;
+  const taker = {
+    takerId: document.getElementById('p_takerId').value.trim(),
+    name: document.getElementById('p_name').value.trim(),
+    email: document.getElementById('p_email').value.trim(),
+    groups: document.getElementById('p_groups').value.trim(),
+    password: document.getElementById('p_password').value
+  };
+  const errs = [];
+  if (!taker.name) errs.push('Name is required.');
+  if (isNew && !taker.password) errs.push('A password is required for a new person.');
+  if (errs.length){
+    document.getElementById('personNotice').innerHTML = '<div class="notice error">' + errs.join('<br>') + '</div>';
+    return;
+  }
+  const result = await apiPost({ action: 'saveTaker', token: ADMIN_TOKEN, taker });
+  if (!result.ok){
+    document.getElementById('personNotice').innerHTML = '<div class="notice error">Save failed: ' + (result.error || 'unknown error') + '</div>';
+    return;
+  }
+  document.getElementById('personEditor').classList.add('hidden');
+  document.getElementById('peopleNotice').innerHTML =
+    '<div class="notice ok">Saved ' + pEsc(result.takerId || taker.takerId) + '.</div>';
+  setTimeout(() => { document.getElementById('peopleNotice').innerHTML = ''; }, 4000);
+  refreshTakerList();
+});
 
 /* ---------- Question builder ---------- */
 function addQuestion(type){
@@ -409,6 +562,15 @@ function normalizeAudioUrl(url){
   if (driveOpenMatch) {
     return `https://drive.google.com/uc?export=download&id=${driveOpenMatch[1]}`;
   }
+  // A GitHub "blob" link is the HTML file-viewer page (Content-Type
+  // text/html), so an <audio> tag receives a web page, not audio bytes,
+  // and stays silent. The raw host serves it as audio/mpeg with range
+  // support, which is what playback actually needs.
+  const ghBlobMatch = trimmed.match(/^https?:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/(.+)$/);
+  if (ghBlobMatch) {
+    const path = ghBlobMatch[3].split(/[?#]/)[0];
+    return `https://raw.githubusercontent.com/${ghBlobMatch[1]}/${ghBlobMatch[2]}/${path}`;
+  }
   if (trimmed.includes('dropbox.com') && trimmed.includes('dl=0')) {
     return trimmed.replace('dl=0', 'dl=1');
   }
@@ -495,6 +657,7 @@ function openEditor(test){
   document.getElementById('f_timeLimit').value = test ? test.timeLimitMinutes : 30;
   document.getElementById('f_startDate').value = test ? toLocalInputValue(test.startDate) : '';
   document.getElementById('f_deadline').value = test ? toLocalInputValue(test.deadline) : '';
+  document.getElementById('f_assignedTo').value = test ? (test.assignedTo || '') : '';
   currentQuestions = test ? JSON.parse(JSON.stringify(test.questions)) : [];
   renderQuestions();
   document.getElementById('editorCard').classList.remove('hidden');
@@ -535,6 +698,7 @@ document.getElementById('btnSaveTest').addEventListener('click', async () => {
     timeLimitMinutes: Number(document.getElementById('f_timeLimit').value),
     startDate: document.getElementById('f_startDate').value ? document.getElementById('f_startDate').value + ':00' : '',
     deadline: document.getElementById('f_deadline').value ? document.getElementById('f_deadline').value + ':00' : '',
+    assignedTo: document.getElementById('f_assignedTo').value.trim(),
     shuffleQuestions: false,
     shuffleOptions: false,
     questions: currentQuestions
