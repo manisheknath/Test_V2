@@ -203,6 +203,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M17 7.5a3 3 0 0 1 0 5.6M21 20c0-2.4-1.2-4.2-3-5"/></svg>
         People<span class="cnt" id="navPeopleCount"></span>
       </button>
+      <button class="nav-item" data-view="results">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
+        Results<span class="cnt" id="navResultsCount"></span>
+      </button>
       <div class="nav-label" style="margin-top:10px;">Setup</div>
       <button class="nav-item" data-view="settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.2-1.3L14 2h-4l-.3 2.2a7 7 0 0 0-2.2 1.3l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.2 1.3L10 22h4l.3-2.2a7 7 0 0 0 2.2-1.3l2.3 1 2-3.4-2-1.5c.1-.4.1-.9.1-1.3Z"/></svg>
@@ -360,6 +364,43 @@
         </div>
       </section>
 
+      <!-- ===== RESULTS VIEW ===== -->
+      <section class="view" id="view-results" hidden>
+        <div class="page-head">
+          <div><h1>Results</h1><p class="sub">Review submissions, adjust scores, and add feedback. The final score is what the taker sees.</p></div>
+          <div class="head-actions">
+            <select id="resultsFilter" style="margin:0;min-width:170px;"><option value="">All tests</option></select>
+            <button class="ghost" id="btnRefreshResults">Refresh</button>
+          </div>
+        </div>
+        <div id="resultsNotice"></div>
+        <div class="card">
+          <div class="table-wrap">
+            <table id="resultsTable">
+              <thead><tr><th>Taker</th><th>Test</th><th>Submitted</th><th>Auto</th><th>Status</th><th>Final</th><th></th></tr></thead>
+              <tbody id="resultsTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Grading panel (hidden until a submission is opened) -->
+        <div id="gradePanel" class="card hidden">
+          <h2 id="gradeTitle">Grade submission</h2>
+          <div id="gradeMeta" class="sub"></div>
+          <div id="gradeNotice"></div>
+          <div id="gradeItems"></div>
+          <label for="gradeOverallNote">Overall note (optional — shown to the taker)</label>
+          <textarea id="gradeOverallNote" placeholder="Overall feedback…"></textarea>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:6px;">
+            <div style="font-weight:700;font-size:17px;">Total: <span id="gradeTotal" class="tnum">0</span> / <span id="gradePossible" class="tnum">0</span></div>
+            <div class="actions-bar" style="margin:0;">
+              <button class="ghost" id="btnCancelGrade">Cancel</button>
+              <button class="primary" id="btnSaveGrade">Save grade</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ===== SETTINGS VIEW ===== -->
       <section class="view" id="view-settings" hidden>
         <div class="page-head"><div><h1>Site settings</h1><p class="sub">Branding shown above every test.</p></div></div>
@@ -402,6 +443,8 @@ const CONFIG = {
 let ADMIN_TOKEN = sessionStorage.getItem('adminToken') || '';
 let currentQuestions = []; // working array while editing a test
 let editingExistingCode = null; // null = creating new, else = editing this testCode
+let LAST_TESTS = [];       // last-rendered test list (used to build the Results filter)
+let gradingRow = null;     // sheet row of the submission currently being graded
 
 function apiGet(params) {
   const url = new URL(CONFIG.appsScriptUrl);
@@ -492,6 +535,7 @@ function fmt(dt){
   return d.toLocaleString(undefined, { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
 }
 function renderTests(tests){
+  LAST_TESTS = tests || [];
   const tbody = document.getElementById('testsTableBody');
   tbody.innerHTML = '';
   (tests || []).forEach(t => {
@@ -626,6 +670,141 @@ document.getElementById('btnSavePerson').addEventListener('click', async () => {
     '<div class="notice ok">Saved ' + pEsc(result.takerId || taker.takerId) + '.</div>';
   setTimeout(() => { document.getElementById('peopleNotice').innerHTML = ''; }, 4000);
   refreshTakerList();
+});
+
+/* ---------- Results & grading ---------- */
+function pad(n){ return String(n).padStart(2, '0'); }
+function renderResultsFilter(){
+  const sel = document.getElementById('resultsFilter');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">All tests</option>' +
+    LAST_TESTS.map(t => '<option value="' + pEsc(t.testCode) + '">' + pEsc(t.title || t.testCode) + '</option>').join('');
+  sel.value = cur;
+}
+async function refreshResults(){
+  renderResultsFilter();
+  const filter = document.getElementById('resultsFilter').value;
+  const params = { action: 'listResults', token: ADMIN_TOKEN };
+  if (filter) params.testCode = filter;
+  document.getElementById('resultsTableBody').innerHTML = '<tr><td colspan="7" style="color:var(--muted);font-size:13px;">Loading…</td></tr>';
+  const result = await apiGet(params);
+  if (result.ok) renderResults(result.results);
+  else document.getElementById('resultsTableBody').innerHTML = '<tr><td colspan="7" style="color:var(--rose-tx);font-size:13px;">Could not load results: ' + pEsc(result.error || 'error') + '</td></tr>';
+}
+function renderResults(results){
+  const tbody = document.getElementById('resultsTableBody');
+  tbody.innerHTML = '';
+  if (!results || !results.length){
+    tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted);font-size:13px;">No submissions yet.</td></tr>';
+    updateStats(); return;
+  }
+  results.forEach(r => {
+    const status = r.graded ? '<span class="tag open">graded</span>' : '<span class="tag scheduled">pending</span>';
+    const finalCell = r.graded ? (pEsc(r.finalEarned) + ' / ' + pEsc(r.possible)) : '—';
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + pEsc(r.takerName || '(no name)') + '<div style="font-size:11px;color:var(--muted);">' + pEsc(r.takerId || r.takerEmail || '') + '</div></td>' +
+      '<td>' + pEsc(r.testTitle || r.testCode) + '</td>' +
+      '<td style="font-size:12px;color:var(--muted);">' + fmt(r.submittedAt) + '</td>' +
+      '<td class="tnum">' + pEsc(r.autoEarned) + ' / ' + pEsc(r.possible) + '</td>' +
+      '<td>' + status + '</td>' +
+      '<td class="tnum">' + finalCell + '</td>' +
+      '<td style="white-space:nowrap;"><button class="primary small" data-gact="grade" data-row="' + r.row + '">' + (r.graded ? 'Review' : 'Grade') + '</button></td>';
+    tbody.appendChild(tr);
+  });
+  updateStats();
+}
+document.getElementById('btnRefreshResults').addEventListener('click', refreshResults);
+document.getElementById('resultsFilter').addEventListener('change', refreshResults);
+document.getElementById('resultsTableBody').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  if (btn.dataset.gact === 'grade'){
+    const result = await apiGet({ action: 'getSubmission', row: btn.dataset.row, token: ADMIN_TOKEN });
+    if (result.ok) openGrade(result);
+    else alert('Could not load submission: ' + (result.error || 'error'));
+  }
+});
+
+function openGrade(res){
+  gradingRow = res.meta.row;
+  const g = res.grading || { items: {}, overallNote: '' };
+  document.getElementById('gradeTitle').textContent = 'Grade — ' + (res.meta.takerName || res.meta.takerId || 'submission');
+  document.getElementById('gradeMeta').textContent = (res.meta.testTitle || res.meta.testCode) + ' · submitted ' + fmt(res.meta.submittedAt);
+  document.getElementById('gradeNotice').innerHTML = '';
+  document.getElementById('gradeOverallNote').value = g.overallNote || '';
+  const mount = document.getElementById('gradeItems');
+  mount.innerHTML = '';
+  let possible = 0;
+  (res.submission.answers || []).forEach(a => {
+    if (a.type === 'passage') return;
+    const max = Number(a.points) || 0;
+    possible += max;
+    const saved = g.items && g.items[a.number];
+    const autoPts = a.type === 'mc' ? (a.correct ? max : 0) : 0;
+    const pts = (saved && saved.points != null) ? saved.points : autoPts;
+    const note = saved ? (saved.note || '') : '';
+    const card = document.createElement('div');
+    card.className = 'q-card';
+    card.innerHTML =
+      '<div class="q-card-head"><b>Q' + pad(a.number) + ' · ' + (a.type === 'mc' ? 'Multiple choice' : 'Short answer') + '</b>' +
+        '<span style="font-size:12px;color:var(--muted);">max ' + max + '</span></div>' +
+      '<div style="font-size:14px;margin-bottom:8px;">' + pEsc(a.prompt) + '</div>' +
+      '<div class="sub" style="margin:0 0 6px;">Answer given: <b style="color:var(--text);">' + (a.answerGiven ? pEsc(a.answerGiven) : '<em>no answer</em>') + '</b></div>' +
+      (a.type === 'mc'
+        ? '<div class="sub" style="margin:0 0 8px;">Correct answer: ' + pEsc(a.correctAnswer || '') + ' — auto-marked ' + (a.correct ? 'correct' : 'incorrect') + '</div>'
+        : (a.referenceAnswer ? '<div class="sub" style="margin:0 0 8px;">Reference answer: ' + pEsc(a.referenceAnswer) + '</div>' : '')) +
+      '<div class="row">' +
+        '<div style="flex:0 0 110px;"><label>Points</label><input type="number" class="g-pts" data-num="' + a.number + '" data-max="' + max + '" value="' + pts + '" min="0" max="' + max + '"></div>' +
+        '<div><label>Note (optional)</label><input type="text" class="g-note" data-num="' + a.number + '" value="' + pEsc(note) + '" placeholder="Feedback for this answer…"></div>' +
+      '</div>';
+    mount.appendChild(card);
+  });
+  document.getElementById('gradePossible').textContent = possible;
+  document.getElementById('gradePanel').classList.remove('hidden');
+  document.getElementById('gradePanel').scrollIntoView({ behavior: 'smooth' });
+  mount.querySelectorAll('.g-pts').forEach(inp => inp.addEventListener('input', recomputeGradeTotal));
+  recomputeGradeTotal();
+}
+function recomputeGradeTotal(){
+  let total = 0;
+  document.querySelectorAll('#gradeItems .g-pts').forEach(inp => {
+    let v = Number(inp.value) || 0;
+    const max = Number(inp.dataset.max) || 0;
+    if (v < 0){ v = 0; inp.value = 0; }
+    if (v > max){ v = max; inp.value = max; }
+    total += v;
+  });
+  document.getElementById('gradeTotal').textContent = total;
+}
+document.getElementById('btnCancelGrade').addEventListener('click', () => {
+  document.getElementById('gradePanel').classList.add('hidden');
+});
+document.getElementById('btnSaveGrade').addEventListener('click', async () => {
+  if (gradingRow == null) return;
+  const items = {};
+  document.querySelectorAll('#gradeItems .g-pts').forEach(inp => {
+    const num = inp.dataset.num;
+    const max = Number(inp.dataset.max) || 0;
+    let v = Number(inp.value) || 0; if (v < 0) v = 0; if (v > max) v = max;
+    items[num] = { points: v };
+  });
+  document.querySelectorAll('#gradeItems .g-note').forEach(inp => {
+    const num = inp.dataset.num;
+    if (!items[num]) items[num] = { points: 0 };
+    items[num].note = inp.value;
+  });
+  let finalEarned = 0;
+  Object.keys(items).forEach(k => finalEarned += Number(items[k].points) || 0);
+  const grading = { items: items, overallNote: document.getElementById('gradeOverallNote').value, finalEarned: finalEarned };
+  const result = await apiPost({ action: 'saveGrading', token: ADMIN_TOKEN, row: gradingRow, grading: grading });
+  if (!result.ok){
+    document.getElementById('gradeNotice').innerHTML = '<div class="notice error">Save failed: ' + (result.error || 'error') + '</div>';
+    return;
+  }
+  document.getElementById('gradePanel').classList.add('hidden');
+  document.getElementById('resultsNotice').innerHTML = '<div class="notice ok">Grade saved (' + finalEarned + ' / ' + document.getElementById('gradePossible').textContent + ').</div>';
+  setTimeout(() => { document.getElementById('resultsNotice').innerHTML = ''; }, 3500);
+  refreshResults();
 });
 
 /* ---------- Question builder ---------- */
@@ -1231,6 +1410,7 @@ document.querySelectorAll('.nav-item[data-view]').forEach(item => {
     document.querySelectorAll('.nav-item[data-view]').forEach(n => n.classList.toggle('active', n === item));
     document.querySelectorAll('.view').forEach(v => { v.hidden = (v.id !== 'view-' + view); });
     window.scrollTo(0, 0);
+    if (view === 'results' && typeof refreshResults === 'function') refreshResults();
   });
 });
 
@@ -1250,8 +1430,9 @@ function updateStats(){
   const scheduled = testsBody.querySelectorAll('.tag.scheduled').length;
   const people = takersBody.querySelectorAll('button[data-pact="edit"]').length;
   const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  const results = document.getElementById('resultsTableBody').querySelectorAll('button[data-gact="grade"]').length;
   set('statTotal', total); set('statActive', active); set('statScheduled', scheduled); set('statPeople', people);
-  set('navTestsCount', total || ''); set('navPeopleCount', people || '');
+  set('navTestsCount', total || ''); set('navPeopleCount', people || ''); set('navResultsCount', results || '');
 }
 new MutationObserver(updateStats).observe(document.getElementById('testsTableBody'), { childList: true });
 new MutationObserver(updateStats).observe(document.getElementById('takersTableBody'), { childList: true });

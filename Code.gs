@@ -71,7 +71,7 @@
 const TESTS_HEADERS = ['testCode','title','intro','timeLimitMinutes','startDate','deadline','shuffleQuestions','shuffleOptions','updatedAt','assignedTo'];
 const QUESTIONS_HEADERS = ['testCode','qOrder','type','prompt','optionA','optionB','optionC','optionD','correctIndex','points','explanation','referenceAnswer','audioUrl'];
 const TAKERS_HEADERS = ['takerId','name','email','passwordHash','salt','groups'];
-const RESULTS_HEADERS = ['timestamp','testCode','testTitle','takerId','takerName','takerEmail','earned','possible','autoSubmitted','fullscreenExitCount','tabSwitchCount','payloadJson'];
+const RESULTS_HEADERS = ['timestamp','testCode','testTitle','takerId','takerName','takerEmail','earned','possible','autoSubmitted','fullscreenExitCount','tabSwitchCount','payloadJson','submissionId','graded','finalEarned','gradingJson'];
 const SETTINGS_HEADERS = ['key','value'];
 
 /* ============================================================
@@ -276,6 +276,14 @@ function doGet(e) {
       if (!checkToken_(e.parameter.token)) return json_({ ok: false, error: 'unauthorized' });
       return json_({ ok: true, takers: listTakers_() });
     }
+    if (action === 'listResults') {
+      if (!checkToken_(e.parameter.token)) return json_({ ok: false, error: 'unauthorized' });
+      return json_({ ok: true, results: listResults_(e.parameter.testCode) });
+    }
+    if (action === 'getSubmission') {
+      if (!checkToken_(e.parameter.token)) return json_({ ok: false, error: 'unauthorized' });
+      return json_(getSubmission_(e.parameter.row));
+    }
     return json_({ ok: false, error: 'unknown_action' });
   } catch (err) {
     return json_({ ok: false, error: String(err) });
@@ -324,6 +332,10 @@ function doPost(e) {
       if (!checkToken_(body.token)) return json_({ ok: false, error: 'unauthorized' });
       deleteTaker_(body.takerId);
       return json_({ ok: true });
+    }
+    if (body.action === 'saveGrading') {
+      if (!checkToken_(body.token)) return json_({ ok: false, error: 'unauthorized' });
+      return json_(saveGrading_(body.row, body.grading));
     }
 
     // No 'action' field => results submission from quiz-engine.html
@@ -549,6 +561,7 @@ function listTestsForMe_(token) {
         deadline: deadline,
         status: statusFor_(startDate, deadline, !!sub),
         score: sub ? { earned: sub.earned, possible: sub.possible } : null,
+        graded: sub ? !!sub.graded : false,
         submittedAt: sub ? sub.submittedAt : null
       };
     });
@@ -567,12 +580,25 @@ function getMyResult_(token, testCode) {
   const idCol = map['takerId'];
   const codeCol = map['testCode'];
   const payloadCol = map['payloadJson'];
+  const gradedCol = map['graded'];
+  const finalCol = map['finalEarned'];
+  const gjCol = map['gradingJson'];
   const wanted = String(takerId).trim().toLowerCase();
 
   for (let i = data.length - 1; i >= 1; i--) {
     if (String(data[i][idCol]).trim().toLowerCase() === wanted && codeKey_(data[i][codeCol]) === codeKey_(testCode)) {
       try {
-        return { ok: true, result: JSON.parse(data[i][payloadCol]) };
+        const result = JSON.parse(data[i][payloadCol]);
+        const graded = String(data[i][gradedCol]).toLowerCase() === 'yes';
+        let grading = null;
+        if (data[i][gjCol]) { try { grading = JSON.parse(data[i][gjCol]); } catch (e) { grading = null; } }
+        return {
+          ok: true,
+          result: result,
+          graded: graded,
+          finalEarned: graded ? Number(data[i][finalCol]) : null,
+          grading: grading
+        };
       } catch (err) {
         return { ok: false, error: 'corrupt_result' };
       }
@@ -590,19 +616,93 @@ function submissionMapForTaker_(takerId) {
   const codeCol = map['testCode'];
   const earnedCol = map['earned'];
   const possibleCol = map['possible'];
+  const gradedCol = map['graded'];
+  const finalCol = map['finalEarned'];
   const tsCol = map['timestamp'];
   const wanted = String(takerId).trim().toLowerCase();
   const out = {};
   data.slice(1).forEach(r => {
     if (String(r[idCol]).trim().toLowerCase() === wanted) {
+      const graded = String(r[gradedCol]).toLowerCase() === 'yes';
       out[codeKey_(r[codeCol])] = {
-        earned: r[earnedCol],
+        earned: graded ? r[finalCol] : r[earnedCol],
         possible: r[possibleCol],
+        graded: graded,
         submittedAt: r[tsCol] instanceof Date ? r[tsCol].toISOString() : String(r[tsCol])
       };
     }
   });
   return out;
+}
+
+/* ============================================================
+   Grading — admin reviews a submission and adjusts points/notes
+   ============================================================
+   A submission is addressed by its sheet row number (returned by
+   listResults_). Grading is stored on that row: graded='yes',
+   finalEarned=<admin total>, gradingJson={items:{qNumber:{points,
+   note}}, overallNote}.
+   ============================================================ */
+function resultRowSummary_(map, r, rowNum) {
+  const g = (c) => (c in map ? r[map[c]] : '');
+  const graded = String(g('graded')).toLowerCase() === 'yes';
+  const ts = g('timestamp');
+  return {
+    row: rowNum,
+    submissionId: g('submissionId'),
+    testCode: g('testCode'),
+    testTitle: g('testTitle'),
+    takerId: g('takerId'),
+    takerName: g('takerName'),
+    takerEmail: g('takerEmail'),
+    submittedAt: ts instanceof Date ? ts.toISOString() : String(ts),
+    autoEarned: g('earned'),
+    possible: g('possible'),
+    graded: graded,
+    finalEarned: graded ? Number(g('finalEarned')) : null
+  };
+}
+// List submissions, newest first, optionally filtered to one testCode.
+function listResults_(testCode) {
+  const sheet = sheet_('Results');
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return [];
+  const map = headerMap_(sheet);
+  const out = [];
+  for (let i = 1; i < data.length; i++) {
+    const r = data[i];
+    if (codeKey_(r[map['testCode']]) === '') continue;
+    if (testCode && codeKey_(r[map['testCode']]) !== codeKey_(testCode)) continue;
+    out.push(resultRowSummary_(map, r, i + 1)); // i+1 = 1-based sheet row
+  }
+  return out.reverse();
+}
+// Full submission payload + any saved grading, for one sheet row.
+function getSubmission_(row) {
+  row = Number(row);
+  const sheet = sheet_('Results');
+  const map = headerMap_(sheet);
+  if (!row || row < 2 || row > sheet.getLastRow()) return { ok: false, error: 'not_found' };
+  const r = sheet.getRange(row, 1, 1, sheet.getLastColumn()).getValues()[0];
+  let submission;
+  try { submission = JSON.parse(r[map['payloadJson']]); } catch (e) { return { ok: false, error: 'corrupt_result' }; }
+  let grading = null;
+  if (r[map['gradingJson']]) { try { grading = JSON.parse(r[map['gradingJson']]); } catch (e) { grading = null; } }
+  return { ok: true, meta: resultRowSummary_(map, r, row), submission: submission, grading: grading };
+}
+// Save admin grading for a row. grading = { items:{qNumber:{points,note}},
+// overallNote, finalEarned }. Marks the row graded and records the total.
+function saveGrading_(row, grading) {
+  row = Number(row);
+  if (!row || !grading) return { ok: false, error: 'bad_request' };
+  const sheet = sheet_('Results');
+  const map = ensureColumns_(sheet, RESULTS_HEADERS);
+  if (row < 2 || row > sheet.getLastRow()) return { ok: false, error: 'not_found' };
+  const finalEarned = Number(grading.finalEarned) || 0;
+  sheet.getRange(row, map['graded'] + 1).setValue('yes');
+  sheet.getRange(row, map['finalEarned'] + 1).setValue(finalEarned);
+  sheet.getRange(row, map['gradingJson'] + 1).setValue(JSON.stringify(grading));
+  return { ok: true, finalEarned: finalEarned };
 }
 
 /* ============================================================
@@ -878,7 +978,11 @@ function recordResult_(payload) {
     autoSubmitted: !!payload.autoSubmittedOnTimeout,
     fullscreenExitCount: payload.fullscreenExitCount || 0,
     tabSwitchCount: payload.tabSwitchCount || 0,
-    payloadJson: JSON.stringify(payload)
+    payloadJson: JSON.stringify(payload),
+    submissionId: Utilities.getUuid(),
+    graded: '',        // set to 'yes' by saveGrading_
+    finalEarned: '',   // admin-adjusted total once graded
+    gradingJson: ''    // per-question points + notes once graded
   });
   sheet.appendRow(row);
 }

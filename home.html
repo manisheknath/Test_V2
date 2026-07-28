@@ -362,6 +362,7 @@ function cardFor(t){
     handler=()=>scheduledPopup(t); locked=true;
   }else if(t.status==='completed'){
     if(t.submittedAt) meta.push('<span>'+checkIcon()+'Submitted '+esc(fmt(t.submittedAt))+'</span>');
+    meta.push('<span>'+(t.graded?'Graded':'Pending review')+'</span>');
     const sc=(t.score&&t.score.possible!==''&&t.score.possible!=null)?(esc(t.score.earned)+'<small> / '+esc(t.score.possible)+'</small>'):'';
     foot=(sc?'<span class="score tnum">'+sc+'</span>':'<span></span>')+'<span class="cta">View result →</span>';
     handler=()=>viewResult(t);
@@ -406,26 +407,48 @@ async function viewResult(t){
   if(!data.ok||!data.result){
     els.modalBody.innerHTML='<p>'+(data.error==='not_found'?'No stored result was found for this test.':'Could not load this result: '+esc(data.error||'unknown error'))+'</p>'; return;
   }
-  els.modalBody.innerHTML=renderResultHtml(data.result);
+  els.modalBody.innerHTML=renderResultHtml(data.result, data.graded, data.finalEarned, data.grading);
   els.modalFoot.innerHTML='<button class="btn primary" onclick="closeModal()">Close</button>';
 }
-function renderResultHtml(p){
-  const s=p.score||{}; const hasGraded=s.gradableQuestionCount>0;
+function renderResultHtml(p, graded, finalEarned, grading){
+  const s=p.score||{};
+  const possible = s.possible!=null ? s.possible : '';
+  const items = (grading && grading.items) ? grading.items : {};
+  const hasShort = (p.answers||[]).some(a=>a.type==='short');
+
   let html='<div class="score-block">';
-  html+=hasGraded
-    ? '<div class="score-num tnum">'+esc(s.earned)+' / '+esc(s.possible)+'</div><div class="score-label">Auto-graded score'+(p.autoSubmittedOnTimeout?' · time expired':'')+'</div>'
-    : '<div class="score-num">Submitted</div><div class="score-label">Free-text answers reviewed manually</div>';
+  if(graded){
+    html+='<div class="score-num tnum">'+esc(finalEarned)+' / '+esc(possible)+'</div><div class="score-label">Final score · graded</div>';
+  }else if(hasShort){
+    html+='<div class="score-num tnum">'+esc(s.earned)+' / '+esc(possible)+'</div><div class="score-label">Provisional — awaiting review</div>';
+  }else{
+    html+='<div class="score-num tnum">'+esc(s.earned)+' / '+esc(possible)+'</div><div class="score-label">Auto-graded score</div>';
+  }
   html+='</div>';
+
+  if(graded && grading && grading.overallNote){
+    html+='<div class="r-line" style="background:var(--accent-soft);color:var(--accent);padding:12px 14px;border-radius:8px;margin:0 0 14px;"><b>Note from your grader:</b> '+esc(grading.overallNote)+'</div>';
+  }
+
   (p.answers||[]).forEach(a=>{
     if(a.type==='passage') return;
+    const gi = items[a.number];
+    const max = Number(a.points)||0;
     let tag,cls;
-    if(a.type==='mc'){ cls=a.correct?'correct':'incorrect'; tag='Q'+pad(a.number)+' · '+(a.correct?'correct':'incorrect'); }
-    else{ cls='ungraded'; tag='Q'+pad(a.number)+' · manually graded'; }
+    if(graded && gi){
+      const awarded = Number(gi.points)||0;
+      cls = awarded>=max ? 'correct' : (awarded>0 ? 'ungraded' : 'incorrect');
+      tag = 'Q'+pad(a.number)+' · '+awarded+' / '+max+' pts';
+    }else if(a.type==='mc'){
+      cls=a.correct?'correct':'incorrect'; tag='Q'+pad(a.number)+' · '+(a.correct?'correct':'incorrect');
+    }else{
+      cls='ungraded'; tag='Q'+pad(a.number)+' · awaiting review';
+    }
     html+='<div class="review-item"><span class="tag '+cls+'">'+tag+'</span>'+
       '<div class="r-prompt">'+esc(a.prompt)+'</div>'+
-      '<div class="r-line">Your answer: '+(a.answerGiven?(a.correct?'<span class="good">'+esc(a.answerGiven)+'</span>':esc(a.answerGiven)):'<em>no answer</em>')+'</div>'+
+      '<div class="r-line">Your answer: '+(a.answerGiven?((a.correct&&!graded)?'<span class="good">'+esc(a.answerGiven)+'</span>':esc(a.answerGiven)):'<em>no answer</em>')+'</div>'+
       (a.type==='mc'&&!a.correct&&a.correctAnswer?'<div class="r-line">Correct answer: <span class="good">'+esc(a.correctAnswer)+'</span></div>':'')+
-      (a.referenceAnswer?'<div class="r-line">Reference answer: '+esc(a.referenceAnswer)+'</div>':'')+
+      (gi&&gi.note?'<div class="r-line" style="margin-top:6px;"><b>Note:</b> '+esc(gi.note)+'</div>':'')+
       (a.explanation?'<div class="r-line" style="margin-top:6px;"><b>Explanation:</b> '+esc(a.explanation)+'</div>':'')+
       '</div>';
   });
