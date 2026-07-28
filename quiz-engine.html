@@ -137,7 +137,6 @@ button.ghost:hover{ border-color: var(--ink-soft); color: var(--ink); }
 .site-name-bar .tagline{ font-family: var(--sans); font-weight: 400; font-size: 12px; margin-left: 8px; }
 footer.actions{ display:flex; justify-content: flex-end; padding: 20px 32px 28px; }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
 /* ============================================================
    Modern SaaS re-skin — overrides the editorial styles above by
@@ -305,7 +304,6 @@ button.ghost:hover{ border-color:var(--ink-soft); background:var(--paper); }
     <div id="reviewMount"></div>
     <div class="sync-status" id="syncStatus"></div>
     <footer class="actions" style="padding:24px 0 0; gap:10px;">
-      <button class="ghost" id="btnDownloadPdf">Download report (.pdf)</button>
       <button class="ghost" id="btnBackHome" hidden style="margin-left:0;">← Back to my tests</button>
     </footer>
   </section>
@@ -421,7 +419,6 @@ const els = {
   scoreBlock: document.getElementById('scoreBlock'),
   reviewMount: document.getElementById('reviewMount'),
   syncStatus: document.getElementById('syncStatus'),
-  btnDownloadPdf: document.getElementById('btnDownloadPdf'),
 };
 
 let timerInterval = null;
@@ -1006,32 +1003,17 @@ async function submitTest(autoSubmitted){
   resultsPayload = gradeAndBuildResults(!!autoSubmitted);
   renderResults(resultsPayload);
 
-  let downloadedOk = true;
-  try{
-    if (!window.jspdf || !window.jspdf.jsPDF) {
-      throw new Error('PDF library not loaded');
-    }
-    downloadPdf(resultsPayload);
-  }catch(err){
-    console.error('PDF download failed:', err);
-    downloadedOk = false;
-  }
-
   if (isPreview) {
-    els.syncStatus.textContent = "Preview mode — nothing was recorded. " +
-      (downloadedOk ? "Your PDF report downloaded automatically so you can check its formatting." : "Automatic download didn't start — use the button below.");
+    els.syncStatus.textContent = "Preview mode — nothing was recorded.";
     return;
   }
 
   els.syncStatus.textContent = "Recording submission…";
   const result = await sendToBackend(resultsPayload);
-
-  const recordedMsg = result.ok ? "Submission recorded." : "Couldn't reach the server to record this submission (only affects duplicate-attempt checking).";
-  const downloadMsg = downloadedOk
-    ? "Your PDF report has downloaded automatically — check your downloads folder."
-    : "Automatic download didn't start — please use the button below.";
-  els.syncStatus.textContent = recordedMsg + " " + downloadMsg +
-    " Your answers, the correct answers and the explanations are shown above. Send the PDF to your test administrator.";
+  els.syncStatus.textContent = (result.ok
+    ? "Your test has been submitted and recorded."
+    : "Your test was submitted, but we couldn't reach the server to record it (this only affects duplicate-attempt checking).")
+    + " You can view your result under “My grades” in your portal once it has been reviewed.";
 }
 
 els.btnStart.addEventListener('click', async () => {
@@ -1196,10 +1178,6 @@ function downloadPdf(payload){
   const safeName = (payload.takerName || 'results').replace(/[^a-z0-9]+/gi, '_');
   doc.save(TEST_CONFIG.testCode.replace(/\s+/g, '_') + '_' + safeName + '.pdf');
 }
-
-els.btnDownloadPdf.addEventListener('click', () => {
-  downloadPdf(resultsPayload);
-});
 
 document.getElementById('btnBackHome').addEventListener('click', () => {
   window.location.href = 'home.html';

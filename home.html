@@ -75,6 +75,8 @@
     border-radius:8px;padding:11px 16px;border:1px solid transparent;width:100%;}
   .btn.primary{background:var(--accent);color:var(--on-accent);}
   .btn.primary:hover{background:var(--accent-hover);}
+  .btn.ghost{background:var(--surface);color:var(--text);border:1px solid var(--border-strong);}
+  .btn.ghost:hover{background:var(--surface-3);}
   .btn.primary:disabled{opacity:.6;cursor:not-allowed;}
   .err{background:var(--rose-bg);color:var(--rose-tx);font-size:13px;font-weight:500;
     padding:10px 13px;border-radius:8px;margin-bottom:16px;}
@@ -201,6 +203,7 @@
 
   @media (max-width:560px){ .main{padding:22px 16px 60px;} .who .nm,.who .sub{display:none;} #btnMyGrades{display:none;} }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -291,6 +294,8 @@ let ALL_TESTS = [];
 let ACTIVE_FILTER = 'all';
 let NOTIFS = [];
 let TAKER_ID = null;
+let TAKER_NAME = null;
+let CURRENT_RESULT = null;
 
 function getToken(){ try{ return sessionStorage.getItem(TOKEN_KEY); }catch(e){ return null; } }
 function setToken(t){ try{ sessionStorage.setItem(TOKEN_KEY,t); }catch(e){} }
@@ -349,6 +354,7 @@ async function showApp(){
   els.whoId.textContent=data.takerId||'';
   els.avatar.textContent=initials(data.name).toUpperCase();
   TAKER_ID=data.takerId||null;
+  TAKER_NAME=data.name||'';
   ALL_TESTS=data.tests||[];
   render();
   buildNotifications();
@@ -529,16 +535,20 @@ async function viewResult(t){
   if(!data.ok||!data.result){
     els.modalBody.innerHTML='<p>'+(data.error==='not_found'?'No stored result was found for this test.':'Could not load this result: '+esc(data.error||'unknown error'))+'</p>'; return;
   }
-  els.modalBody.innerHTML=renderResultHtml(data.result, data.graded, data.finalEarned, data.grading);
-  els.modalFoot.innerHTML='<button class="btn primary" onclick="closeModal()">Close</button>';
+  CURRENT_RESULT={ title:t.title||t.testCode, testCode:t.testCode, submittedAt:t.submittedAt,
+    result:data.result, graded:data.graded, finalEarned:data.finalEarned, grading:data.grading };
+  els.modalBody.innerHTML=renderResultHtml(data.result, data.graded, data.finalEarned, data.grading, t.submittedAt);
+  els.modalFoot.innerHTML='<button class="btn ghost" style="float:left;" onclick="downloadCurrentPdf()">↓ Download PDF</button>'+
+    '<button class="btn primary" onclick="closeModal()">Close</button>';
 }
-function renderResultHtml(p, graded, finalEarned, grading){
+function renderResultHtml(p, graded, finalEarned, grading, dateStr){
   const s=p.score||{};
   const possible = s.possible!=null ? s.possible : '';
   const items = (grading && grading.items) ? grading.items : {};
   const hasShort = (p.answers||[]).some(a=>a.type==='short');
 
   let html='<div class="score-block">';
+  if(dateStr){ html+='<div style="font-size:12px;color:var(--faint);margin-bottom:8px;">Test date · '+esc(fmt(dateStr))+'</div>'; }
   if(graded){
     html+='<div class="score-num tnum">'+esc(finalEarned)+' / '+esc(possible)+'</div><div class="score-label">Final score · graded</div>';
   }else if(hasShort){
@@ -575,6 +585,60 @@ function renderResultHtml(p, graded, finalEarned, grading){
       '</div>';
   });
   return html;
+}
+
+/* ---------- Download result as PDF ---------- */
+function downloadCurrentPdf(){
+  if(!CURRENT_RESULT){ return; }
+  if(!window.jspdf || !window.jspdf.jsPDF){ alert('The PDF tool is still loading — please try again in a moment.'); return; }
+  const R=CURRENT_RESULT, p=R.result, s=p.score||{};
+  const possible = s.possible!=null ? s.possible : '';
+  const items = (R.grading && R.grading.items) ? R.grading.items : {};
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'pt', format:'a4' });
+  const M=48, W=doc.internal.pageSize.getWidth(), H=doc.internal.pageSize.getHeight(), CW=W-M*2;
+  let y=M;
+  function ensure(sp){ if(y+sp>H-M){ doc.addPage(); y=M; } }
+  function text(str,o){ o=o||{}; const sz=o.size||10, st=o.style||'normal', c=o.color||[30,30,30], ind=o.indent||0;
+    doc.setFont('helvetica',st); doc.setFontSize(sz); doc.setTextColor(c[0],c[1],c[2]);
+    doc.splitTextToSize(String(str),CW-ind).forEach(l=>{ ensure(sz*1.35); doc.text(l,M+ind,y); y+=sz*1.35; }); }
+  function rule(){ ensure(14); doc.setDrawColor(200,200,200); doc.line(M,y,W-M,y); y+=14; }
+  function gap(n){ y+=(n||8); }
+
+  text(R.title, { size:18, style:'bold' }); gap(4);
+  text('Test code: '+R.testCode, { size:10, color:[110,110,110] }); gap(8);
+  text('Name: '+(TAKER_NAME||''), { size:10 });
+  text('Test-taker ID: '+(TAKER_ID||''), { size:10 });
+  if(R.submittedAt) text('Test date: '+fmt(R.submittedAt), { size:10 });
+  gap(6);
+  if(R.graded){ text('Final score: '+R.finalEarned+' / '+possible, { size:15, style:'bold', color:[20,122,87] }); }
+  else if(!(p.answers||[]).some(a=>a.type==='short')){ text('Score: '+s.earned+' / '+possible, { size:15, style:'bold' }); }
+  else { text('Provisional score: '+s.earned+' / '+possible+' (awaiting review)', { size:12, style:'bold', color:[148,98,19] }); }
+  gap(6);
+  if(R.graded && R.grading && R.grading.overallNote){ text('Note from grader: '+R.grading.overallNote, { size:10, style:'italic', color:[67,83,99] }); gap(4); }
+  rule();
+
+  (p.answers||[]).forEach(a=>{
+    if(a.type==='passage') return;
+    const max=Number(a.points)||0, gi=items[a.number];
+    ensure(50);
+    text('Q'+pad(a.number)+'. '+a.prompt, { size:11, style:'bold' }); gap(3);
+    text('Your answer: '+(a.answerGiven||'(no answer)'), { size:10 });
+    if(R.graded && gi){ gap(2); const aw=Number(gi.points)||0;
+      text('Awarded: '+aw+' / '+max+' pts', { size:10, style:'bold', color: aw>=max?[60,110,82]:(aw>0?[148,98,19]:[196,69,58]) }); }
+    else if(a.type==='mc'){ gap(2);
+      text((a.correct?'Correct':'Incorrect')+(a.correctAnswer?' — correct answer: '+a.correctAnswer:''), { size:10, style:'bold', color:a.correct?[60,110,82]:[196,69,58] }); }
+    else { gap(2); text('(awaiting review)', { size:9, style:'italic', color:[110,110,110] }); }
+    if(gi && gi.note){ gap(3); text('Note: '+gi.note, { size:10, color:[67,83,99], indent:12 }); }
+    if(a.explanation){ gap(3); text('Explanation: '+a.explanation, { size:10, color:[67,83,99], indent:12 }); }
+    gap(6); rule();
+  });
+
+  const total=doc.internal.getNumberOfPages();
+  for(let i=1;i<=total;i++){ doc.setPage(i); doc.setFont('helvetica','normal'); doc.setFontSize(8);
+    doc.setTextColor(150,150,150); doc.text('Page '+i+' of '+total, W-M, H-24, { align:'right' }); }
+  const safe=String(R.title||'result').replace(/[^a-z0-9]+/gi,'_');
+  doc.save(safe+'_'+(TAKER_ID||'result')+'.pdf');
 }
 
 /* ---------- Modal plumbing ---------- */
