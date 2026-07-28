@@ -562,6 +562,9 @@ function listTestsForMe_(token) {
         status: statusFor_(startDate, deadline, !!sub),
         score: sub ? { earned: sub.earned, possible: sub.possible } : null,
         graded: sub ? !!sub.graded : false,
+        gradedAt: sub ? (sub.gradedAt || null) : null,
+        note: sub ? (sub.note || null) : null,
+        updatedAt: formatSheetDate_(get(r, 'updatedAt')),
         submittedAt: sub ? sub.submittedAt : null
       };
     });
@@ -618,16 +621,23 @@ function submissionMapForTaker_(takerId) {
   const possibleCol = map['possible'];
   const gradedCol = map['graded'];
   const finalCol = map['finalEarned'];
+  const gjCol = map['gradingJson'];
   const tsCol = map['timestamp'];
   const wanted = String(takerId).trim().toLowerCase();
   const out = {};
   data.slice(1).forEach(r => {
     if (String(r[idCol]).trim().toLowerCase() === wanted) {
       const graded = String(r[gradedCol]).toLowerCase() === 'yes';
+      let gradedAt = '', note = '';
+      if (graded && r[gjCol]) {
+        try { const gj = JSON.parse(r[gjCol]); gradedAt = gj.gradedAt || ''; note = gj.overallNote || ''; } catch (e) {}
+      }
       out[codeKey_(r[codeCol])] = {
         earned: graded ? r[finalCol] : r[earnedCol],
         possible: r[possibleCol],
         graded: graded,
+        gradedAt: gradedAt,
+        note: note,
         submittedAt: r[tsCol] instanceof Date ? r[tsCol].toISOString() : String(r[tsCol])
       };
     }
@@ -699,6 +709,7 @@ function saveGrading_(row, grading) {
   const map = ensureColumns_(sheet, RESULTS_HEADERS);
   if (row < 2 || row > sheet.getLastRow()) return { ok: false, error: 'not_found' };
   const finalEarned = Number(grading.finalEarned) || 0;
+  grading.gradedAt = new Date().toISOString(); // stamped server-side, drives taker notifications
   sheet.getRange(row, map['graded'] + 1).setValue('yes');
   sheet.getRange(row, map['finalEarned'] + 1).setValue(finalEarned);
   sheet.getRange(row, map['gradingJson'] + 1).setValue(JSON.stringify(grading));

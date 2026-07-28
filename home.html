@@ -171,7 +171,35 @@
   .r-line{font-size:13.5px;color:var(--muted);line-height:1.5;}
   .r-line .good{color:var(--accent);font-weight:600;}
 
-  @media (max-width:560px){ .main{padding:22px 16px 60px;} .who .nm,.who .sub{display:none;} }
+  /* ---------- Top-bar icon button + notification badge ---------- */
+  .icon-btn{position:relative;width:38px;height:38px;border-radius:8px;border:1px solid var(--border);
+    background:var(--surface);color:var(--muted);display:grid;place-items:center;flex-shrink:0;}
+  .icon-btn:hover{color:var(--text);border-color:var(--border-strong);background:var(--surface-3);}
+  .notif-badge{position:absolute;top:-6px;right:-6px;min-width:17px;height:17px;padding:0 4px;border-radius:9px;
+    background:#D64C3F;color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;line-height:1;}
+
+  /* ---------- Notification list ---------- */
+  .notif{display:flex;gap:12px;padding:12px 4px;border-bottom:1px solid var(--border);cursor:pointer;}
+  .notif:last-child{border-bottom:none;}
+  .notif:hover{background:var(--surface-2);}
+  .notif .ic{width:34px;height:34px;border-radius:8px;flex-shrink:0;display:grid;place-items:center;}
+  .notif .ic.graded,.notif .ic.available{background:var(--accent-soft);color:var(--accent);}
+  .notif .ic.scheduled{background:var(--amber-bg);color:var(--amber-tx);}
+  .notif .n-title{font-weight:600;font-size:14px;}
+  .notif .n-body{font-size:13px;color:var(--muted);}
+  .notif .n-time{font-size:11px;color:var(--faint);margin-top:2px;}
+  .notif.unread .n-title::after{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;
+    background:var(--accent);margin-left:7px;vertical-align:middle;}
+
+  /* ---------- My grades table ---------- */
+  .grades-tbl{width:100%;border-collapse:collapse;}
+  .grades-tbl th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--faint);
+    padding:8px 6px;border-bottom:1px solid var(--border);}
+  .grades-tbl td{padding:11px 6px;border-bottom:1px solid var(--border);font-size:14px;}
+  .grades-tbl tr:last-child td{border-bottom:none;}
+  .g-view{color:var(--accent);font-weight:600;cursor:pointer;font-size:13px;white-space:nowrap;}
+
+  @media (max-width:560px){ .main{padding:22px 16px 60px;} .who .nm,.who .sub{display:none;} #btnMyGrades{display:none;} }
 </style>
 </head>
 <body>
@@ -202,6 +230,11 @@
   <div class="topbar">
     <div class="brand"><span class="logo">T</span>TestPortal</div>
     <div class="spacer"></div>
+    <button class="link-btn" id="btnMyGrades">My grades</button>
+    <button class="icon-btn" id="btnNotif" aria-label="Notifications">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>
+      <span class="notif-badge" id="notifBadge" hidden>0</span>
+    </button>
     <div class="who">
       <div class="avatar" id="avatar">–</div>
       <div><div class="nm" id="whoName">—</div><div class="sub" id="whoId"></div></div>
@@ -248,6 +281,7 @@ const els = {
   loginForm:$('loginForm'), loginId:$('loginId'), loginPassword:$('loginPassword'),
   loginBtn:$('loginBtn'), loginError:$('loginError'),
   avatar:$('avatar'), whoName:$('whoName'), whoId:$('whoId'), logoutBtn:$('logoutBtn'),
+  btnMyGrades:$('btnMyGrades'), btnNotif:$('btnNotif'), notifBadge:$('notifBadge'),
   helloTitle:$('helloTitle'), helloSub:$('helloSub'), tabs:$('tabs'), grid:$('grid'), emptyState:$('emptyState'),
   modal:$('modal'), modalEyebrow:$('modalEyebrow'), modalTitle:$('modalTitle'),
   modalBody:$('modalBody'), modalFoot:$('modalFoot'), modalClose:$('modalClose')
@@ -255,6 +289,8 @@ const els = {
 
 let ALL_TESTS = [];
 let ACTIVE_FILTER = 'all';
+let NOTIFS = [];
+let TAKER_ID = null;
 
 function getToken(){ try{ return sessionStorage.getItem(TOKEN_KEY); }catch(e){ return null; } }
 function setToken(t){ try{ sessionStorage.setItem(TOKEN_KEY,t); }catch(e){} }
@@ -312,9 +348,95 @@ async function showApp(){
   els.whoName.textContent=data.name||'(unnamed)';
   els.whoId.textContent=data.takerId||'';
   els.avatar.textContent=initials(data.name).toUpperCase();
+  TAKER_ID=data.takerId||null;
   ALL_TESTS=data.tests||[];
   render();
+  buildNotifications();
+  updateNotifBadge();
 }
+
+/* ---------- Notifications ---------- */
+function tval(x){ const d=new Date(x); return isNaN(d.getTime())?0:d.getTime(); }
+function seenKey(){ return 'notifSeen_'+(TAKER_ID||'x'); }
+function getLastSeen(){ try{ const v=localStorage.getItem(seenKey()); return v?new Date(v).getTime():0; }catch(e){ return 0; } }
+function setLastSeen(){ try{ localStorage.setItem(seenKey(), new Date().toISOString()); }catch(e){} }
+function relTime(x){
+  const d=new Date(x); if(isNaN(d.getTime())) return '';
+  const s=(Date.now()-d.getTime())/1000;
+  if(s<60) return 'just now';
+  if(s<3600) return Math.floor(s/60)+'m ago';
+  if(s<86400) return Math.floor(s/3600)+'h ago';
+  if(s<604800) return Math.floor(s/86400)+'d ago';
+  return fmt(x);
+}
+function buildNotifications(){
+  const list=[];
+  ALL_TESTS.forEach(t=>{
+    const title = t.title||t.testCode;
+    if(t.status==='completed' && t.graded){
+      const sc=(t.score&&t.score.possible!=null&&t.score.possible!=='')?(t.score.earned+' / '+t.score.possible):'';
+      list.push({ time:t.gradedAt||t.submittedAt, type:'graded', title:'“'+title+'” has been graded',
+        body:(sc?'Score: '+sc:'')+(t.note?' · '+t.note:''), action:()=>viewResult(t) });
+    } else if(t.status==='scheduled'){
+      list.push({ time:t.updatedAt||t.startDate, type:'scheduled', title:'“'+title+'” is scheduled',
+        body:'Opens '+fmt(t.startDate), action:()=>scheduledPopup(t) });
+    } else if(t.status==='available'){
+      list.push({ time:t.updatedAt||'', type:'available', title:'“'+title+'” is open',
+        body:t.deadline?('Closes '+fmt(t.deadline)):'Available now', action:()=>startTest(t.testCode) });
+    }
+  });
+  list.sort((a,b)=>tval(b.time)-tval(a.time));
+  NOTIFS=list;
+}
+function updateNotifBadge(){
+  const last=getLastSeen();
+  const unread=NOTIFS.filter(n=>tval(n.time)>last).length;
+  if(unread>0){ els.notifBadge.textContent=unread>9?'9+':unread; els.notifBadge.hidden=false; }
+  else els.notifBadge.hidden=true;
+}
+function notifIcon(type){
+  if(type==='graded') return checkIcon();
+  return calIcon();
+}
+function openNotifications(){
+  const last=getLastSeen();
+  const body = NOTIFS.length ? NOTIFS.map((n,i)=>{
+    const unread=tval(n.time)>last;
+    return '<div class="notif'+(unread?' unread':'')+'" data-ni="'+i+'">'+
+      '<div class="ic '+n.type+'">'+notifIcon(n.type)+'</div>'+
+      '<div style="min-width:0;"><div class="n-title">'+esc(n.title)+'</div>'+
+      (n.body?'<div class="n-body">'+esc(n.body)+'</div>':'')+
+      '<div class="n-time">'+esc(relTime(n.time))+'</div></div></div>';
+  }).join('') : '<p style="color:var(--muted);padding:8px 0;">No notifications yet. You\'ll see updates here when a test is graded or scheduled.</p>';
+  openModal({ eyebrow:'Notifications', title:'Updates', bodyHtml:body, footHtml:'<button class="btn primary" onclick="closeModal()">Close</button>' });
+  document.querySelectorAll('#modal .notif[data-ni]').forEach(el=>el.addEventListener('click',()=>{
+    const n=NOTIFS[+el.dataset.ni]; closeModal(); if(n && n.action) n.action();
+  }));
+  setLastSeen(); updateNotifBadge();
+}
+els.btnNotif.addEventListener('click', openNotifications);
+
+/* ---------- My grades ---------- */
+function openMyGrades(){
+  const done=ALL_TESTS.filter(t=>t.status==='completed');
+  let body;
+  if(!done.length){
+    body='<p style="color:var(--muted);padding:8px 0;">You haven\'t completed any tests yet.</p>';
+  }else{
+    body='<table class="grades-tbl"><thead><tr><th>Test</th><th>Score</th><th>Status</th><th></th></tr></thead><tbody>'+
+      done.map((t,i)=>{
+        const sc=(t.score&&t.score.possible!=null&&t.score.possible!=='')?(esc(t.score.earned)+' / '+esc(t.score.possible)):'—';
+        const st=t.graded?'<span class="badge completed">Graded</span>':'<span class="badge scheduled">Pending</span>';
+        return '<tr><td>'+esc(t.title||t.testCode)+'</td><td class="tnum">'+sc+'</td><td>'+st+'</td>'+
+          '<td><span class="g-view" data-gi="'+i+'">View →</span></td></tr>';
+      }).join('')+'</tbody></table>';
+  }
+  openModal({ eyebrow:'My grades', title:'Your grades', bodyHtml:body, footHtml:'<button class="btn primary" onclick="closeModal()">Close</button>' });
+  document.querySelectorAll('#modal .g-view[data-gi]').forEach(el=>el.addEventListener('click',()=>{
+    const t=done[+el.dataset.gi]; if(t) viewResult(t);
+  }));
+}
+els.btnMyGrades.addEventListener('click', openMyGrades);
 
 const STATUS_ORDER={available:0,scheduled:1,completed:2,closed:3};
 const STATUS_LABEL={available:'Available',scheduled:'Scheduled',completed:'Completed',closed:'Closed'};
