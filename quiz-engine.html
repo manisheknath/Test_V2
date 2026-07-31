@@ -247,10 +247,23 @@ button.ghost:hover{ border-color:var(--ink-soft); background:var(--paper); }
   .part-passage-inner{ position:static; max-height:none; overflow:visible; margin-bottom:4px; }
 }
 
+/* Toasts + confirm dialog (replace native alert/confirm) */
+.toast-wrap{ position:fixed; bottom:22px; right:22px; z-index:300; display:flex; flex-direction:column; gap:10px; max-width:360px; }
+.toast{ background:var(--card); border:1px solid var(--paper-line); border-left:3px solid var(--accent-calm);
+  padding:12px 15px; box-shadow:0 12px 32px -12px rgba(20,40,30,.4); font-size:13.5px; line-height:1.45; color:var(--ink); }
+.toast.error{ border-left-color:var(--accent-alert); }
+.confirm-overlay{ position:fixed; inset:0; background:rgba(15,25,20,.5); display:flex; align-items:center; justify-content:center; padding:24px; z-index:310; }
+.confirm-box{ background:var(--card); border:1px solid var(--paper-line); max-width:420px; width:100%; padding:22px; box-shadow:0 24px 60px -20px rgba(0,0,0,.5); }
+.confirm-title{ font-family:var(--sans); font-size:17px; font-weight:700; margin-bottom:8px; color:var(--ink); }
+.confirm-msg{ font-size:14px; color:var(--ink-soft); line-height:1.55; margin-bottom:18px; }
+.confirm-actions{ display:flex; justify-content:flex-end; gap:10px; }
+.cbtn{ font-family:var(--sans); font-size:13.5px; font-weight:600; padding:9px 16px; border:1px solid var(--paper-line); background:var(--card); color:var(--ink); cursor:pointer; }
+.cbtn.ok{ background:var(--accent-calm); color:#fff; border-color:var(--accent-calm); }
+
 /* Flat UI — square corners on all boxes */
 .sheet, button.primary, button.ghost, .field input, .field textarea, .option, .q-audio,
 .notice, .tag, .section-banner, .part-passage-inner .passage-block, .qe-topbar .qe-logo,
-.timer-fill, .timer-track{ border-radius:0; }
+.timer-fill, .timer-track, .toast, .confirm-box, .cbtn{ border-radius:0; }
 </style>
 </head>
 <body>
@@ -1075,6 +1088,38 @@ async function submitTest(autoSubmitted){
     + " You can view your result under “My grades” in your portal once it has been reviewed.";
 }
 
+/* ---------- Toasts + confirm dialog (replace native alert/confirm) ---------- */
+function toast(message, type){
+  let wrap = document.getElementById('toastWrap');
+  if (!wrap){ wrap = document.createElement('div'); wrap.id = 'toastWrap'; wrap.className = 'toast-wrap'; document.body.appendChild(wrap); }
+  const t = document.createElement('div');
+  t.className = 'toast' + (type ? ' ' + type : '');
+  t.textContent = message;
+  wrap.appendChild(t);
+  setTimeout(() => { t.style.transition = 'opacity .2s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 220); }, type === 'error' ? 4500 : 2800);
+}
+function confirmDialog(opts){
+  opts = opts || {};
+  return new Promise(resolve => {
+    const ov = document.createElement('div'); ov.className = 'confirm-overlay';
+    const box = document.createElement('div'); box.className = 'confirm-box';
+    const ttl = document.createElement('div'); ttl.className = 'confirm-title'; ttl.textContent = opts.title || 'Are you sure?';
+    const msg = document.createElement('div'); msg.className = 'confirm-msg'; msg.textContent = opts.message || '';
+    const acts = document.createElement('div'); acts.className = 'confirm-actions';
+    const cancel = document.createElement('button'); cancel.className = 'cbtn cancel'; cancel.textContent = 'Cancel';
+    const ok = document.createElement('button'); ok.className = 'cbtn ok' + (opts.danger ? ' danger' : ''); ok.textContent = opts.confirmText || 'Confirm';
+    acts.appendChild(cancel); acts.appendChild(ok);
+    box.appendChild(ttl); box.appendChild(msg); box.appendChild(acts); ov.appendChild(box); document.body.appendChild(ov);
+    function done(v){ ov.remove(); document.removeEventListener('keydown', onKey); resolve(v); }
+    function onKey(e){ if (e.key === 'Escape') done(false); else if (e.key === 'Enter') done(true); }
+    cancel.addEventListener('click', () => done(false));
+    ok.addEventListener('click', () => done(true));
+    ov.addEventListener('click', e => { if (e.target === ov) done(false); });
+    document.addEventListener('keydown', onKey);
+    ok.focus();
+  });
+}
+
 els.btnStart.addEventListener('click', async () => {
   const name = els.takerName.value.trim();
   const email = els.takerEmail.value.trim();
@@ -1082,7 +1127,7 @@ els.btnStart.addEventListener('click', async () => {
   // the portal the identity comes from the account — and a taker's email is
   // optional, so don't block starting when it's blank.
   if (!LOGGED_IN_TAKER && (!name || !email)) {
-    alert('Please enter your name and email before starting.');
+    toast('Please enter your name and email before starting.', 'error');
     return;
   }
 
@@ -1111,12 +1156,14 @@ els.btnStart.addEventListener('click', async () => {
   startTest();
 });
 
-els.btnSubmit.addEventListener('click', () => {
+els.btnSubmit.addEventListener('click', async () => {
   const unanswered = answerableIndices().length - countAnswered();
   if (unanswered > 0) {
-    const proceed = confirm(
-      'You have ' + unanswered + ' unanswered question' + (unanswered === 1 ? '' : 's') + '. Submit anyway?'
-    );
+    const proceed = await confirmDialog({
+      title: 'Submit test?',
+      message: 'You have ' + unanswered + ' unanswered question' + (unanswered === 1 ? '' : 's') + '. Submit anyway?',
+      confirmText: 'Submit'
+    });
     if (!proceed) return;
   }
   submitTest(false);
