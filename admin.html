@@ -295,6 +295,7 @@
 
       <!-- ===== TESTS VIEW ===== -->
       <section class="view" id="view-tests">
+       <div id="testsListView">
         <div class="page-head">
           <div><h1>Tests</h1><p class="sub">Create, schedule, and assign assessments to people and groups.</p></div>
           <div class="head-actions">
@@ -337,51 +338,69 @@
             </table>
           </div>
         </div>
+       </div><!-- /testsListView -->
 
-        <!-- ===== TEST EDITOR ===== -->
-        <div class="card hidden" id="editorCard">
-          <h2 id="editorTitle">New test</h2>
-          <div id="editorNotice"></div>
-          <div class="row">
-            <div>
-              <label for="f_testCode">Test code (unique, no spaces)</label>
-              <input type="text" id="f_testCode" placeholder="e.g. FR-A2-002">
+        <!-- ===== TEST EDITOR (full page, two steps) ===== -->
+        <div class="hidden" id="editorCard">
+          <button class="ghost" id="btnBackTests" style="margin-bottom:16px;">← Back to tests</button>
+          <div class="card">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;">
+              <h2 id="editorTitle" style="margin:0;">New test</h2>
+              <span id="editorStep" style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);"></span>
             </div>
-            <div>
-              <label for="f_timeLimit">Time limit (minutes)</label>
-              <input type="number" id="f_timeLimit" placeholder="45">
-            </div>
-          </div>
-          <label for="f_title">Title</label>
-          <input type="text" id="f_title" placeholder="e.g. French A2 Placement Test">
-          <label for="f_intro">Instructions shown before the test starts</label>
-          <textarea id="f_intro" placeholder="Read each question carefully..."></textarea>
-          <div class="row">
-            <div>
-              <label for="f_startDate">Start date (optional — blank = open immediately)</label>
-              <input type="datetime-local" id="f_startDate">
-            </div>
-            <div>
-              <label for="f_deadline">Deadline (required)</label>
-              <input type="datetime-local" id="f_deadline">
-            </div>
-          </div>
-          <label for="f_assignedTo">Assign to (comma-separated group names and/or taker IDs — blank or "all" = every taker)</label>
-          <input type="text" id="f_assignedTo" placeholder="e.g. ClassA, Cohort3, T-4821">
+            <div id="editorNotice" style="margin-top:14px;"></div>
 
-          <h2 style="margin-top:24px;font-size:16px;font-weight:650;">Questions</h2>
-          <div id="questionsList"></div>
-          <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
-            <button class="ghost" id="btnAddMc">+ Add multiple choice</button>
-            <button class="ghost" id="btnAddShort">+ Add short answer</button>
-            <button class="ghost" id="btnAddCode">+ Add coding question</button>
-            <button class="ghost" id="btnAddPassage">+ Add section</button>
+            <!-- STEP 1 — Test details -->
+            <div id="editorStep1">
+              <div class="row">
+                <div>
+                  <label for="f_testCode">Test code (unique, no spaces)</label>
+                  <input type="text" id="f_testCode" placeholder="e.g. FR-A2-002">
+                </div>
+                <div>
+                  <label for="f_timeLimit">Time limit (minutes)</label>
+                  <input type="number" id="f_timeLimit" placeholder="45">
+                </div>
+              </div>
+              <label for="f_title">Title</label>
+              <input type="text" id="f_title" placeholder="e.g. French A2 Placement Test">
+              <label for="f_intro">Instructions shown before the test starts</label>
+              <textarea id="f_intro" placeholder="Read each question carefully..."></textarea>
+              <div class="row">
+                <div>
+                  <label for="f_startDate">Start date (optional — blank = open immediately)</label>
+                  <input type="datetime-local" id="f_startDate">
+                </div>
+                <div>
+                  <label for="f_deadline">Deadline (required)</label>
+                  <input type="datetime-local" id="f_deadline">
+                </div>
+              </div>
+              <label for="f_assignedTo">Assign to (comma-separated group names and/or taker IDs — blank or "all" = every taker)</label>
+              <input type="text" id="f_assignedTo" placeholder="e.g. ClassA, Cohort3, T-4821">
+              <div class="actions-bar">
+                <button class="ghost" id="btnCancelEdit">Cancel</button>
+                <button class="primary" id="btnToStep2">Continue →</button>
+              </div>
+            </div>
+
+            <!-- STEP 2 — Sections & questions -->
+            <div id="editorStep2" class="hidden">
+              <h2 style="margin-top:4px;font-size:16px;font-weight:650;">Sections &amp; questions</h2>
+              <div id="questionsList"></div>
+              <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+                <button class="ghost" id="btnAddMc">+ Add multiple choice</button>
+                <button class="ghost" id="btnAddShort">+ Add short answer</button>
+                <button class="ghost" id="btnAddCode">+ Add coding question</button>
+                <button class="ghost" id="btnAddPassage">+ Add section</button>
+              </div>
+              <div class="actions-bar">
+                <button class="ghost" id="btnBackToStep1">← Back to details</button>
+                <button class="primary" id="btnSaveTest">Save test</button>
+              </div>
+              <div id="saveResultBox"></div>
+            </div>
           </div>
-          <div class="actions-bar">
-            <button class="ghost" id="btnCancelEdit">Cancel</button>
-            <button class="primary" id="btnSaveTest">Save test</button>
-          </div>
-          <div id="saveResultBox"></div>
         </div>
       </section>
 
@@ -1266,14 +1285,43 @@ function openEditor(test){
   document.getElementById('f_startDate').value = test ? toLocalInputValue(test.startDate) : '';
   document.getElementById('f_deadline').value = test ? toLocalInputValue(test.deadline) : '';
   document.getElementById('f_assignedTo').value = test ? (test.assignedTo || '') : '';
-  currentQuestions = test ? JSON.parse(JSON.stringify(test.questions)) : [];
+  // A new test starts with one Default section (can be removed or changed).
+  currentQuestions = test ? JSON.parse(JSON.stringify(test.questions))
+    : [{ type: 'passage', sectionType: 'default', sectionTitle: 'Section 1', sectionDesc: '', prompt: '', audioUrl: '', points: 0 }];
   renderQuestions();
+  document.getElementById('testsListView').classList.add('hidden');
   document.getElementById('editorCard').classList.remove('hidden');
-  document.getElementById('editorCard').scrollIntoView({ behavior: 'smooth' });
+  setEditorStep(1);
+}
+function showTestsList(){
+  document.getElementById('editorCard').classList.add('hidden');
+  document.getElementById('testsListView').classList.remove('hidden');
+  window.scrollTo(0, 0);
+}
+function setEditorStep(n){
+  document.getElementById('editorStep1').classList.toggle('hidden', n !== 1);
+  document.getElementById('editorStep2').classList.toggle('hidden', n !== 2);
+  document.getElementById('editorStep').textContent = n === 1 ? 'Step 1 of 2 · Details' : 'Step 2 of 2 · Questions';
+  window.scrollTo(0, 0);
+}
+function validateDetails(){
+  const errs = [];
+  if (!document.getElementById('f_testCode').value.trim()) errs.push('Test code is required.');
+  if (!document.getElementById('f_title').value.trim()) errs.push('Title is required.');
+  const tl = Number(document.getElementById('f_timeLimit').value);
+  if (!tl || tl <= 0) errs.push('Time limit must be a positive number.');
+  if (!document.getElementById('f_deadline').value) errs.push('Deadline is required.');
+  return errs;
 }
 document.getElementById('btnNewTest').addEventListener('click', () => openEditor(null));
-document.getElementById('btnCancelEdit').addEventListener('click', () => {
-  document.getElementById('editorCard').classList.add('hidden');
+document.getElementById('btnCancelEdit').addEventListener('click', showTestsList);
+document.getElementById('btnBackTests').addEventListener('click', showTestsList);
+document.getElementById('btnBackToStep1').addEventListener('click', () => setEditorStep(1));
+document.getElementById('btnToStep2').addEventListener('click', () => {
+  const errs = validateDetails();
+  if (errs.length){ document.getElementById('editorNotice').innerHTML = '<div class="notice error">' + errs.join('<br>') + '</div>'; window.scrollTo(0,0); return; }
+  document.getElementById('editorNotice').innerHTML = '';
+  setEditorStep(2);
 });
 
 function validateBeforeSave(test){
@@ -1316,16 +1364,17 @@ document.getElementById('btnSaveTest').addEventListener('click', async () => {
   const errs = validateBeforeSave(test);
   if (errs.length > 0) {
     document.getElementById('editorNotice').innerHTML = '<div class="notice error">' + errs.join('<br>') + '</div>';
+    window.scrollTo(0, 0);
     return;
   }
   const result = await apiPost({ action: 'saveTest', token: ADMIN_TOKEN, test });
   if (!result.ok) {
     document.getElementById('editorNotice').innerHTML = '<div class="notice error">Save failed: ' + (result.error || 'unknown error') + '</div>';
+    window.scrollTo(0, 0);
     return;
   }
-  const link = CONFIG.quizEngineUrl + '?test=' + encodeURIComponent(test.testCode);
-  document.getElementById('saveResultBox').innerHTML =
-    '<div class="notice ok">Saved. Taker link:</div><div class="link-box">' + link + '</div>';
+  toast('Test “' + test.testCode + '” saved', 'success');
+  showTestsList();
   refreshTestList();
 });
 
