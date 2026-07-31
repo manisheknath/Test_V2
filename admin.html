@@ -170,6 +170,10 @@
   .timeline .ev:last-child{border-bottom:none;}
   .timeline .ev .t{font-variant-numeric:tabular-nums;color:var(--text);font-weight:600;flex-shrink:0;min-width:170px;}
 
+  /* Flat UI — square corners on all boxes (profile avatar stays round) */
+  .login-card,.logo,.brand .logo,.login-brand .logo,button,input,textarea,select,.card,.stat,
+  .nav-item,.tag,.tag-pill,.q-card,.notice,.link-box,code,.integrity-flag{ border-radius:0; }
+
   @media (max-width:820px){
     .sidebar{display:none;}
     .stat-row{grid-template-columns:repeat(2,1fr);}

@@ -82,8 +82,8 @@
     padding:10px 13px;border-radius:8px;margin-bottom:16px;}
 
   /* ---------- App shell ---------- */
-  .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;height:58px;
-    padding:0 22px;background:var(--surface);border-bottom:1px solid var(--border);}
+  .topbar{position:sticky;top:0;z-index:20;height:58px;background:var(--surface);border-bottom:1px solid var(--border);}
+  .topbar-inner{max-width:1080px;margin:0 auto;height:100%;padding:0 24px;display:flex;align-items:center;gap:14px;}
   .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:-.01em;}
   .brand .logo{width:28px;height:28px;border-radius:8px;font-size:15px;}
   .spacer{flex:1;}
@@ -101,7 +101,8 @@
   .hello h1{margin:0 0 5px;font-size:24px;font-weight:700;letter-spacing:-.02em;text-wrap:balance;}
   .hello p{margin:0;color:var(--muted);font-size:14px;}
 
-  .tabs{display:flex;gap:2px;margin-bottom:22px;border-bottom:1px solid var(--border);overflow-x:auto;}
+  .tabs{display:flex;gap:2px;margin-bottom:22px;border-bottom:1px solid var(--border);overflow-x:auto;scrollbar-width:none;-ms-overflow-style:none;}
+  .tabs::-webkit-scrollbar{display:none;}
   .tab{padding:10px 15px;font-size:13.5px;font-weight:600;color:var(--muted);background:none;border:none;
     border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;}
   .tab:hover{color:var(--text);}
@@ -201,6 +202,10 @@
   .grades-tbl tr:last-child td{border-bottom:none;}
   .g-view{color:var(--accent);font-weight:600;cursor:pointer;font-size:13px;white-space:nowrap;}
 
+  /* Flat UI — square corners on all boxes (profile avatar stays round) */
+  .login-card,.modal,.tcard,.field input,.btn,.link-btn,.icon-btn,.err,.go,.badge,
+  .review-item .tag,.notif .ic,.notif-badge,.logo,.brand .logo{ border-radius:0; }
+
   @media (max-width:560px){ .main{padding:22px 16px 60px;} .who .nm,.who .sub{display:none;} #btnMyGrades{display:none;} }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -231,6 +236,7 @@
 <!-- ============ APP ============ -->
 <div id="screenApp" hidden>
   <div class="topbar">
+   <div class="topbar-inner">
     <div class="brand"><span class="logo">T</span>TestPortal</div>
     <div class="spacer"></div>
     <button class="link-btn" id="btnMyGrades">My grades</button>
@@ -243,6 +249,7 @@
       <div><div class="nm" id="whoName">—</div><div class="sub" id="whoId"></div></div>
     </div>
     <button class="link-btn" id="logoutBtn">Sign out</button>
+   </div>
   </div>
 
   <main class="main">
