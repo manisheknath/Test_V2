@@ -373,16 +373,20 @@ function applyIdentityLock(){
   if (!LOGGED_IN_TAKER) return;
   els.takerName.value = LOGGED_IN_TAKER.name || '';
   els.takerEmail.value = LOGGED_IN_TAKER.email || '';
+  // The taker already signed in at the portal, so don't ask for name/email
+  // again — hide those fields entirely (the values stay set so the
+  // submission is still labelled), leaving a clean test-intro screen with a
+  // single Start button.
   [els.takerName, els.takerEmail].forEach(inp => {
     inp.readOnly = true;
     inp.tabIndex = -1;
-    inp.style.background = 'var(--card)';
-    inp.style.color = 'var(--ink-soft)';
+    const field = inp.closest('.field');
+    if (field) field.style.display = 'none';
   });
   const note = document.createElement('p');
   note.className = 'notice info';
   note.innerHTML = 'Signed in as <b>' + escapeHtml(LOGGED_IN_TAKER.name || LOGGED_IN_TAKER.takerId) +
-    '</b> (' + escapeHtml(LOGGED_IN_TAKER.takerId) + '). Your identity is set from your account.';
+    '</b>. Press <b>Start test</b> when you\'re ready — the timer begins and the test opens in fullscreen.';
   els.screenStart.insertBefore(note, els.screenStart.firstChild);
   const back = document.getElementById('btnBackHome');
   if (back) back.hidden = false;
