@@ -434,6 +434,8 @@ let resultsPayload = null;
 let quizInProgress = false;
 let fullscreenExitCount = 0;
 let tabSwitchCount = 0;
+let attemptStartedAt = null;   // ISO timestamp of when the test actually began
+let integrityEvents = [];      // [{ type:'tab-switch'|'fullscreen-exit', at:ISO }]
 let questionOrder = [];
 let optionOrders = [];
 
@@ -449,6 +451,7 @@ const isPreview = new URLSearchParams(window.location.search).get('preview') ===
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && quizInProgress && !isPreview) {
     tabSwitchCount++;
+    integrityEvents.push({ type: 'tab-switch', at: new Date().toISOString() });
     saveSession();
   }
 });
@@ -471,9 +474,11 @@ function saveSession(){
       takerEmail: els.takerEmail.value,
       deadlineForThisAttempt,
       attemptStartSeconds,
+      attemptStartedAt,
       answers,
       fullscreenExitCount,
       tabSwitchCount,
+      integrityEvents,
       questionOrder,
       optionOrders
     }));
@@ -501,6 +506,7 @@ document.addEventListener('fullscreenchange', () => {
     els.fullscreenBanner.hidden = true; // we're in fullscreen (freshly entered or returned to) — banner has no reason to show
   } else if (quizInProgress && !isPreview) {
     fullscreenExitCount++;
+    integrityEvents.push({ type: 'fullscreen-exit', at: new Date().toISOString() });
     els.fullscreenBanner.hidden = false;
     saveSession();
   }
@@ -839,8 +845,10 @@ function startTest(resumedSession){
   if (resumedSession) {
     deadlineForThisAttempt = resumedSession.deadlineForThisAttempt;
     attemptStartSeconds = resumedSession.attemptStartSeconds;
+    attemptStartedAt = resumedSession.attemptStartedAt || null;
     fullscreenExitCount = resumedSession.fullscreenExitCount || 0;
     tabSwitchCount = resumedSession.tabSwitchCount || 0;
+    integrityEvents = resumedSession.integrityEvents || [];
     questionOrder = resumedSession.questionOrder || TEST_CONFIG.questions.map((_, i) => i);
     optionOrders = resumedSession.optionOrders || TEST_CONFIG.questions.map(q => q.type === 'mc' ? q.options.map((_, oi) => oi) : null);
   } else {
@@ -848,8 +856,10 @@ function startTest(resumedSession){
     const personalDeadline = Date.now() + timeLimitMs;
     const hardDeadline = new Date(TEST_CONFIG.deadline).getTime();
     deadlineForThisAttempt = isPreview ? personalDeadline : Math.min(personalDeadline, hardDeadline);
+    attemptStartedAt = new Date().toISOString();
     fullscreenExitCount = 0;
     tabSwitchCount = 0;
+    integrityEvents = [];
     const baseOrder = TEST_CONFIG.questions.map((_, i) => i);
     questionOrder = TEST_CONFIG.shuffleQuestions ? shuffleArray(baseOrder) : baseOrder;
     optionOrders = TEST_CONFIG.questions.map(q => {
@@ -932,10 +942,12 @@ function gradeAndBuildResults(autoSubmitted){
     takerId: LOGGED_IN_TAKER ? LOGGED_IN_TAKER.takerId : "",
     takerName: els.takerName.value || "(name not entered)",
     takerEmail: els.takerEmail.value || "(email not entered)",
+    startedAt: attemptStartedAt,
     submittedAt: new Date().toISOString(),
     autoSubmittedOnTimeout: autoSubmitted,
     fullscreenExitCount,
     tabSwitchCount,
+    integrityEvents,
     score: { earned, possible, gradableQuestionCount: gradedQuestions },
     answers: review
   };
@@ -1214,6 +1226,8 @@ async function init(){
         // and submit whatever was saved, same as a normal timeout.
         fullscreenExitCount = existing.fullscreenExitCount || 0;
         tabSwitchCount = existing.tabSwitchCount || 0;
+        attemptStartedAt = existing.attemptStartedAt || null;
+        integrityEvents = existing.integrityEvents || [];
         questionOrder = existing.questionOrder || TEST_CONFIG.questions.map((_, i) => i);
         optionOrders = existing.optionOrders || TEST_CONFIG.questions.map(q => q.type === 'mc' ? q.options.map((_, oi) => oi) : null);
         buildQuestions(existing.answers);
