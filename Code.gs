@@ -337,6 +337,10 @@ function doPost(e) {
       if (!checkToken_(body.token)) return json_({ ok: false, error: 'unauthorized' });
       return json_(saveGrading_(body.row, body.grading));
     }
+    if (body.action === 'updateTests') {
+      if (!checkToken_(body.token)) return json_({ ok: false, error: 'unauthorized' });
+      return json_(updateTestsMeta_(body.testCodes, body.patch));
+    }
 
     // No 'action' field => results submission from quiz-engine.html
     recordResult_(body);
@@ -937,6 +941,31 @@ function saveTest_(test) {
     const startRow = qSheet.getLastRow() + 1;
     qSheet.getRange(startRow, 1, rows.length, rows[0].length).setValues(rows);
   }
+}
+
+// Bulk-update only the metadata (assignedTo / startDate / deadline) of several
+// tests at once, without touching their questions. Only the keys present in
+// `patch` are changed, so "set deadline" won't wipe assignedTo.
+function updateTestsMeta_(testCodes, patch) {
+  if (!Array.isArray(testCodes) || !testCodes.length || !patch) return { ok: false, error: 'bad_request' };
+  const sheet = sheet_('Tests');
+  const tMap = ensureColumns_(sheet, TESTS_HEADERS);
+  forceTextFormat_(sheet, tMap, ['startDate','deadline']);
+  const data = sheet.getDataRange().getValues();
+  const codeCol = tMap['testCode'];
+  const wanted = {};
+  testCodes.forEach(c => { wanted[codeKey_(c)] = true; });
+  let updated = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (!wanted[codeKey_(data[i][codeCol])]) continue;
+    const row = i + 1;
+    if ('assignedTo' in patch) sheet.getRange(row, tMap['assignedTo'] + 1).setValue(patch.assignedTo || '');
+    if ('startDate' in patch) sheet.getRange(row, tMap['startDate'] + 1).setValue(patch.startDate || '');
+    if ('deadline' in patch) sheet.getRange(row, tMap['deadline'] + 1).setValue(patch.deadline || '');
+    sheet.getRange(row, tMap['updatedAt'] + 1).setValue(new Date());
+    updated++;
+  }
+  return { ok: true, updated: updated };
 }
 
 function deleteTest_(testCode) {
