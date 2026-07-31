@@ -69,7 +69,7 @@
    ============================================================ */
 
 const TESTS_HEADERS = ['testCode','title','intro','timeLimitMinutes','startDate','deadline','shuffleQuestions','shuffleOptions','updatedAt','assignedTo'];
-const QUESTIONS_HEADERS = ['testCode','qOrder','type','prompt','optionA','optionB','optionC','optionD','correctIndex','points','explanation','referenceAnswer','audioUrl'];
+const QUESTIONS_HEADERS = ['testCode','qOrder','type','prompt','optionA','optionB','optionC','optionD','correctIndex','points','explanation','referenceAnswer','audioUrl','sectionType','sectionTitle','sectionDesc','starterCode'];
 const TAKERS_HEADERS = ['takerId','name','email','passwordHash','salt','groups'];
 const RESULTS_HEADERS = ['timestamp','testCode','testTitle','takerId','takerName','takerEmail','earned','possible','autoSubmitted','fullscreenExitCount','tabSwitchCount','payloadJson','submissionId','graded','finalEarned','gradingJson'];
 const SETTINGS_HEADERS = ['key','value'];
@@ -759,11 +759,20 @@ function getTest_(testCode) {
     const explanation = qGet(r, 'explanation') || undefined;
     const audioUrl = qGet(r, 'audioUrl') || undefined;
 
-    // Passages are context blocks, not questions: no points, no answer
-    // field. Without this branch they fall through to 'short' and render
-    // as a numbered question with a text box.
+    // A 'passage' row is a SECTION marker (context block, not a question):
+    // no points, no answer. It carries the section's type/header/description
+    // plus its block content (reading paragraph in prompt, listening audio
+    // in audioUrl). It groups the questions that follow it.
     if (type === 'passage') {
-      return { type: 'passage', prompt: qGet(r, 'prompt'), points: 0, audioUrl: audioUrl };
+      return {
+        type: 'passage',
+        sectionType: qGet(r, 'sectionType') || '',
+        sectionTitle: qGet(r, 'sectionTitle') || '',
+        sectionDesc: qGet(r, 'sectionDesc') || '',
+        prompt: qGet(r, 'prompt'),
+        audioUrl: audioUrl,
+        points: 0
+      };
     }
     if (type === 'mc') {
       const options = [qGet(r,'optionA'), qGet(r,'optionB'), qGet(r,'optionC'), qGet(r,'optionD')]
@@ -776,6 +785,18 @@ function getTest_(testCode) {
         correctIndex: Number(qGet(r, 'correctIndex')),
         explanation: explanation,
         audioUrl: audioUrl
+      };
+    }
+    if (type === 'code') {
+      // A coding question: prompt + optional starter code + reference
+      // solution (referenceAnswer). Graded manually, like a short answer.
+      return {
+        type: 'code',
+        prompt: qGet(r, 'prompt'),
+        points: points,
+        starterCode: qGet(r, 'starterCode') || '',
+        answer: qGet(r, 'referenceAnswer') || undefined,
+        explanation: explanation
       };
     }
     return {
@@ -904,8 +925,12 @@ function saveTest_(test) {
         correctIndex: q.type === 'mc' ? q.correctIndex : '',
         points: q.type === 'passage' ? 0 : (q.points || 0),
         explanation: q.explanation || '',
-        referenceAnswer: q.type === 'short' ? (q.answer || '') : '',
-        audioUrl: q.audioUrl || ''
+        referenceAnswer: (q.type === 'short' || q.type === 'code') ? (q.answer || '') : '',
+        audioUrl: q.audioUrl || '',
+        sectionType: q.type === 'passage' ? (q.sectionType || '') : '',
+        sectionTitle: q.type === 'passage' ? (q.sectionTitle || '') : '',
+        sectionDesc: q.type === 'passage' ? (q.sectionDesc || '') : '',
+        starterCode: q.type === 'code' ? (q.starterCode || '') : ''
       });
     });
     // Single batched write instead of one appendRow per question.

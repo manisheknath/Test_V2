@@ -318,6 +318,7 @@
           <div style="display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
             <button class="ghost" id="btnAddMc">+ Add multiple choice</button>
             <button class="ghost" id="btnAddShort">+ Add short answer</button>
+            <button class="ghost" id="btnAddCode">+ Add coding question</button>
             <button class="ghost" id="btnAddPassage">+ Add section</button>
           </div>
           <div class="actions-bar">
@@ -883,11 +884,11 @@ document.getElementById('btnSaveGrade').addEventListener('click', async () => {
 
 /* ---------- Question builder ---------- */
 function addQuestion(type){
-  currentQuestions.push(type === 'mc'
-    ? { type: 'mc', prompt: '', points: 2, options: ['', ''], correctIndex: 0, explanation: '', audioUrl: '' }
-    : type === 'short'
-    ? { type: 'short', prompt: '', points: 5, answer: '', explanation: '', audioUrl: '' }
-    : { type: 'passage', prompt: '', points: 0, audioUrl: '' }
+  currentQuestions.push(
+    type === 'mc'   ? { type: 'mc', prompt: '', points: 2, options: ['', ''], correctIndex: 0, explanation: '', audioUrl: '' }
+    : type === 'short' ? { type: 'short', prompt: '', points: 5, answer: '', explanation: '', audioUrl: '' }
+    : type === 'code'  ? { type: 'code', prompt: '', points: 10, starterCode: '', answer: '', explanation: '' }
+    : { type: 'passage', sectionType: 'reading', sectionTitle: '', sectionDesc: '', prompt: '', audioUrl: '', points: 0 }
   );
   renderQuestions();
 }
@@ -899,7 +900,9 @@ function renderQuestions(){
     card.className = 'q-card';
     const head = document.createElement('div');
     head.className = 'q-card-head';
-    const typeLabel = q.type === 'mc' ? 'Multiple choice' : q.type === 'short' ? 'Short answer' : 'Section';
+    const typeLabel = q.type === 'mc' ? 'Multiple choice' : q.type === 'short' ? 'Short answer'
+      : q.type === 'code' ? 'Coding question'
+      : 'Section · ' + ((q.sectionType || 'reading').charAt(0).toUpperCase() + (q.sectionType || 'reading').slice(1));
     head.innerHTML = `<b>${q.type === 'passage' ? 'Section' : 'Q' + (i+1)} · ${typeLabel}</b>`;
     const controls = document.createElement('div');
     controls.style.display = 'flex'; controls.style.gap = '6px';
@@ -912,25 +915,42 @@ function renderQuestions(){
     card.appendChild(head);
 
     if (q.type === 'passage') {
-      card.appendChild(textarea('Section text — a full reading passage (pinned beside its questions), OR a short heading like "Part 2 — Vocabulary". Leave blank for an audio-only clip.', q.prompt, v => q.prompt = v));
-      card.appendChild(audioUrlField(q));
+      if (!q.sectionType) q.sectionType = 'reading';
+      card.appendChild(selectField('Section type', ['reading','listening','default','coding'], q.sectionType, v => { q.sectionType = v; renderQuestions(); }));
+      card.appendChild(labeledInput('Section header', 'text', q.sectionTitle || '', v => q.sectionTitle = v));
+      card.appendChild(textarea('Description (shown under the header in a smaller font, optional)', q.sectionDesc, v => q.sectionDesc = v));
+      if (q.sectionType === 'reading') {
+        card.appendChild(textarea('Reading passage (the paragraph takers read)', q.prompt, v => q.prompt = v));
+      } else if (q.sectionType === 'listening') {
+        card.appendChild(audioUrlField(q));
+      }
       const note = document.createElement('div');
       note.style.cssText = 'font-size:11px;color:var(--muted);margin-top:-6px;';
-      note.textContent = 'A section owns every question after it until the next section. A long passage or audio pins on the left while its questions scroll; a short heading just labels the group. Add a new section wherever a new part begins (e.g. before Vocabulary, Grammar, Writing). Use ↑↓ to keep questions under the right section, and avoid shuffle on tests with sections.';
+      const blk = q.sectionType === 'reading' ? 'a reading passage' : q.sectionType === 'listening' ? 'an audio clip'
+        : q.sectionType === 'coding' ? 'coding questions' : 'just its questions';
+      note.textContent = 'A section groups every question after it until the next section (it holds ' + blk + '). Add a section wherever a new part begins; use ↑↓ to keep questions under the right section. Avoid shuffle on tests with sections.';
       card.appendChild(note);
       mount.appendChild(card);
       return;
     }
 
-    const promptEl = textarea('Question text', q.prompt, v => q.prompt = v);
+    const promptEl = textarea(q.type === 'code' ? 'Coding question / prompt' : 'Question text', q.prompt, v => q.prompt = v);
     card.appendChild(promptEl);
 
-    card.appendChild(audioUrlField(q));
+    if (q.type !== 'code') card.appendChild(audioUrlField(q));
 
     const pointsRow = document.createElement('div');
     pointsRow.className = 'row';
     pointsRow.appendChild(labeledInput('Points', 'number', q.points, v => q.points = Number(v)));
     card.appendChild(pointsRow);
+
+    if (q.type === 'code') {
+      card.appendChild(monoTextarea('Starter code (optional — pre-filled in the taker\'s editor)', q.starterCode || '', v => q.starterCode = v));
+      card.appendChild(monoTextarea('Reference solution (for your review only, not shown to taker)', q.answer, v => q.answer = v));
+      card.appendChild(textarea('Explanation (optional — shown to taker after they submit)', q.explanation, v => q.explanation = v));
+      mount.appendChild(card);
+      return;
+    }
 
     if (q.type === 'mc') {
       const optsWrap = document.createElement('div');
@@ -1052,8 +1072,30 @@ function labeledInput(labelText, type, value, onInput){
   wrap.appendChild(l); wrap.appendChild(i);
   return wrap;
 }
+function selectField(labelText, options, value, onChange){
+  const wrap = document.createElement('div');
+  const l = document.createElement('label'); l.textContent = labelText;
+  const s = document.createElement('select');
+  options.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o; opt.textContent = o.charAt(0).toUpperCase() + o.slice(1);
+    if (o === value) opt.selected = true;
+    s.appendChild(opt);
+  });
+  s.addEventListener('change', () => onChange(s.value));
+  wrap.appendChild(l); wrap.appendChild(s);
+  return wrap;
+}
+function monoTextarea(labelText, value, onInput){
+  const wrap = textarea(labelText, value, onInput);
+  const t = wrap.querySelector('textarea');
+  t.style.fontFamily = 'var(--mono)'; t.style.fontSize = '12px'; t.style.minHeight = '130px';
+  t.setAttribute('spellcheck', 'false');
+  return wrap;
+}
 document.getElementById('btnAddMc').addEventListener('click', () => addQuestion('mc'));
 document.getElementById('btnAddShort').addEventListener('click', () => addQuestion('short'));
+document.getElementById('btnAddCode').addEventListener('click', () => addQuestion('code'));
 document.getElementById('btnAddPassage').addEventListener('click', () => addQuestion('passage'));
 
 /* ---------- Editor open/close/save ---------- */
@@ -1094,7 +1136,9 @@ function validateBeforeSave(test){
   if (test.questions.length === 0) errs.push('Add at least one question.');
   test.questions.forEach((q, i) => {
     if (q.type === 'passage') {
-      if (!q.prompt && !q.audioUrl) errs.push('Passage ' + (i+1) + ': needs passage text, an audio URL, or both.');
+      if (!q.sectionTitle) errs.push('Section ' + (i+1) + ': needs a header.');
+      if (q.sectionType === 'reading' && !q.prompt) errs.push('Section ' + (i+1) + ' (Reading): needs a reading passage.');
+      if (q.sectionType === 'listening' && !q.audioUrl) errs.push('Section ' + (i+1) + ' (Listening): needs an audio link.');
       return;
     }
     if (!q.prompt) errs.push('Q' + (i+1) + ': question text is required.');
@@ -1189,9 +1233,9 @@ function normalizeJsTest(obj) {
   if (!Array.isArray(obj.questions) || obj.questions.length === 0) errors.push('Missing or empty "questions" array.');
 
   (obj.questions || []).forEach((q, i) => {
-    if (!q.type || (q.type !== 'mc' && q.type !== 'short' && q.type !== 'passage')) errors.push(`Question ${i+1}: type must be "mc", "short", or "passage".`);
+    if (!q.type || (q.type !== 'mc' && q.type !== 'short' && q.type !== 'passage' && q.type !== 'code')) errors.push(`Question ${i+1}: type must be "mc", "short", "code", or "passage" (section).`);
     if (q.type === 'passage') {
-      if (!q.prompt && !q.audioUrl) errors.push(`Question ${i+1} (passage): needs a prompt (passage text), an audioUrl, or both.`);
+      if (!q.prompt && !q.audioUrl && !q.sectionTitle) errors.push(`Question ${i+1} (section): needs a header, passage text, or audio.`);
     } else {
       if (!q.prompt) errors.push(`Question ${i+1}: missing prompt.`);
       if (q.type === 'mc') {
@@ -1215,7 +1259,8 @@ function normalizeJsTest(obj) {
       shuffleQuestions: !!obj.shuffleQuestions,
       shuffleOptions: !!obj.shuffleOptions,
       questions: obj.questions.map(q => {
-        if (q.type === 'passage') return { type: 'passage', prompt: q.prompt || '', points: 0, audioUrl: q.audioUrl || '' };
+        if (q.type === 'passage') return { type: 'passage', sectionType: q.sectionType || '', sectionTitle: q.sectionTitle || '', sectionDesc: q.sectionDesc || '', prompt: q.prompt || '', audioUrl: q.audioUrl || '', points: 0 };
+        if (q.type === 'code') return { type: 'code', prompt: q.prompt, points: Number(q.points) || 0, starterCode: q.starterCode || '', answer: q.answer || '', explanation: q.explanation || '' };
         return q.type === 'mc'
           ? { type: 'mc', prompt: q.prompt, points: Number(q.points) || 0, options: q.options, correctIndex: Number(q.correctIndex), explanation: q.explanation || '', audioUrl: q.audioUrl || '' }
           : { type: 'short', prompt: q.prompt, points: Number(q.points) || 0, answer: q.answer || '', explanation: q.explanation || '', audioUrl: q.audioUrl || '' };

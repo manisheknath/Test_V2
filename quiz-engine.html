@@ -215,34 +215,35 @@ button.ghost:hover{ border-color:var(--ink-soft); background:var(--paper); }
 .timer-bar{ top:56px; }
 
 /* ============================================================
-   Parts — a passage plus the questions that belong to it. On wide
-   screens the passage stays pinned on the left (position:sticky)
-   while its questions scroll on the right; when the part scrolls
-   past, the next part's passage takes over. --stick-top is set by
-   JS to (top bar + timer bar) height so the passage pins right
-   under them.
+   Sections — a section header (full width) then its block and
+   questions. Visual hierarchy: Header → block → questions.
+   Reading/listening sections pin the block (passage/audio) on the
+   left while the questions scroll on the right; default/coding
+   sections have no block, so questions run under the header.
    ============================================================ */
-.part-split{ display:flex; gap:26px; align-items:flex-start; }
+.part{ margin-bottom:14px; }
+.section-head{ margin:6px 0 16px; }
+.section-eyebrow{ font-family:var(--mono); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--accent-calm); }
+.section-title{ font-family:var(--sans); font-size:23px; font-weight:700; letter-spacing:-0.02em; line-height:1.2; margin:5px 0 5px; text-wrap:balance; }
+.section-desc{ font-size:14.5px; color:var(--ink-soft); line-height:1.55; max-width:760px; }
+.part-body{ display:flex; gap:26px; align-items:flex-start; }
 .part-passage{ flex:0 0 42%; }
 .part-passage-inner{ position:sticky; top:var(--stick-top,150px);
   max-height:calc(100vh - var(--stick-top,150px) - 16px); overflow-y:auto; }
-.part-passage-inner .passage-block{ margin:0; border-radius:10px; }
+.part-passage-inner .passage-block{ margin:0; }
 .part-questions{ flex:1 1 auto; min-width:0; }
-/* Plain lists and banner-section questions stay at a comfortable reading
-   width, centred inside the wider sheet. */
-.part-plain .part-questions, .part-banner .part-questions{ max-width:740px; margin:0 auto; }
-/* A heading-only section (no long passage, no audio): a full-width banner
-   above its questions instead of a sticky side column. */
-.part-banner{ margin-top:8px; }
-.section-banner{ max-width:740px; margin:0 auto 10px; background:var(--accent-soft);
-  border:1px solid var(--paper-line); border-left:3px solid var(--accent-calm);
-  border-radius:10px; padding:14px 18px; }
-.section-banner .passage-text{ font-weight:600; font-size:17px; margin-bottom:0; }
-.section-banner .q-number{ color:var(--accent-calm); }
+/* Sections without a pinned block keep questions at a readable width. */
+.part:not(.part-split) .part-questions{ max-width:760px; }
+
+/* Coding answer — monospace editor */
+.code-answer{ width:100%; font-family:var(--mono); font-size:13px; line-height:1.55; min-height:220px;
+  padding:12px 14px; border:1px solid var(--paper-line); background:var(--paper); color:var(--ink);
+  white-space:pre; overflow:auto; tab-size:2; }
+.code-answer:focus{ outline:none; border-color:var(--accent-calm); box-shadow:0 0 0 3px var(--accent-soft); }
 
 @media (max-width:760px){
-  /* Stack on small screens: passage on top (not pinned), questions below. */
-  .part-split{ display:block; }
+  /* Stack on small screens: block on top (not pinned), questions below. */
+  .part-body{ display:block; }
   .part-passage-inner{ position:static; max-height:none; overflow:visible; margin-bottom:4px; }
 }
 
@@ -715,69 +716,86 @@ function buildQuestions(restoreAnswers){
 
   let questionNumber = 0; // only increments for answerable items — passages are unnumbered
 
-  // A "part" groups a passage with the questions that follow it (until the
-  // next passage). makePart() builds the container; when it has a passage
-  // we lay it out as two columns — a sticky passage on the left, its
-  // questions on the right (see the .part-split CSS).
+  // A "part" is a Section and the questions that follow it (until the next
+  // section). Visual hierarchy: Section header (full width) → block (a
+  // reading passage / listening audio, pinned on the left) → questions.
+  // Default/coding sections have no block, so the questions run full width
+  // beneath the header.
   let currentQuestionsCol = null;
-  function makePart(passageWrap, split){
+  function makePart(headerEl, blockEl, split){
     const part = document.createElement('div');
-    part.className = 'part ' + (passageWrap ? (split ? 'part-split' : 'part-banner') : 'part-plain');
+    part.className = 'part' + (split ? ' part-split' : '');
+    if (headerEl){ headerEl.classList.add('section-head'); part.appendChild(headerEl); }
     const qcol = document.createElement('div');
     qcol.className = 'part-questions';
-    if (passageWrap && split){
-      // Reading/listening section: passage pinned on the left.
-      const pcol = document.createElement('div');
-      pcol.className = 'part-passage';
-      const inner = document.createElement('div');
-      inner.className = 'part-passage-inner';
-      inner.appendChild(passageWrap);
+    if (split && blockEl){
+      const body = document.createElement('div'); body.className = 'part-body';
+      const pcol = document.createElement('div'); pcol.className = 'part-passage';
+      const inner = document.createElement('div'); inner.className = 'part-passage-inner';
+      inner.appendChild(blockEl);
       pcol.appendChild(inner);
-      part.appendChild(pcol);
-      part.appendChild(qcol);
-    } else if (passageWrap){
-      // Heading-only section: full-width banner above the questions.
-      passageWrap.classList.add('section-banner');
-      part.appendChild(passageWrap);
-      part.appendChild(qcol);
+      body.appendChild(pcol);
+      body.appendChild(qcol);
+      part.appendChild(body);
     } else {
       part.appendChild(qcol);
     }
     els.questionsMount.appendChild(part);
     return qcol;
   }
-  // Wider sheet only when the test actually uses passages.
+  // Effective section type (with a fallback for old passage blocks that
+  // predate typed sections).
+  function sectionTypeOf(q){
+    if (q.sectionType) return q.sectionType;
+    if (q.audioUrl) return 'listening';
+    if ((q.prompt || '').length > 160) return 'reading';
+    return 'default';
+  }
+  // A section pins its block beside the questions (two columns) only when it
+  // has one — reading (paragraph) or listening (audio).
+  function isSplitSection(q){
+    const st = sectionTypeOf(q);
+    return (st === 'reading' && !!q.prompt) || (st === 'listening' && !!q.audioUrl);
+  }
+  // Wider sheet only when a section actually pins a block beside its questions.
   const sheetEl = document.querySelector('.sheet');
-  if (sheetEl) sheetEl.classList.toggle('wide', TEST_CONFIG.questions.some(q => q.type === 'passage'));
+  if (sheetEl) sheetEl.classList.toggle('wide', TEST_CONFIG.questions.some(q => q.type === 'passage' && isSplitSection(q)));
 
   questionOrder.forEach((qi) => {
     const q = TEST_CONFIG.questions[qi];
     const wrap = document.createElement('div');
-    wrap.className = q.type === 'passage' ? 'question passage-block' : 'question';
+    wrap.className = 'question';
 
     if (q.type === 'passage') {
-      // A section with audio or a long passage gets the sticky two-column
-      // layout; a short heading-only section becomes a full-width banner.
-      const isReading = !!q.audioUrl || (q.prompt || '').length > 160;
-      const label = document.createElement('div');
-      label.className = 'q-number';
-      label.textContent = q.audioUrl && q.prompt ? 'READING & LISTENING' : q.audioUrl ? 'LISTENING' : (isReading ? 'READING' : 'SECTION');
-      wrap.appendChild(label);
-      if (q.prompt) {
-        const text = document.createElement('div');
-        text.className = 'q-prompt passage-text';
-        text.textContent = q.prompt;
-        wrap.appendChild(text);
+      const st = sectionTypeOf(q);
+      // ---- Section header (full width): eyebrow · title · description ----
+      const header = document.createElement('div');
+      const eyebrow = document.createElement('div');
+      eyebrow.className = 'section-eyebrow';
+      eyebrow.textContent = st.toUpperCase() + ' SECTION';
+      header.appendChild(eyebrow);
+      if (q.sectionTitle) {
+        const h = document.createElement('div'); h.className = 'section-title'; h.textContent = q.sectionTitle;
+        header.appendChild(h);
       }
-      if (q.audioUrl) {
+      if (q.sectionDesc) {
+        const d = document.createElement('div'); d.className = 'section-desc'; d.textContent = q.sectionDesc;
+        header.appendChild(d);
+      }
+      // ---- Section block: reading paragraph OR listening audio ----
+      let block = null;
+      if (st === 'reading' && q.prompt) {
+        block = document.createElement('div'); block.className = 'passage-block';
+        const text = document.createElement('div'); text.className = 'q-prompt passage-text'; text.textContent = q.prompt;
+        block.appendChild(text);
+      } else if (st === 'listening' && q.audioUrl) {
+        block = document.createElement('div'); block.className = 'passage-block';
         const audio = document.createElement('audio');
-        audio.controls = true;
-        audio.preload = 'none';
-        audio.className = 'q-audio';
+        audio.controls = true; audio.preload = 'none'; audio.className = 'q-audio';
         audio.src = normalizeAudioUrl(q.audioUrl);
-        wrap.appendChild(audio);
+        block.appendChild(audio);
       }
-      currentQuestionsCol = makePart(wrap, isReading);
+      currentQuestionsCol = makePart(header, block, isSplitSection(q));
       return;
     }
 
@@ -825,8 +843,28 @@ function buildQuestions(restoreAnswers){
       ta.value = answers[qi] || '';
       ta.addEventListener('input', () => { answers[qi] = ta.value; saveSession(); updateProgressLabel(); });
       wrap.appendChild(ta);
+    } else if (q.type === 'code') {
+      // Monospace code editor, pre-filled with any starter code the first time.
+      if ((answers[qi] === null || answers[qi] === undefined) && q.starterCode) answers[qi] = q.starterCode;
+      const ta = document.createElement('textarea');
+      ta.className = 'code-answer';
+      ta.spellcheck = false;
+      ta.placeholder = 'Write your code here…';
+      ta.value = (answers[qi] !== null && answers[qi] !== undefined) ? answers[qi] : '';
+      ta.addEventListener('input', () => { answers[qi] = ta.value; saveSession(); updateProgressLabel(); });
+      // Let Tab insert a couple of spaces instead of leaving the field.
+      ta.addEventListener('keydown', (e) => {
+        if (e.key === 'Tab') {
+          e.preventDefault();
+          const s = ta.selectionStart, en = ta.selectionEnd;
+          ta.value = ta.value.slice(0, s) + '  ' + ta.value.slice(en);
+          ta.selectionStart = ta.selectionEnd = s + 2;
+          answers[qi] = ta.value; saveSession();
+        }
+      });
+      wrap.appendChild(ta);
     }
-    if (!currentQuestionsCol) currentQuestionsCol = makePart(null);
+    if (!currentQuestionsCol) currentQuestionsCol = makePart(null, null, false);
     currentQuestionsCol.appendChild(wrap);
   });
 
@@ -935,7 +973,7 @@ function gradeAndBuildResults(autoSubmitted){
       number: questionNumber, type: q.type, prompt: q.prompt, points: q.points,
       answerGiven: q.type === 'mc' ? (answers[i] === null ? null : q.options[answers[i]]) : (answers[i] || ""),
       correctAnswer: q.type === 'mc' ? q.options[q.correctIndex] : null,
-      referenceAnswer: q.type === 'short' ? (q.answer || null) : null,
+      referenceAnswer: (q.type === 'short' || q.type === 'code') ? (q.answer || null) : null,
       explanation: q.explanation || null,
       correct
     };
