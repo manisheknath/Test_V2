@@ -1023,7 +1023,10 @@ async function submitTest(autoSubmitted){
 els.btnStart.addEventListener('click', async () => {
   const name = els.takerName.value.trim();
   const email = els.takerEmail.value.trim();
-  if (!name || !email) {
+  // Only require name/email for manual (non-portal) takers. When launched from
+  // the portal the identity comes from the account — and a taker's email is
+  // optional, so don't block starting when it's blank.
+  if (!LOGGED_IN_TAKER && (!name || !email)) {
     alert('Please enter your name and email before starting.');
     return;
   }
