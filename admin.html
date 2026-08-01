@@ -5,44 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Test Admin</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<link rel="stylesheet" href="styles.css">
+<script src="ui.js"></script>
 <style>
-  :root{
-    --bg:#F4F7F5; --surface:#FFFFFF; --surface-2:#FAFBFA; --surface-3:#F1F4F2;
-    --border:#E4E9E5; --border-strong:#D3DAD5;
-    --text:#16211C; --muted:#5F6B65; --faint:#8A948E;
-    --accent:#147A57; --accent-hover:#0F6146; --accent-soft:#E4F1EB; --on-accent:#FFFFFF;
-    --amber-bg:#FBF0DA; --amber-tx:#946213;
-    --slate-bg:#EDF0F2; --slate-tx:#586572;
-    --rose-bg:#FBE8E6; --rose-tx:#B0463B;
-    --shadow-sm:0 1px 2px rgba(20,40,30,.06), 0 1px 3px rgba(20,40,30,.04);
-    --shadow-md:0 4px 12px -4px rgba(20,40,30,.12), 0 2px 6px -2px rgba(20,40,30,.08);
-    --radius:9px; --radius-sm:6px;
-    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-  }
-  @media (prefers-color-scheme:dark){
-    :root{
-      --bg:#0E1411; --surface:#161D19; --surface-2:#1A221D; --surface-3:#202A24;
-      --border:#26302A; --border-strong:#334038;
-      --text:#E9EEEB; --muted:#9BA8A1; --faint:#71807A;
-      --accent:#3FB488; --accent-hover:#57C79A; --accent-soft:#173028; --on-accent:#08130E;
-      --amber-bg:#33280F; --amber-tx:#E4B463; --slate-bg:#222B31; --slate-tx:#9FB0BC;
-      --rose-bg:#331E1C; --rose-tx:#E39189;
-      --shadow-sm:0 1px 2px rgba(0,0,0,.3); --shadow-md:0 6px 18px -6px rgba(0,0,0,.5);
-    }
-  }
-  :root[data-theme="light"]{
-    --bg:#F4F7F5; --surface:#FFFFFF; --surface-2:#FAFBFA; --surface-3:#F1F4F2;
-    --border:#E4E9E5; --border-strong:#D3DAD5; --text:#16211C; --muted:#5F6B65; --faint:#8A948E;
-    --accent:#147A57; --accent-hover:#0F6146; --accent-soft:#E4F1EB; --on-accent:#FFFFFF;
-    --amber-bg:#FBF0DA; --amber-tx:#946213; --slate-bg:#EDF0F2; --slate-tx:#586572; --rose-bg:#FBE8E6; --rose-tx:#B0463B;
-  }
-  :root[data-theme="dark"]{
-    --bg:#0E1411; --surface:#161D19; --surface-2:#1A221D; --surface-3:#202A24;
-    --border:#26302A; --border-strong:#334038; --text:#E9EEEB; --muted:#9BA8A1; --faint:#71807A;
-    --accent:#3FB488; --accent-hover:#57C79A; --accent-soft:#173028; --on-accent:#08130E;
-    --amber-bg:#33280F; --amber-tx:#E4B463; --slate-bg:#222B31; --slate-tx:#9FB0BC; --rose-bg:#331E1C; --rose-tx:#E39189;
-  }
+  /* Design tokens + toast/confirm come from styles.css. Below is
+     admin-specific layout only. */
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{background:var(--bg);font-family:var(--sans);color:var(--text);font-size:14px;line-height:1.45;
@@ -198,20 +165,7 @@
   .notif.unread .n-title::after{content:'';display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);margin-left:7px;vertical-align:middle;}
   .notif-empty{padding:24px 20px;color:var(--muted);font-size:13px;}
 
-  /* ---- Toasts + confirm dialog ---- */
-  .toast-wrap{position:fixed;bottom:22px;right:22px;z-index:300;display:flex;flex-direction:column;gap:10px;max-width:360px;}
-  .toast{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);padding:12px 15px;
-    box-shadow:0 12px 32px -12px rgba(20,40,30,.4);font-size:13.5px;line-height:1.45;color:var(--text);animation:toastIn .18s ease;}
-  .toast.error{border-left-color:#C4453A;}
-  @keyframes toastIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
-  .confirm-overlay{position:fixed;inset:0;background:rgba(15,25,20,.45);display:flex;align-items:center;justify-content:center;padding:24px;z-index:310;}
-  .confirm-box{background:var(--surface);border:1px solid var(--border);max-width:410px;width:100%;padding:22px;box-shadow:var(--shadow-md);}
-  .confirm-title{font-size:17px;font-weight:700;margin-bottom:8px;}
-  .confirm-msg{font-size:14px;color:var(--muted);line-height:1.55;margin-bottom:18px;}
-  .confirm-actions{display:flex;justify-content:flex-end;gap:10px;}
-  .cbtn{font-size:13.5px;font-weight:600;padding:9px 16px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);cursor:pointer;}
-  .cbtn.ok{background:var(--accent);color:#fff;border-color:var(--accent);}
-  .cbtn.ok.danger{background:#C4453A;border-color:#C4453A;}
+  /* Toasts + confirm dialog come from styles.css / ui.js. */
 
   /* ---- New-test dropdown ---- */
   .dropdown{position:relative;}
@@ -621,37 +575,7 @@ function apiPost(body) {
   }).then(r => r.json());
 }
 
-/* ---------- Toasts + confirm dialog (replace native alert/confirm) ---------- */
-function toast(message, type){
-  let wrap = document.getElementById('toastWrap');
-  if (!wrap){ wrap = document.createElement('div'); wrap.id = 'toastWrap'; wrap.className = 'toast-wrap'; document.body.appendChild(wrap); }
-  const t = document.createElement('div');
-  t.className = 'toast' + (type ? ' ' + type : '');
-  t.textContent = message;
-  wrap.appendChild(t);
-  setTimeout(() => { t.style.transition = 'opacity .2s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 220); }, type === 'error' ? 4500 : 2800);
-}
-function confirmDialog(opts){
-  opts = opts || {};
-  return new Promise(resolve => {
-    const ov = document.createElement('div'); ov.className = 'confirm-overlay';
-    const box = document.createElement('div'); box.className = 'confirm-box';
-    const ttl = document.createElement('div'); ttl.className = 'confirm-title'; ttl.textContent = opts.title || 'Are you sure?';
-    const msg = document.createElement('div'); msg.className = 'confirm-msg'; msg.textContent = opts.message || '';
-    const acts = document.createElement('div'); acts.className = 'confirm-actions';
-    const cancel = document.createElement('button'); cancel.className = 'cbtn cancel'; cancel.textContent = 'Cancel';
-    const ok = document.createElement('button'); ok.className = 'cbtn ok' + (opts.danger ? ' danger' : ''); ok.textContent = opts.confirmText || 'Confirm';
-    acts.appendChild(cancel); acts.appendChild(ok);
-    box.appendChild(ttl); box.appendChild(msg); box.appendChild(acts); ov.appendChild(box); document.body.appendChild(ov);
-    function done(v){ ov.remove(); document.removeEventListener('keydown', onKey); resolve(v); }
-    function onKey(e){ if (e.key === 'Escape') done(false); else if (e.key === 'Enter') done(true); }
-    cancel.addEventListener('click', () => done(false));
-    ok.addEventListener('click', () => done(true));
-    ov.addEventListener('click', e => { if (e.target === ov) done(false); });
-    document.addEventListener('keydown', onKey);
-    ok.focus();
-  });
-}
+/* toast() and confirmDialog() are provided by ui.js (shared). */
 
 /* ---------- Login ---------- */
 document.getElementById('btnLogin').addEventListener('click', async () => {
@@ -903,7 +827,7 @@ document.getElementById('bulkDelete').addEventListener('click', async () => {
 
 /* ---------- People (test takers) ---------- */
 let editingTakerId = null;
-function pEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// pEsc() (HTML-escape) is provided by ui.js (shared).
 
 function renderPortalLink(){
   document.getElementById('portalLinkBox').textContent = 'Taker portal: ' + CONFIG.homeUrl;
