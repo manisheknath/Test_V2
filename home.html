@@ -4,50 +4,11 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>My Tests</title>
+<link rel="stylesheet" href="styles.css">
+<script src="ui.js"></script>
 <style>
-  :root{
-    --bg:#F4F7F5; --surface:#FFFFFF; --surface-2:#FAFBFA; --surface-3:#F1F4F2;
-    --border:#E4E9E5; --border-strong:#D3DAD5;
-    --text:#16211C; --muted:#5F6B65; --faint:#8A948E;
-    --accent:#147A57; --accent-hover:#0F6146; --accent-soft:#E4F1EB; --on-accent:#FFFFFF;
-    --amber-bg:#FBF0DA; --amber-tx:#946213;
-    --slate-bg:#EDF0F2; --slate-tx:#586572;
-    --rose-bg:#FBE8E6; --rose-tx:#B0463B;
-    --shadow-sm:0 1px 2px rgba(20,40,30,.06), 0 1px 3px rgba(20,40,30,.04);
-    --shadow-md:0 4px 12px -4px rgba(20,40,30,.12), 0 2px 6px -2px rgba(20,40,30,.08);
-    --shadow-lg:0 24px 60px -20px rgba(20,40,30,.4);
-    --radius:9px; --radius-sm:6px;
-    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-  }
-  @media (prefers-color-scheme:dark){
-    :root{
-      --bg:#0E1411; --surface:#161D19; --surface-2:#1A221D; --surface-3:#202A24;
-      --border:#26302A; --border-strong:#334038;
-      --text:#E9EEEB; --muted:#9BA8A1; --faint:#71807A;
-      --accent:#3FB488; --accent-hover:#57C79A; --accent-soft:#173028; --on-accent:#08130E;
-      --amber-bg:#33280F; --amber-tx:#E4B463; --slate-bg:#222B31; --slate-tx:#9FB0BC;
-      --rose-bg:#331E1C; --rose-tx:#E39189;
-      --shadow-sm:0 1px 2px rgba(0,0,0,.3); --shadow-md:0 6px 18px -6px rgba(0,0,0,.5);
-      --shadow-lg:0 24px 60px -20px rgba(0,0,0,.7);
-    }
-  }
-  :root[data-theme="light"]{
-    --bg:#F4F7F5; --surface:#FFFFFF; --surface-2:#FAFBFA; --surface-3:#F1F4F2;
-    --border:#E4E9E5; --border-strong:#D3DAD5;
-    --text:#16211C; --muted:#5F6B65; --faint:#8A948E;
-    --accent:#147A57; --accent-hover:#0F6146; --accent-soft:#E4F1EB; --on-accent:#FFFFFF;
-    --amber-bg:#FBF0DA; --amber-tx:#946213; --slate-bg:#EDF0F2; --slate-tx:#586572;
-    --rose-bg:#FBE8E6; --rose-tx:#B0463B;
-  }
-  :root[data-theme="dark"]{
-    --bg:#0E1411; --surface:#161D19; --surface-2:#1A221D; --surface-3:#202A24;
-    --border:#26302A; --border-strong:#334038;
-    --text:#E9EEEB; --muted:#9BA8A1; --faint:#71807A;
-    --accent:#3FB488; --accent-hover:#57C79A; --accent-soft:#173028; --on-accent:#08130E;
-    --amber-bg:#33280F; --amber-tx:#E4B463; --slate-bg:#222B31; --slate-tx:#9FB0BC;
-    --rose-bg:#331E1C; --rose-tx:#E39189;
-  }
+  /* Design tokens + toast/confirm come from styles.css. Below is
+     home-specific layout only. */
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
   body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.45;
@@ -202,13 +163,6 @@
   .grades-tbl tr:last-child td{border-bottom:none;}
   .g-view{color:var(--accent);font-weight:600;cursor:pointer;font-size:13px;white-space:nowrap;}
 
-  /* ---- Toasts ---- */
-  .toast-wrap{position:fixed;bottom:22px;right:22px;z-index:300;display:flex;flex-direction:column;gap:10px;max-width:360px;}
-  .toast{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);padding:12px 15px;
-    box-shadow:0 12px 32px -12px rgba(20,40,30,.4);font-size:13.5px;line-height:1.45;color:var(--text);animation:toastIn .18s ease;}
-  .toast.error{border-left-color:#C4453A;}
-  @keyframes toastIn{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
-
   /* Flat UI — square corners on all boxes (profile avatar stays round) */
   .login-card,.modal,.tcard,.field input,.btn,.link-btn,.icon-btn,.err,.go,.badge,
   .review-item .tag,.notif .ic,.notif-badge,.logo,.brand .logo,.toast{ border-radius:0; }
@@ -324,14 +278,7 @@ function fmt(input){
   let h=d.getHours(); const ap=h>=12?'PM':'AM'; h=h%12; if(h===0)h=12;
   return d.getDate()+' '+MONTHS[d.getMonth()]+' '+d.getFullYear()+', '+h+':'+pad(d.getMinutes())+' '+ap;
 }
-function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-function toast(message, type){
-  let wrap=document.getElementById('toastWrap');
-  if(!wrap){ wrap=document.createElement('div'); wrap.id='toastWrap'; wrap.className='toast-wrap'; document.body.appendChild(wrap); }
-  const t=document.createElement('div'); t.className='toast'+(type?' '+type:''); t.textContent=message;
-  wrap.appendChild(t);
-  setTimeout(()=>{ t.style.transition='opacity .2s'; t.style.opacity='0'; setTimeout(()=>t.remove(),220); }, type==='error'?4500:2800);
-}
+// esc() and toast() are provided by ui.js (shared).
 function initials(name){ const p=String(name||'').trim().split(/\s+/); return ((p[0]||'')[0]||'')+((p[1]||'')[0]||'')||'?'; }
 
 async function apiPost(payload){
