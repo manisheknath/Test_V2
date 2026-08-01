@@ -5,21 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Test</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script src="ui.js"></script>
 <style>
-:root{
-  --ink:        #1C2E3A;
-  --ink-soft:   #435363;
-  --paper:      #ECEFEA;
-  --paper-line: #D3D9CE;
-  --card:       #FFFFFF;
-  --accent-calm:  #3C6E52;
-  --accent-warn:  #C98A2C;
-  --accent-alert: #C4453A;
-  --mono: 'IBM Plex Mono', ui-monospace, monospace;
-  --sans: 'IBM Plex Sans', system-ui, sans-serif;
-  --serif: 'Fraunces', Georgia, serif;
-}
+/* Design tokens + toast/confirm come from styles.css / ui.js (the engine's
+   old --ink/--paper/--card names are provided there as aliases). Below is
+   quiz-engine layout only. */
 *{ box-sizing: border-box; }
 html,body{ margin:0; padding:0; }
 body{
@@ -143,28 +134,8 @@ footer.actions{ display:flex; justify-content: flex-end; padding: 20px 32px 28px
    redefining the existing design tokens and restyling components.
    No markup IDs or JS behaviour change; only the look.
    ============================================================ */
-:root{
-  --ink:#16211C; --ink-soft:#5F6B65; --paper:#F4F7F5; --paper-line:#E4E9E5; --card:#FFFFFF;
-  --accent-calm:#147A57; --accent-warn:#946213; --accent-alert:#B0463B;
-  --accent-soft:#E4F1EB; --rose-bg:#FBE8E6;
-  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --serif:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
-}
-@media (prefers-color-scheme:dark){
-  :root{
-    --ink:#E9EEEB; --ink-soft:#9BA8A1; --paper:#0E1411; --paper-line:#26302A; --card:#161D19;
-    --accent-calm:#3FB488; --accent-warn:#E4B463; --accent-alert:#E39189; --accent-soft:#173028; --rose-bg:#331E1C;
-  }
-}
-:root[data-theme="light"]{
-  --ink:#16211C; --ink-soft:#5F6B65; --paper:#F4F7F5; --paper-line:#E4E9E5; --card:#FFFFFF;
-  --accent-calm:#147A57; --accent-warn:#946213; --accent-alert:#B0463B; --accent-soft:#E4F1EB; --rose-bg:#FBE8E6;
-}
-:root[data-theme="dark"]{
-  --ink:#E9EEEB; --ink-soft:#9BA8A1; --paper:#0E1411; --paper-line:#26302A; --card:#161D19;
-  --accent-calm:#3FB488; --accent-warn:#E4B463; --accent-alert:#E39189; --accent-soft:#173028; --rose-bg:#331E1C;
-}
+/* Design tokens now come from styles.css (via the --ink/--paper/--card
+   aliases). */
 
 body{ display:block; padding:0 0 80px; background-image:none; }
 .qe-topbar{ position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:10px;
@@ -247,23 +218,12 @@ button.ghost:hover{ border-color:var(--ink-soft); background:var(--paper); }
   .part-passage-inner{ position:static; max-height:none; overflow:visible; margin-bottom:4px; }
 }
 
-/* Toasts + confirm dialog (replace native alert/confirm) */
-.toast-wrap{ position:fixed; bottom:22px; right:22px; z-index:300; display:flex; flex-direction:column; gap:10px; max-width:360px; }
-.toast{ background:var(--card); border:1px solid var(--paper-line); border-left:3px solid var(--accent-calm);
-  padding:12px 15px; box-shadow:0 12px 32px -12px rgba(20,40,30,.4); font-size:13.5px; line-height:1.45; color:var(--ink); }
-.toast.error{ border-left-color:var(--accent-alert); }
-.confirm-overlay{ position:fixed; inset:0; background:rgba(15,25,20,.5); display:flex; align-items:center; justify-content:center; padding:24px; z-index:310; }
-.confirm-box{ background:var(--card); border:1px solid var(--paper-line); max-width:420px; width:100%; padding:22px; box-shadow:0 24px 60px -20px rgba(0,0,0,.5); }
-.confirm-title{ font-family:var(--sans); font-size:17px; font-weight:700; margin-bottom:8px; color:var(--ink); }
-.confirm-msg{ font-size:14px; color:var(--ink-soft); line-height:1.55; margin-bottom:18px; }
-.confirm-actions{ display:flex; justify-content:flex-end; gap:10px; }
-.cbtn{ font-family:var(--sans); font-size:13.5px; font-weight:600; padding:9px 16px; border:1px solid var(--paper-line); background:var(--card); color:var(--ink); cursor:pointer; }
-.cbtn.ok{ background:var(--accent-calm); color:#fff; border-color:var(--accent-calm); }
+/* Toast + confirm styles come from styles.css. */
 
 /* Flat UI — square corners on all boxes */
 .sheet, button.primary, button.ghost, .field input, .field textarea, .option, .q-audio,
 .notice, .tag, .section-banner, .part-passage-inner .passage-block, .qe-topbar .qe-logo,
-.timer-fill, .timer-track, .toast, .confirm-box, .cbtn{ border-radius:0; }
+.timer-fill, .timer-track{ border-radius:0; }
 </style>
 </head>
 <body>
@@ -1088,37 +1048,7 @@ async function submitTest(autoSubmitted){
     + " You can view your result under “My grades” in your portal once it has been reviewed.";
 }
 
-/* ---------- Toasts + confirm dialog (replace native alert/confirm) ---------- */
-function toast(message, type){
-  let wrap = document.getElementById('toastWrap');
-  if (!wrap){ wrap = document.createElement('div'); wrap.id = 'toastWrap'; wrap.className = 'toast-wrap'; document.body.appendChild(wrap); }
-  const t = document.createElement('div');
-  t.className = 'toast' + (type ? ' ' + type : '');
-  t.textContent = message;
-  wrap.appendChild(t);
-  setTimeout(() => { t.style.transition = 'opacity .2s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 220); }, type === 'error' ? 4500 : 2800);
-}
-function confirmDialog(opts){
-  opts = opts || {};
-  return new Promise(resolve => {
-    const ov = document.createElement('div'); ov.className = 'confirm-overlay';
-    const box = document.createElement('div'); box.className = 'confirm-box';
-    const ttl = document.createElement('div'); ttl.className = 'confirm-title'; ttl.textContent = opts.title || 'Are you sure?';
-    const msg = document.createElement('div'); msg.className = 'confirm-msg'; msg.textContent = opts.message || '';
-    const acts = document.createElement('div'); acts.className = 'confirm-actions';
-    const cancel = document.createElement('button'); cancel.className = 'cbtn cancel'; cancel.textContent = 'Cancel';
-    const ok = document.createElement('button'); ok.className = 'cbtn ok' + (opts.danger ? ' danger' : ''); ok.textContent = opts.confirmText || 'Confirm';
-    acts.appendChild(cancel); acts.appendChild(ok);
-    box.appendChild(ttl); box.appendChild(msg); box.appendChild(acts); ov.appendChild(box); document.body.appendChild(ov);
-    function done(v){ ov.remove(); document.removeEventListener('keydown', onKey); resolve(v); }
-    function onKey(e){ if (e.key === 'Escape') done(false); else if (e.key === 'Enter') done(true); }
-    cancel.addEventListener('click', () => done(false));
-    ok.addEventListener('click', () => done(true));
-    ov.addEventListener('click', e => { if (e.target === ov) done(false); });
-    document.addEventListener('keydown', onKey);
-    ok.focus();
-  });
-}
+/* toast() and confirmDialog() are provided by ui.js (shared). */
 
 els.btnStart.addEventListener('click', async () => {
   const name = els.takerName.value.trim();
@@ -1169,9 +1099,7 @@ els.btnSubmit.addEventListener('click', async () => {
   submitTest(false);
 });
 
-function escapeHtml(str){
-  return String(str).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
-}
+// escapeHtml() is provided by ui.js (shared).
 
 function downloadPdf(payload){
   const { jsPDF } = window.jspdf;
