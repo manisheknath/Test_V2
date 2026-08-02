@@ -67,25 +67,13 @@ header.masthead p{ color: var(--ink-soft); font-size: 15px; line-height: 1.5; ma
 .screen[hidden]{ display:none; }
 .field{ margin-bottom: 22px; }
 .field label{ display:block; font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 8px; }
-.field input[type=text], .field input[type=email], .field textarea{
-  width:100%; border: 1px solid var(--paper-line); background: var(--paper);
-  padding: 11px 12px; font-family: var(--sans); font-size: 15px; color: var(--ink);
-  user-select: text;
-}
-.field textarea{ min-height: 84px; resize: vertical; }
-.field input:focus, .field textarea:focus{ outline: 2px solid var(--ink); outline-offset: 1px; }
-button.primary{
-  font-family: var(--mono); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
-  background: var(--ink); color: var(--paper); border: none; padding: 14px 24px; cursor: pointer;
-}
-button.primary:hover{ background: var(--ink-soft); }
-button.primary:disabled{ background: var(--paper-line); color: var(--ink-soft); cursor: not-allowed; }
-button.ghost{
-  font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase;
-  background: transparent; color: var(--ink-soft); border: 1px solid var(--paper-line);
-  padding: 10px 16px; cursor: pointer; margin-left: 10px;
-}
-button.ghost:hover{ border-color: var(--ink-soft); color: var(--ink); }
+/* Text-field look comes from styles.css (shared). The engine keeps text
+   selectable (selection is disabled inside .question) and a taller box. */
+.field input[type=text], .field input[type=email], .field textarea{ user-select: text; }
+.field textarea{ min-height: 84px; }
+/* Buttons come from styles.css (shared). Ghost buttons in the engine sit
+   beside a primary action with a small gap. */
+button.ghost{ margin-left: 10px; }
 .notice{
   font-size: 14px; line-height: 1.5; padding: 14px 16px;
   border-left: 3px solid var(--accent-alert); background: #FBEEEC; color: #7A2E27; margin-bottom: 20px;
@@ -155,17 +143,6 @@ body{ display:block; padding:0 0 80px; background-image:none; }
 
 header.masthead h1{ font-weight:700; letter-spacing:-.02em; }
 .q-prompt{ font-weight:600; }
-
-button.primary{ font-family:var(--sans); text-transform:none; letter-spacing:normal; font-weight:600;
-  font-size:14px; background:var(--accent-calm); color:#fff; border-radius:8px; padding:12px 20px; }
-button.primary:hover{ background:#0F6146; }
-button.primary:disabled{ background:var(--paper-line); color:var(--ink-soft); }
-button.ghost{ font-family:var(--sans); text-transform:none; letter-spacing:normal; font-weight:600;
-  font-size:13px; border-radius:8px; border:1px solid var(--paper-line); color:var(--ink); background:var(--card); }
-button.ghost:hover{ border-color:var(--ink-soft); background:var(--paper); }
-
-.field input[type=text], .field input[type=email], .field textarea{ border-radius:8px; }
-.field input:focus, .field textarea:focus{ outline:none; border-color:var(--accent-calm); box-shadow:0 0 0 3px var(--accent-soft); }
 
 .option{ border-radius:9px; }
 .option:hover{ border-color:var(--accent-calm); }
