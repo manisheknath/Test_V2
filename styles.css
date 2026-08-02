@@ -123,6 +123,15 @@ button.danger, .btn.danger{ background:var(--surface); color:var(--rose-tx); bor
 button.danger:hover, .btn.danger:hover{ background:var(--rose-bg); }
 button.small, .btn.small{ padding:6px 10px; font-size:12px; gap:5px; }
 button.primary:disabled, button.ghost:disabled, button.danger:disabled, .btn:disabled{ opacity:.6; cursor:not-allowed; }
+/* Keyboard focus ring + a subtle press, applied only to the variants. */
+.btn:focus-visible,
+button.primary:focus-visible, button.ghost:focus-visible, button.danger:focus-visible{
+  outline:2px solid var(--accent); outline-offset:2px;
+}
+.btn:not(:disabled):active,
+button.primary:not(:disabled):active, button.ghost:not(:disabled):active, button.danger:not(:disabled):active{
+  transform:translateY(1px);
+}
 
 /* ============================================================
    Form fields  —  canonical text inputs, textarea, select
@@ -141,3 +150,9 @@ input:focus, textarea:focus, select:focus{
   outline:none; border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-soft);
 }
 textarea{ min-height:70px; resize:vertical; line-height:1.5; }
+input::placeholder, textarea::placeholder{ color:var(--faint); opacity:1; }
+
+/* Respect users who prefer less motion. */
+@media (prefers-reduced-motion:reduce){
+  *{ transition-duration:.01ms !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; }
+}
