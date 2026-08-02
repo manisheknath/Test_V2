@@ -29,16 +29,9 @@
   .login-card .lede{margin:0 0 22px;color:var(--muted);font-size:13.5px;line-height:1.5;}
   .field{margin-bottom:16px;}
   .field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;}
-  .field input{width:100%;background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
-    padding:11px 13px;font-size:14.5px;color:var(--text);}
-  .field input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
-  .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:14px;font-weight:600;
-    border-radius:8px;padding:11px 16px;border:1px solid transparent;width:100%;}
-  .btn.primary{background:var(--accent);color:var(--on-accent);}
-  .btn.primary:hover{background:var(--accent-hover);}
-  .btn.ghost{background:var(--surface);color:var(--text);border:1px solid var(--border-strong);}
-  .btn.ghost:hover{background:var(--surface-3);}
-  .btn.primary:disabled{opacity:.6;cursor:not-allowed;}
+  /* Text inputs and .btn primary/ghost come from styles.css (shared).
+     Only the login button's full width is page-specific. */
+  .btn{width:100%;}
   .err{background:var(--rose-bg);color:var(--rose-tx);font-size:13px;font-weight:500;
     padding:10px 13px;border-radius:8px;margin-bottom:16px;}
 
