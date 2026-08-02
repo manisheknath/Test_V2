@@ -228,11 +228,15 @@
   <div class="shell">
     <aside class="sidebar">
       <div class="nav-label">Menu</div>
+      <button class="nav-item active" data-tview="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 12h7v8h-7zM4 15h7v5H4z"/></svg>
+        Dashboard
+      </button>
       <button class="nav-item" data-tview="trainings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6l8-3 8 3-8 3-8-3Z"/><path d="M7 9v5c0 1.5 2.2 2.5 5 2.5s5-1 5-2.5V9"/><path d="M20 7v6"/></svg>
         Trainings
       </button>
-      <button class="nav-item active" data-tview="tests">
+      <button class="nav-item" data-tview="tests">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
         Tests<span class="cnt" id="navTestsCount"></span>
       </button>
@@ -240,9 +244,9 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
         Results<span class="cnt" id="navResultsCount"></span>
       </button>
-      <button class="nav-item" data-tview="dashboard">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 12h7v8h-7zM4 15h7v5H4z"/></svg>
-        Dashboard
+      <button class="nav-item" data-tview="certificates">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="9" r="5"/><path d="M8.5 13.2 7 22l5-2.8L17 22l-1.5-8.8"/></svg>
+        Certificates
       </button>
       <div class="foot">
         <div class="avatar" id="sideAvatar">–</div>
@@ -252,7 +256,7 @@
 
     <main class="main">
       <!-- Dashboard -->
-      <section class="view" id="tview-dashboard" hidden>
+      <section class="view" id="tview-dashboard">
         <div class="hello"><h1 id="dashHi">Welcome</h1><p>An overview of your tests and progress.</p></div>
         <div id="dashBody"></div>
       </section>
@@ -264,7 +268,7 @@
       </section>
 
       <!-- Tests -->
-      <section class="view" id="tview-tests">
+      <section class="view" id="tview-tests" hidden>
         <div class="hello">
           <h1 id="helloTitle">Your tests</h1>
           <p id="helloSub">Loading…</p>
@@ -278,6 +282,12 @@
       <section class="view" id="tview-results" hidden>
         <div class="hello"><h1>Results</h1><p>Your completed tests and scores.</p></div>
         <div id="resultsBody"></div>
+      </section>
+
+      <!-- Certificates -->
+      <section class="view" id="tview-certificates" hidden>
+        <div class="hello"><h1>Certificates</h1><p>Certificates you've earned from completed trainings and tests.</p></div>
+        <div class="empty">You haven't earned any certificates yet.</div>
       </section>
     </main>
   </div>
@@ -390,6 +400,7 @@ async function showApp(){
   updateTakerNavCounts();
   buildNotifications();
   updateNotifBadge();
+  switchTakerView('dashboard');   // land on the dashboard
 }
 // Left-pane counts + the four-view switcher.
 function updateTakerNavCounts(){
@@ -399,7 +410,7 @@ function updateTakerNavCounts(){
 }
 function switchTakerView(view){
   document.querySelectorAll('#screenApp .nav-item').forEach(b=>b.classList.toggle('active', b.dataset.tview===view));
-  ['dashboard','trainings','tests','results'].forEach(v=>{
+  ['dashboard','trainings','tests','results','certificates'].forEach(v=>{
     const el=document.getElementById('tview-'+v); if(el) el.hidden = (v!==view);
   });
   if(view==='results') renderResults();
