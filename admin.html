@@ -1185,7 +1185,7 @@ function renderQuestions(){
     head.className = 'q-card-head';
     const typeLabel = q.type === 'mc' ? 'Multiple choice' : q.type === 'short' ? 'Short answer'
       : q.type === 'code' ? 'Coding question'
-      : 'Section · ' + ((q.sectionType || 'reading').charAt(0).toUpperCase() + (q.sectionType || 'reading').slice(1));
+      : ((q.sectionType || 'reading').charAt(0).toUpperCase() + (q.sectionType || 'reading').slice(1));
     head.innerHTML = `<b>${q.type === 'passage' ? 'Section' : 'Q' + (i+1)} · ${typeLabel}</b>`;
     const controls = document.createElement('div');
     controls.style.display = 'flex'; controls.style.gap = '6px';
