@@ -152,6 +152,17 @@ input:focus, textarea:focus, select:focus{
 textarea{ min-height:70px; resize:vertical; line-height:1.5; }
 input::placeholder, textarea::placeholder{ color:var(--faint); opacity:1; }
 
+/* ============================================================
+   Grading result tags  —  <span class="tag correct|incorrect|ungraded">
+   ------------------------------------------------------------
+   Colors only, so each review context keeps its own base type
+   (the portal uses sans, the engine uses mono). Variant names are
+   grading-specific and never collide with status pills (.tag.open…).
+   ============================================================ */
+.tag.correct{ background:var(--accent-soft); color:var(--accent); }
+.tag.incorrect{ background:var(--rose-bg); color:var(--rose-tx); }
+.tag.ungraded{ background:var(--slate-bg); color:var(--slate-tx); }
+
 /* Respect users who prefer less motion. */
 @media (prefers-reduced-motion:reduce){
   *{ transition-duration:.01ms !important; animation-duration:.01ms !important; animation-iteration-count:1 !important; }
