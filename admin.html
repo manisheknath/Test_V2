@@ -1221,7 +1221,7 @@ document.getElementById('usersAssignApply').addEventListener('click', async () =
     const groups = String(t.groups || '').split(',').map(s => s.trim()).filter(Boolean);
     if (!groups.includes(grp)){
       groups.push(grp);
-      await apiPost({ action: 'saveTaker', token: ADMIN_TOKEN, taker: { takerId: t.takerId, name: t.name, email: t.email, groups: groups.join(', ') } });
+      await apiPost({ action: 'saveTaker', token: ADMIN_TOKEN, taker: { takerId: t.takerId, name: t.name, email: t.email, groups: groups.join(', '), password: '' } });
       count++;
     }
   }
@@ -1293,7 +1293,7 @@ async function removeGroupsFromMembers(names){
     const groups = String(t.groups || '').split(',').map(s => s.trim()).filter(Boolean);
     const kept = groups.filter(g => !set.has(g));
     if (kept.length !== groups.length){
-      await apiPost({ action: 'saveTaker', token: ADMIN_TOKEN, taker: { takerId: t.takerId, name: t.name, email: t.email, groups: kept.join(', ') } });
+      await apiPost({ action: 'saveTaker', token: ADMIN_TOKEN, taker: { takerId: t.takerId, name: t.name, email: t.email, groups: kept.join(', '), password: '' } });
     }
   }
 }
@@ -1375,7 +1375,7 @@ document.getElementById('btnSaveGroup').addEventListener('click', async () => {
     if (shouldHave && !has) groups.push(newName);
     else if (!shouldHave && has) groups = groups.filter(g => g !== newName);
     if (groups.join('|') !== before){
-      await apiPost({ action: 'saveTaker', token: ADMIN_TOKEN, taker: { takerId: t.takerId, name: t.name, email: t.email, groups: groups.join(', ') } });
+      await apiPost({ action: 'saveTaker', token: ADMIN_TOKEN, taker: { takerId: t.takerId, name: t.name, email: t.email, groups: groups.join(', '), password: '' } });
       changed++;
     }
   }
