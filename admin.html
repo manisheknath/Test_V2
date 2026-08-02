@@ -754,12 +754,11 @@
    ============================================================ */
 const CONFIG = {
   appsScriptUrl: "https://script.google.com/macros/s/AKfycbx8_AAZkrvQGIvmORUN1wya8kcyzeOL-GTb3lzaFHnladKfpg4iaZ-ttpo9YfBJ8Z0x/exec",
-  // Where quiz-engine.html is hosted, WITHOUT a trailing slash or
-  // query string — e.g. "https://yoursite.com/quiz-engine.html"
-  quizEngineUrl: "https://manisheknath.github.io/Test_V2/quiz-engine.html",
-  // Where home.html (the test-taker portal) is hosted — same folder as
-  // quiz-engine.html. Used to show/copy the portal link.
-  homeUrl: "https://manisheknath.github.io/Test_V2/home.html"
+  // Portal + engine links are resolved relative to wherever admin.html is
+  // served, so they stay correct on any host (GitHub Pages, *.pages.dev,
+  // or a custom domain) with no edits.
+  quizEngineUrl: new URL("quiz-engine.html", location.href).href,
+  homeUrl: new URL("home.html", location.href).href
 };
 
 let ADMIN_TOKEN = sessionStorage.getItem('adminToken') || '';
