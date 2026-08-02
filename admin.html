@@ -171,24 +171,35 @@
 
   /* ---- List toolbar (search / bulk actions) ---- */
   .list-toolbar{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;padding-bottom:14px;margin-bottom:8px;border-bottom:1px solid var(--border);}
+  .list-toolbar.bulk-active{border-bottom:none;padding-bottom:0;margin-bottom:16px;}
   .list-search{display:flex;align-items:center;gap:9px;background:var(--surface-2);border:1px solid var(--border);
     padding:9px 12px;min-width:280px;max-width:420px;flex:1;color:var(--muted);}
   .list-search input{border:none;background:none;padding:0;margin:0;font-size:14px;width:100%;color:var(--text);}
   .list-search input:focus{outline:none;}
   .list-search.hidden{display:none;}
-  .bulk-bar{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap;width:100%;}
+
+  /* Bulk action utility bar — appears when rows are selected */
+  .bulk-bar{display:flex;flex-direction:column;gap:12px;width:100%;
+    background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);
+    box-shadow:var(--shadow-sm);padding:12px 14px;}
   .bulk-bar.hidden{display:none;}
-  .bulk-count{font-size:13px;font-weight:600;align-self:center;white-space:nowrap;}
-  .bulk-count b{color:var(--accent);}
-  .bulk-field{display:flex;flex-direction:column;gap:4px;}
-  .bulk-field label{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);margin:0;}
-  .bulk-field input{margin:0;min-width:150px;}
+  .bulk-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .bulk-row-top{justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:11px;}
+  .bulk-left{display:flex;align-items:center;gap:10px;}
+  .bulk-count{font-size:13.5px;font-weight:600;color:var(--text);white-space:nowrap;}
+  .bulk-count b{color:var(--accent);font-size:15px;margin-right:2px;}
+  .bulk-clear{background:none;border:none;color:var(--muted);font-size:12.5px;font-weight:600;padding:3px 6px;cursor:pointer;}
+  .bulk-clear:hover{color:var(--text);}
+  .bulk-inline{display:flex;align-items:center;gap:7px;margin:0;font-size:10.5px;font-weight:700;
+    letter-spacing:.05em;text-transform:uppercase;color:var(--faint);white-space:nowrap;}
+  .bulk-inline input{margin:0;width:auto;font-size:13px;padding:6px 9px;}
+  .bulk-actions #bulkApply{margin-left:2px;}
   .row-check,#selectAllTests{width:auto;margin:0;cursor:pointer;}
-  #bulkApply{align-self:flex-end;}
+
   /* Multi-select (groups + users) */
   .ms{position:relative;}
-  .ms-trigger{min-width:210px;text-align:left;background:var(--surface-2);border:1px solid var(--border);
-    color:var(--text);font-size:14px;font-weight:400;padding:10px 12px;}
+  .ms-trigger{min-width:180px;text-align:left;background:var(--surface-2);border:1px solid var(--border);
+    color:var(--text);font-size:13px;font-weight:400;padding:7px 10px;}
   .ms-trigger:hover{border-color:var(--border-strong);}
   .ms-panel{position:absolute;top:calc(100% + 4px);left:0;min-width:240px;max-height:280px;overflow-y:auto;
     background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-md);z-index:50;padding:6px 0;}
@@ -328,18 +339,22 @@
               <input type="text" id="testSearch" placeholder="Search by test code or name…">
             </div>
             <div id="bulkBar" class="bulk-bar hidden">
-              <span class="bulk-count"><b id="bulkCount">0</b> selected</span>
-              <div class="bulk-field">
-                <label>Assign to</label>
+              <div class="bulk-row bulk-row-top">
+                <div class="bulk-left">
+                  <span class="bulk-count"><b id="bulkCount">0</b> selected</span>
+                  <button type="button" class="bulk-clear" id="bulkClear">Clear</button>
+                </div>
+                <button class="danger small" id="bulkDelete">Delete</button>
+              </div>
+              <div class="bulk-row bulk-actions">
                 <div class="ms">
-                  <button type="button" class="ms-trigger" id="bulkAssignTrigger">Select groups / users ▾</button>
+                  <button type="button" class="ms-trigger" id="bulkAssignTrigger">Assign to… ▾</button>
                   <div class="ms-panel hidden" id="bulkAssignPanel"></div>
                 </div>
+                <label class="bulk-inline" for="bulkStart">Start<input type="datetime-local" id="bulkStart"></label>
+                <label class="bulk-inline" for="bulkDeadline">Deadline<input type="datetime-local" id="bulkDeadline"></label>
+                <button class="primary small" id="bulkApply">Apply</button>
               </div>
-              <div class="bulk-field"><label for="bulkStart">Start date</label><input type="datetime-local" id="bulkStart"></div>
-              <div class="bulk-field"><label for="bulkDeadline">Deadline</label><input type="datetime-local" id="bulkDeadline"></div>
-              <button class="primary small" id="bulkApply">Apply</button>
-              <button class="danger small" id="bulkDelete" style="margin-left:auto;">Delete</button>
             </div>
           </div>
           <div class="table-wrap">
@@ -721,6 +736,7 @@ function updateBulkBar(){
   // Toolbar swaps between search (no selection) and bulk actions (selection).
   document.getElementById('bulkBar').classList.toggle('hidden', n === 0);
   document.getElementById('testSearchWrap').classList.toggle('hidden', n > 0);
+  document.querySelector('.list-toolbar').classList.toggle('bulk-active', n > 0);
   const all = document.querySelectorAll('#testsTableBody .row-check');
   const sa = document.getElementById('selectAllTests');
   sa.checked = all.length > 0 && n === all.length;
@@ -738,6 +754,7 @@ function clearSelection(){
   resetBulkFields();
   updateBulkBar();
 }
+document.getElementById('bulkClear').addEventListener('click', clearSelection);
 document.getElementById('testsTableBody').addEventListener('change', (e) => {
   const cb = e.target.closest('.row-check'); if (!cb) return;
   if (cb.checked) SELECTED_TESTS.add(cb.dataset.code); else SELECTED_TESTS.delete(cb.dataset.code);
@@ -777,7 +794,7 @@ function updateAssignSummary(){
   const sel = getAssignSelected();
   const trig = document.getElementById('bulkAssignTrigger');
   if (sel.includes('all')) trig.textContent = 'Everyone (all takers) ▾';
-  else if (!sel.length) trig.textContent = 'Select groups / users ▾';
+  else if (!sel.length) trig.textContent = 'Assign to… ▾';
   else trig.textContent = (sel.length === 1 ? sel[0] : (sel[0] + ' +' + (sel.length - 1))) + ' ▾';
 }
 (function(){
