@@ -82,7 +82,7 @@
   .page-head .sub{margin:4px 0 0;}
   .head-actions{display:flex;gap:10px;flex-wrap:wrap;}
 
-  .stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:24px;}
+  .stat-row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:24px;}
   .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:15px 16px;box-shadow:var(--shadow-sm);}
   .stat .k{font-size:12px;color:var(--muted);font-weight:500;margin-bottom:7px;}
   .stat .v{font-size:26px;font-weight:700;letter-spacing:-.02em;line-height:1;}
@@ -132,9 +132,9 @@
   .timeline .ev .t{font-variant-numeric:tabular-nums;color:var(--text);font-weight:600;flex-shrink:0;min-width:170px;}
 
   /* ---- Notification bell + panel ---- */
-  .icon-btn{position:relative;width:36px;height:36px;border:1px solid var(--border);background:var(--surface);
-    color:var(--muted);display:grid;place-items:center;flex-shrink:0;}
-  .icon-btn:hover{color:var(--text);border-color:var(--border-strong);background:var(--surface-3);}
+  .icon-btn{position:relative;width:36px;height:36px;border:none;background:none;
+    color:var(--muted);display:grid;place-items:center;flex-shrink:0;cursor:pointer;}
+  .icon-btn:hover{color:var(--text);}
   .notif-badge{position:absolute;top:-6px;right:-6px;min-width:17px;height:17px;padding:0 4px;
     background:#D64C3F;color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;line-height:1;}
   .overlay{position:fixed;inset:0;background:rgba(15,25,20,.45);display:flex;align-items:flex-start;
@@ -177,6 +177,12 @@
   .list-search input{border:none;background:none;padding:0;margin:0;font-size:14px;width:100%;color:var(--text);}
   .list-search input:focus{outline:none;}
   .list-search.hidden{display:none;}
+  .list-controls{display:flex;align-items:center;gap:10px;flex:1;flex-wrap:wrap;}
+  .list-controls.hidden{display:none;}
+  .toolbar-btn{display:inline-flex;align-items:center;gap:7px;padding:9px 13px;font-size:13.5px;white-space:nowrap;}
+  .toolbar-btn svg{width:15px;height:15px;flex-shrink:0;}
+  .toolbar-btn.active{border-color:var(--accent);color:var(--accent);}
+  .dropdown-menu button.sel{color:var(--accent);font-weight:600;}
 
   /* Bulk action utility bar — HubSpot-style single row of icon actions */
   .bulk-bar{display:flex;align-items:center;gap:4px;width:100%;flex-wrap:wrap;
@@ -223,7 +229,7 @@
 
   @media (max-width:820px){
     .sidebar{display:none;}
-    .stat-row{grid-template-columns:repeat(2,1fr);}
+    .stat-row{grid-template-columns:repeat(3,1fr);}
     .main{padding:20px 16px 60px;}
     .who .nm,.who .role{display:none;}
   }
@@ -300,7 +306,7 @@
       <section class="view" id="view-tests">
        <div id="testsListView">
         <div class="page-head">
-          <div><h1>Test Management</h1><p class="sub">Create, schedule, and assign assessments to people and groups.</p></div>
+          <div><h1>Test Management</h1><p class="sub">Create, schedule, and assign assessments to users and groups.</p></div>
           <div class="head-actions">
             <div class="dropdown">
               <button class="primary" id="btnNewMenu">+ New test ▾</button>
@@ -315,9 +321,11 @@
 
         <div class="stat-row">
           <div class="stat"><div class="k">Total tests</div><div class="v tnum" id="statTotal">0</div></div>
-          <div class="stat"><div class="k">Active now</div><div class="v tnum" id="statActive">0</div></div>
+          <div class="stat"><div class="k">Active</div><div class="v tnum" id="statActive">0</div></div>
           <div class="stat"><div class="k">Scheduled</div><div class="v tnum" id="statScheduled">0</div></div>
-          <div class="stat"><div class="k">People</div><div class="v tnum" id="statPeople">0</div></div>
+          <div class="stat"><div class="k">Completed</div><div class="v tnum" id="statCompleted">0</div></div>
+          <div class="stat"><div class="k">Users</div><div class="v tnum" id="statUsers">0</div></div>
+          <div class="stat"><div class="k">Groups</div><div class="v tnum" id="statGroups">0</div></div>
         </div>
 
         <input type="file" id="wordFileInput" accept=".docx" class="hidden">
@@ -341,9 +349,35 @@
         <div class="card">
           <!-- Toolbar: search by default; bulk actions when tests are selected -->
           <div class="list-toolbar">
-            <div class="list-search" id="testSearchWrap">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-              <input type="text" id="testSearch" placeholder="Search by test code or name…">
+            <div class="list-controls" id="testControls">
+              <div class="list-search" id="testSearchWrap">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <input type="text" id="testSearch" placeholder="Search by test code or name…">
+              </div>
+              <div class="dropdown">
+                <button type="button" class="ghost toolbar-btn" id="btnFilter">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4-2v-4Z"/></svg>Filter
+                </button>
+                <div class="dropdown-menu hidden" id="filterMenu">
+                  <button type="button" data-filter="all">All statuses</button>
+                  <button type="button" data-filter="open">Active</button>
+                  <button type="button" data-filter="scheduled">Scheduled</button>
+                  <button type="button" data-filter="closed">Completed</button>
+                </div>
+              </div>
+              <div class="dropdown">
+                <button type="button" class="ghost toolbar-btn" id="btnSort">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h12M3 12h8M3 18h5"/><path d="M17 9l3-3 3 3M20 6v12"/></svg>Sort by
+                </button>
+                <div class="dropdown-menu hidden" id="sortMenu">
+                  <button type="button" data-sort="none">Default order</button>
+                  <button type="button" data-sort="code">Code</button>
+                  <button type="button" data-sort="title">Title</button>
+                  <button type="button" data-sort="questions">Questions</button>
+                  <button type="button" data-sort="start">Start date</button>
+                  <button type="button" data-sort="deadline">Deadline</button>
+                </div>
+              </div>
             </div>
             <div id="bulkBar" class="bulk-bar hidden">
               <span class="bulk-count"><b id="bulkCount">0</b> selected</span>
@@ -463,8 +497,8 @@
       <!-- ===== PEOPLE VIEW ===== -->
       <section class="view" id="view-people" hidden>
         <div class="page-head">
-          <div><h1>User Management</h1><p class="sub">Each person signs in at the portal with their ID + password to see the tests assigned to them.</p></div>
-          <div class="head-actions"><button class="primary" id="btnNewPerson">+ Add person</button></div>
+          <div><h1>User Management</h1><p class="sub">Each user signs in at the portal with their ID + password to see the tests assigned to them.</p></div>
+          <div class="head-actions"><button class="primary" id="btnNewPerson">+ Add user</button></div>
         </div>
         <div class="link-box" id="portalLinkBox"></div>
         <div id="peopleNotice"></div>
@@ -479,7 +513,7 @@
 
         <!-- Person editor (hidden until opened) -->
         <div id="personEditor" class="card hidden">
-          <h2 id="personEditorTitle">New person</h2>
+          <h2 id="personEditorTitle">New user</h2>
           <div id="personNotice"></div>
           <div class="row">
             <div>
@@ -508,7 +542,7 @@
           </div>
           <div class="actions-bar">
             <button class="ghost" id="btnCancelPerson">Cancel</button>
-            <button class="primary" id="btnSavePerson">Save person</button>
+            <button class="primary" id="btnSavePerson">Save user</button>
           </div>
         </div>
       </section>
@@ -692,21 +726,37 @@ function fmt(dt){
   return d.toLocaleString(undefined, { month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
 }
 let TEST_FILTER = '';
+let STATUS_FILTER = 'all';   // all | open | scheduled | closed
+let SORT_BY = 'none';        // none | code | title | questions | start | deadline
 function renderTests(tests){
   LAST_TESTS = tests || [];
   renderTestRows();
   clearSelection();
 }
-// Renders the (optionally search-filtered) rows; keeps current selection checked.
+// Renders the (search + status filtered, optionally sorted) rows; keeps selection checked.
 function renderTestRows(){
   const q = TEST_FILTER.trim().toLowerCase();
-  const rows = LAST_TESTS.filter(t => !q ||
+  let rows = LAST_TESTS.filter(t => !q ||
     String(t.testCode).toLowerCase().includes(q) || String(t.title || '').toLowerCase().includes(q));
+  if (STATUS_FILTER !== 'all') rows = rows.filter(t => computeStatus(t.startDate, t.deadline) === STATUS_FILTER);
+  if (SORT_BY !== 'none'){
+    rows = rows.slice().sort((a, b) => {
+      switch (SORT_BY){
+        case 'code': return String(a.testCode).localeCompare(String(b.testCode));
+        case 'title': return String(a.title || '').localeCompare(String(b.title || ''));
+        case 'questions': return (a.questionCount || 0) - (b.questionCount || 0);
+        case 'start': return new Date(a.startDate || 0) - new Date(b.startDate || 0);
+        case 'deadline': return new Date(a.deadline || 0) - new Date(b.deadline || 0);
+      }
+      return 0;
+    });
+  }
   const tbody = document.getElementById('testsTableBody');
   tbody.innerHTML = '';
   if (!rows.length){
+    const filtered = q || STATUS_FILTER !== 'all';
     tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted);font-size:13px;padding:14px 10px;">' +
-      (q ? 'No tests match “' + pEsc(TEST_FILTER) + '”.' : 'No tests yet — create one above.') + '</td></tr>';
+      (filtered ? 'No tests match the current filters.' : 'No tests yet — create one above.') + '</td></tr>';
     return;
   }
   rows.forEach(t => {
@@ -728,6 +778,35 @@ function renderTestRows(){
   });
 }
 document.getElementById('testSearch').addEventListener('input', (e) => { TEST_FILTER = e.target.value; renderTestRows(); });
+
+/* ---------- Filter + Sort dropdowns ---------- */
+(function(){
+  const filterMenu = document.getElementById('filterMenu');
+  const sortMenu = document.getElementById('sortMenu');
+  const btnFilter = document.getElementById('btnFilter');
+  const btnSort = document.getElementById('btnSort');
+  const closeAll = () => { filterMenu.classList.add('hidden'); sortMenu.classList.add('hidden'); };
+  const markSel = (menu, attr, val) => menu.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.getAttribute(attr) === val));
+  markSel(filterMenu, 'data-filter', STATUS_FILTER);
+  markSel(sortMenu, 'data-sort', SORT_BY);
+  btnFilter.addEventListener('click', (e) => { e.stopPropagation(); sortMenu.classList.add('hidden'); filterMenu.classList.toggle('hidden'); });
+  btnSort.addEventListener('click', (e) => { e.stopPropagation(); filterMenu.classList.add('hidden'); sortMenu.classList.toggle('hidden'); });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.dropdown')) closeAll(); });
+  filterMenu.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-filter]'); if (!b) return;
+    STATUS_FILTER = b.dataset.filter;
+    btnFilter.classList.toggle('active', STATUS_FILTER !== 'all');
+    markSel(filterMenu, 'data-filter', STATUS_FILTER);
+    closeAll(); renderTestRows();
+  });
+  sortMenu.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-sort]'); if (!b) return;
+    SORT_BY = b.dataset.sort;
+    btnSort.classList.toggle('active', SORT_BY !== 'none');
+    markSel(sortMenu, 'data-sort', SORT_BY);
+    closeAll(); renderTestRows();
+  });
+})();
 document.getElementById('testsTableBody').addEventListener('click', async (e) => {
   const btn = e.target.closest('button');
   if (!btn) return;
@@ -765,7 +844,7 @@ function updateBulkBar(){
   document.getElementById('bulkCount').textContent = n;
   // Toolbar swaps between search (no selection) and bulk actions (selection).
   document.getElementById('bulkBar').classList.toggle('hidden', n === 0);
-  document.getElementById('testSearchWrap').classList.toggle('hidden', n > 0);
+  document.getElementById('testControls').classList.toggle('hidden', n > 0);
   document.querySelector('.list-toolbar').classList.toggle('bulk-active', n > 0);
   const all = document.querySelectorAll('#testsTableBody .row-check');
   const sa = document.getElementById('selectAllTests');
@@ -814,7 +893,7 @@ function buildAssignPanel(){
   if ((LAST_TAKERS || []).length){
     LAST_TAKERS.forEach(t => { html += '<div class="ms-opt"><label><input type="checkbox" class="ms-check" value="' + pEsc(t.takerId) + '"> ' + pEsc(t.name || t.takerId) + ' <span style="color:var(--faint);font-size:12px;">' + pEsc(t.takerId) + '</span></label></div>'; });
   } else {
-    html += '<div class="ms-opt" style="color:var(--muted);font-size:13px;padding:6px 12px;">No users yet — add people under User Management.</div>';
+    html += '<div class="ms-opt" style="color:var(--muted);font-size:13px;padding:6px 12px;">No users yet — add users under User Management.</div>';
   }
   panel.innerHTML = html;
   panel.querySelectorAll('.ms-check').forEach(c => c.addEventListener('change', updateAssignSummary));
@@ -907,7 +986,7 @@ function renderTakers(takers){
   const tbody = document.getElementById('takersTableBody');
   tbody.innerHTML = '';
   if (!takers || !takers.length){
-    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);font-size:13px;">No people yet. Click "Add person" to create the first account.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);font-size:13px;">No users yet. Click "Add user" to create the first account.</td></tr>';
     return;
   }
   takers.forEach(t => {
@@ -932,7 +1011,7 @@ async function refreshTakerList(){
 }
 function openPersonEditor(taker){
   editingTakerId = taker ? taker.takerId : null;
-  document.getElementById('personEditorTitle').textContent = taker ? ('Editing ' + taker.takerId) : 'New person';
+  document.getElementById('personEditorTitle').textContent = taker ? ('Editing ' + taker.takerId) : 'New user';
   document.getElementById('personNotice').innerHTML = '';
   document.getElementById('p_takerId').value = taker ? taker.takerId : '';
   document.getElementById('p_takerId').disabled = !!taker; // never change an existing ID
@@ -959,7 +1038,7 @@ document.getElementById('takersTableBody').addEventListener('click', async (e) =
       if (taker) openPersonEditor(taker);
     }
   } else if (btn.dataset.pact === 'delete'){
-    if (!(await confirmDialog({ title: 'Delete person?', message: 'Delete "' + id + '"? Their login stops working. Past results stay in the sheet. This cannot be undone.', confirmText: 'Delete', danger: true }))) return;
+    if (!(await confirmDialog({ title: 'Delete user?', message: 'Delete "' + id + '"? Their login stops working. Past results stay in the sheet. This cannot be undone.', confirmText: 'Delete', danger: true }))) return;
     const result = await apiPost({ action: 'deleteTaker', token: ADMIN_TOKEN, takerId: id });
     if (result.ok) refreshTakerList();
   }
@@ -975,7 +1054,7 @@ document.getElementById('btnSavePerson').addEventListener('click', async () => {
   };
   const errs = [];
   if (!taker.name) errs.push('Name is required.');
-  if (isNew && !taker.password) errs.push('A password is required for a new person.');
+  if (isNew && !taker.password) errs.push('A password is required for a new user.');
   if (errs.length){
     document.getElementById('personNotice').innerHTML = '<div class="notice error">' + errs.join('<br>') + '</div>';
     return;
@@ -1929,16 +2008,21 @@ document.getElementById('btnSignOut').addEventListener('click', () => {
 // Stat row + sidebar counts, recomputed whenever the tests or people
 // tables change. Reads the rendered rows so it never duplicates logic.
 function updateStats(){
-  const testsBody = document.getElementById('testsTableBody');
-  const takersBody = document.getElementById('takersTableBody');
-  const total = testsBody.querySelectorAll('button[data-act="edit"]').length;
-  const active = testsBody.querySelectorAll('.tag.open').length;
-  const scheduled = testsBody.querySelectorAll('.tag.scheduled').length;
-  const people = takersBody.querySelectorAll('button[data-pact="edit"]').length;
-  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  // Computed from the data (not the rendered rows) so search/filter don't skew the counts.
+  const tests = LAST_TESTS || [];
+  let active = 0, scheduled = 0, completed = 0;
+  tests.forEach(t => {
+    const s = computeStatus(t.startDate, t.deadline);
+    if (s === 'open') active++; else if (s === 'scheduled') scheduled++; else if (s === 'closed') completed++;
+  });
+  const takers = LAST_TAKERS || [];
+  const groups = new Set();
+  takers.forEach(t => String(t.groups || '').split(',').map(s => s.trim()).filter(Boolean).forEach(g => groups.add(g)));
   const results = document.getElementById('resultsTableBody').querySelectorAll('button[data-gact="grade"]').length;
-  set('statTotal', total); set('statActive', active); set('statScheduled', scheduled); set('statPeople', people);
-  set('navTestsCount', total || ''); set('navPeopleCount', people || ''); set('navResultsCount', results || '');
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('statTotal', tests.length); set('statActive', active); set('statScheduled', scheduled);
+  set('statCompleted', completed); set('statUsers', takers.length); set('statGroups', groups.size);
+  set('navTestsCount', tests.length || ''); set('navPeopleCount', takers.length || ''); set('navResultsCount', results || '');
 }
 new MutationObserver(updateStats).observe(document.getElementById('testsTableBody'), { childList: true });
 new MutationObserver(updateStats).observe(document.getElementById('takersTableBody'), { childList: true });
