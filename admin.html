@@ -185,6 +185,18 @@
   .toolbar-btn.active{border-color:var(--accent);color:var(--accent);}
   .dropdown-menu button.sel{color:var(--accent);font-weight:600;}
 
+  /* ---- User management: sub-tabs, groups, member picker ---- */
+  .subtabs{display:inline-flex;gap:3px;background:var(--surface-3);padding:3px;margin-bottom:18px;}
+  .subtabs button{background:none;border:none;padding:7px 16px;font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer;}
+  .subtabs button.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow-sm);}
+  .subtabs button .cnt{margin-left:6px;color:var(--faint);font-weight:700;font-size:12px;}
+  .subtabs button.active .cnt{color:var(--accent);}
+  .um-bar{margin-bottom:14px;}
+  .g-members{border:1px solid var(--border);background:var(--surface-2);max-height:240px;overflow-y:auto;margin-bottom:16px;}
+  .g-members label{display:flex;align-items:center;gap:9px;padding:8px 12px;font-size:13.5px;font-weight:400;color:var(--text);cursor:pointer;border-bottom:1px solid var(--border);margin:0;}
+  .g-members label:last-child{border-bottom:none;}
+  .g-members input{width:auto;margin:0;}
+
   /* Bulk action utility bar — HubSpot-style single row of icon actions */
   .bulk-bar{display:flex;align-items:center;gap:4px;width:100%;flex-wrap:wrap;
     background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);
@@ -499,16 +511,82 @@
       <section class="view" id="view-people" hidden>
         <div class="page-head">
           <div><h1>User Management</h1><p class="sub">Each user signs in at the portal with their ID + password to see the tests assigned to them.</p></div>
-          <div class="head-actions"><button class="primary" id="btnNewPerson">+ Add user</button></div>
+          <div class="head-actions">
+            <div class="dropdown">
+              <button class="primary" id="btnCreateMenu">+ Create ▾</button>
+              <div class="dropdown-menu hidden" id="createMenu">
+                <button type="button" data-create="user">User</button>
+                <button type="button" data-create="group">Group</button>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="link-box" id="portalLinkBox"></div>
         <div id="peopleNotice"></div>
-        <div class="card">
-          <div class="table-wrap">
-            <table id="takersTable">
-              <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Groups</th><th>Password</th><th></th></tr></thead>
-              <tbody id="takersTableBody"></tbody>
-            </table>
+
+        <div class="subtabs" id="userSubtabs">
+          <button type="button" class="active" data-utab="users">Users <span class="cnt" id="tabUsersCount"></span></button>
+          <button type="button" data-utab="groups">Groups <span class="cnt" id="tabGroupsCount"></span></button>
+        </div>
+
+        <!-- USERS panel -->
+        <div id="usersPanel">
+          <div id="usersBulkBar" class="bulk-bar um-bar hidden">
+            <span class="bulk-count"><b id="usersBulkCount">0</b> selected</span>
+            <span class="util-divider"></span>
+            <div class="util-actions">
+              <div class="ms">
+                <button type="button" class="util-btn" id="usersAssignTrigger">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Add to group
+                </button>
+                <div class="util-pop hidden" id="usersAssignPop">
+                  <div class="util-pop-title">Add to group</div>
+                  <label class="util-field" for="usersAssignGroup"><span>Group name</span>
+                    <input type="text" id="usersAssignGroup" list="groupDatalist" placeholder="Pick or type a group">
+                    <datalist id="groupDatalist"></datalist>
+                  </label>
+                  <div class="util-pop-foot"><button class="primary small" id="usersAssignApply">Apply</button></div>
+                </div>
+              </div>
+              <button type="button" class="util-btn util-btn-danger" id="usersBulkDelete">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>Delete
+              </button>
+            </div>
+            <button type="button" class="util-close" id="usersBulkClose" aria-label="Clear selection" title="Clear selection">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table id="takersTable">
+                <thead><tr><th style="width:1%;"><input type="checkbox" id="selectAllUsers" aria-label="Select all"></th><th>ID</th><th>Name</th><th>Email</th><th>Groups</th><th>Password</th><th></th></tr></thead>
+                <tbody id="takersTableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- GROUPS panel -->
+        <div id="groupsPanel" class="hidden">
+          <div id="groupsBulkBar" class="bulk-bar um-bar hidden">
+            <span class="bulk-count"><b id="groupsBulkCount">0</b> selected</span>
+            <span class="util-divider"></span>
+            <div class="util-actions">
+              <button type="button" class="util-btn util-btn-danger" id="groupsBulkDelete">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>Delete
+              </button>
+            </div>
+            <button type="button" class="util-close" id="groupsBulkClose" aria-label="Clear selection" title="Clear selection">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+            </button>
+          </div>
+          <div class="card">
+            <div class="table-wrap">
+              <table id="groupsTable">
+                <thead><tr><th style="width:1%;"><input type="checkbox" id="selectAllGroups" aria-label="Select all"></th><th>Group</th><th>Members</th><th></th></tr></thead>
+                <tbody id="groupsTableBody"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -544,6 +622,20 @@
           <div class="actions-bar">
             <button class="ghost" id="btnCancelPerson">Cancel</button>
             <button class="primary" id="btnSavePerson">Save user</button>
+          </div>
+        </div>
+
+        <!-- Group editor (create/edit group) -->
+        <div id="groupEditor" class="card hidden">
+          <h2 id="groupEditorTitle">New group</h2>
+          <div id="groupNotice"></div>
+          <label for="g_name">Group name</label>
+          <input type="text" id="g_name" placeholder="e.g. ClassA">
+          <label style="margin-top:12px;">Members</label>
+          <div class="g-members" id="g_members"></div>
+          <div class="actions-bar">
+            <button class="ghost" id="btnCancelGroup">Cancel</button>
+            <button class="primary" id="btnSaveGroup">Save group</button>
           </div>
         </div>
       </section>
@@ -984,26 +1076,33 @@ function renderPortalLink(){
 function renderTakers(takers){
   LAST_TAKERS = takers || [];
   if (typeof buildAssignPanel === 'function') buildAssignPanel(); // refresh bulk assign-to menu
+  // Drop selections for users that no longer exist.
+  const ids = new Set(LAST_TAKERS.map(t => t.takerId));
+  [...SELECTED_USERS].forEach(id => { if (!ids.has(id)) SELECTED_USERS.delete(id); });
   const tbody = document.getElementById('takersTableBody');
   tbody.innerHTML = '';
-  if (!takers || !takers.length){
-    tbody.innerHTML = '<tr><td colspan="6" style="color:var(--muted);font-size:13px;">No users yet. Click "Add user" to create the first account.</td></tr>';
-    return;
+  if (!LAST_TAKERS.length){
+    tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted);font-size:13px;">No users yet. Click “+ Create → User” to add the first account.</td></tr>';
+  } else {
+    LAST_TAKERS.forEach(t => {
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td><input type="checkbox" class="user-check" data-id="' + pEsc(t.takerId) + '"' + (SELECTED_USERS.has(t.takerId) ? ' checked' : '') + '></td>' +
+        '<td><code>' + pEsc(t.takerId) + '</code></td>' +
+        '<td>' + pEsc(t.name || '') + '</td>' +
+        '<td style="font-size:12px;color:var(--muted);">' + pEsc(t.email || '') + '</td>' +
+        '<td style="font-size:12px;">' + pEsc(t.groups || '') + '</td>' +
+        '<td>' + (t.hasPassword ? '<span class="tag open">set</span>' : '<span class="tag closed">none</span>') + '</td>' +
+        '<td style="white-space:nowrap;">' +
+          '<button class="ghost small" data-pact="edit" data-id="' + pEsc(t.takerId) + '">Edit</button>' +
+          '<button class="danger small" data-pact="delete" data-id="' + pEsc(t.takerId) + '">Delete</button>' +
+        '</td>';
+      tbody.appendChild(tr);
+    });
   }
-  takers.forEach(t => {
-    const tr = document.createElement('tr');
-    tr.innerHTML =
-      '<td><code>' + pEsc(t.takerId) + '</code></td>' +
-      '<td>' + pEsc(t.name || '') + '</td>' +
-      '<td style="font-size:12px;color:var(--muted);">' + pEsc(t.email || '') + '</td>' +
-      '<td style="font-size:12px;">' + pEsc(t.groups || '') + '</td>' +
-      '<td>' + (t.hasPassword ? '<span class="tag open">set</span>' : '<span class="tag closed">none</span>') + '</td>' +
-      '<td style="white-space:nowrap;">' +
-        '<button class="ghost small" data-pact="edit" data-id="' + pEsc(t.takerId) + '">Edit</button>' +
-        '<button class="danger small" data-pact="delete" data-id="' + pEsc(t.takerId) + '">Delete</button>' +
-      '</td>';
-    tbody.appendChild(tr);
-  });
+  if (typeof updateUsersBulkBar === 'function') updateUsersBulkBar();
+  if (typeof renderGroups === 'function') renderGroups();
+  if (typeof updateUserMgmtCounts === 'function') updateUserMgmtCounts();
 }
 async function refreshTakerList(){
   renderPortalLink();
@@ -1025,7 +1124,265 @@ function openPersonEditor(taker){
   document.getElementById('personEditor').classList.remove('hidden');
   document.getElementById('personEditor').scrollIntoView({ behavior: 'smooth' });
 }
-document.getElementById('btnNewPerson').addEventListener('click', () => openPersonEditor(null));
+/* ---------- User Management: tabs, selection, groups ---------- */
+const SELECTED_USERS = new Set();
+const SELECTED_GROUPS = new Set();
+let editingGroupName = null;
+
+function deriveGroups(){
+  const map = new Map(); // name -> [takers]
+  (LAST_TAKERS || []).forEach(t => {
+    String(t.groups || '').split(',').map(s => s.trim()).filter(Boolean).forEach(g => {
+      if (!map.has(g)) map.set(g, []);
+      map.get(g).push(t);
+    });
+  });
+  return map;
+}
+function updateUserMgmtCounts(){
+  const set = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = v; };
+  set('tabUsersCount', (LAST_TAKERS || []).length || '');
+  set('tabGroupsCount', deriveGroups().size || '');
+}
+// Tabs
+function switchUserTab(tab){
+  document.querySelectorAll('#userSubtabs button').forEach(b => b.classList.toggle('active', b.dataset.utab === tab));
+  document.getElementById('usersPanel').classList.toggle('hidden', tab !== 'users');
+  document.getElementById('groupsPanel').classList.toggle('hidden', tab !== 'groups');
+  document.getElementById('personEditor').classList.add('hidden');
+  document.getElementById('groupEditor').classList.add('hidden');
+  if (tab === 'groups') renderGroups();
+}
+document.querySelectorAll('#userSubtabs button').forEach(b => b.addEventListener('click', () => switchUserTab(b.dataset.utab)));
+
+// Create dropdown
+(function(){
+  const menu = document.getElementById('createMenu');
+  document.getElementById('btnCreateMenu').addEventListener('click', (e) => { e.stopPropagation(); menu.classList.toggle('hidden'); });
+  menu.addEventListener('click', () => menu.classList.add('hidden'));
+  document.addEventListener('click', (e) => { if (!e.target.closest('.dropdown')) menu.classList.add('hidden'); });
+})();
+document.querySelectorAll('#createMenu button[data-create]').forEach(b => b.addEventListener('click', () => {
+  if (b.dataset.create === 'user'){ switchUserTab('users'); openPersonEditor(null); }
+  else { switchUserTab('groups'); openGroupEditor(null); }
+}));
+
+/* ----- Users selection + utility bar ----- */
+function updateUsersBulkBar(){
+  const n = SELECTED_USERS.size;
+  const cnt = document.getElementById('usersBulkCount'); if (cnt) cnt.textContent = n;
+  const bar = document.getElementById('usersBulkBar'); if (bar) bar.classList.toggle('hidden', n === 0);
+  const all = document.querySelectorAll('#takersTableBody .user-check');
+  const sa = document.getElementById('selectAllUsers');
+  if (sa){ sa.checked = all.length > 0 && n === all.length; sa.indeterminate = n > 0 && n < all.length; }
+}
+function clearUsersSelection(){
+  SELECTED_USERS.clear();
+  document.querySelectorAll('#takersTableBody .user-check').forEach(c => c.checked = false);
+  document.getElementById('usersAssignPop').classList.add('hidden');
+  document.getElementById('usersAssignGroup').value = '';
+  updateUsersBulkBar();
+}
+document.getElementById('takersTableBody').addEventListener('change', (e) => {
+  const cb = e.target.closest('.user-check'); if (!cb) return;
+  if (cb.checked) SELECTED_USERS.add(cb.dataset.id); else SELECTED_USERS.delete(cb.dataset.id);
+  updateUsersBulkBar();
+});
+document.getElementById('selectAllUsers').addEventListener('change', (e) => {
+  SELECTED_USERS.clear();
+  document.querySelectorAll('#takersTableBody .user-check').forEach(c => { c.checked = e.target.checked; if (e.target.checked) SELECTED_USERS.add(c.dataset.id); });
+  updateUsersBulkBar();
+});
+document.getElementById('usersBulkClose').addEventListener('click', clearUsersSelection);
+(function(){
+  const pop = document.getElementById('usersAssignPop');
+  const trig = document.getElementById('usersAssignTrigger');
+  trig.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (pop.classList.contains('hidden')){
+      document.getElementById('groupDatalist').innerHTML =
+        [...deriveGroups().keys()].sort().map(g => '<option value="' + pEsc(g) + '">').join('');
+    }
+    pop.classList.toggle('hidden');
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.ms')) pop.classList.add('hidden'); });
+})();
+document.getElementById('usersAssignApply').addEventListener('click', async () => {
+  const grp = document.getElementById('usersAssignGroup').value.trim();
+  const ids = [...SELECTED_USERS];
+  if (!grp){ toast('Enter a group name', 'error'); return; }
+  if (!ids.length) return;
+  const res = await apiGet({ action: 'listTakers', token: ADMIN_TOKEN });
+  if (!res.ok){ toast('Could not load users', 'error'); return; }
+  const byId = new Map((res.takers || []).map(t => [t.takerId, t]));
+  let count = 0;
+  for (const id of ids){
+    const t = byId.get(id); if (!t) continue;
+    const groups = String(t.groups || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (!groups.includes(grp)){
+      groups.push(grp);
+      await apiPost({ action: 'saveTaker', token: ADMIN_TOKEN, taker: { takerId: t.takerId, name: t.name, email: t.email, groups: groups.join(', ') } });
+      count++;
+    }
+  }
+  toast('Added ' + count + ' user' + (count === 1 ? '' : 's') + ' to “' + grp + '”', 'success');
+  document.getElementById('usersAssignPop').classList.add('hidden');
+  document.getElementById('usersAssignGroup').value = '';
+  refreshTakerList();
+});
+document.getElementById('usersBulkDelete').addEventListener('click', async () => {
+  const ids = [...SELECTED_USERS]; if (!ids.length) return;
+  const ok = await confirmDialog({
+    title: 'Delete selected users?',
+    message: 'Delete ' + ids.length + ' user' + (ids.length === 1 ? '' : 's') + '? Their logins stop working. Past results stay in the sheet. This cannot be undone.',
+    confirmText: 'Delete', danger: true
+  });
+  if (!ok) return;
+  for (const id of ids){ await apiPost({ action: 'deleteTaker', token: ADMIN_TOKEN, takerId: id }); }
+  toast('Deleted ' + ids.length + ' user' + (ids.length === 1 ? '' : 's'), 'success');
+  refreshTakerList();
+});
+
+/* ----- Groups list + utility bar ----- */
+function renderGroups(){
+  const map = deriveGroups();
+  const names = [...map.keys()].sort((a, b) => a.localeCompare(b));
+  [...SELECTED_GROUPS].forEach(g => { if (!map.has(g)) SELECTED_GROUPS.delete(g); });
+  const tbody = document.getElementById('groupsTableBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  if (!names.length){
+    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);font-size:13px;">No groups yet. Assign users to a group, or use “+ Create → Group”.</td></tr>';
+  } else {
+    names.forEach(g => {
+      const members = map.get(g).length;
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td><input type="checkbox" class="grp-check" data-grp="' + pEsc(g) + '"' + (SELECTED_GROUPS.has(g) ? ' checked' : '') + '></td>' +
+        '<td><b>' + pEsc(g) + '</b></td>' +
+        '<td style="font-size:12px;color:var(--muted);">' + members + ' member' + (members === 1 ? '' : 's') + '</td>' +
+        '<td style="white-space:nowrap;">' +
+          '<button class="ghost small" data-gact="edit" data-grp="' + pEsc(g) + '">Edit</button>' +
+          '<button class="danger small" data-gact="delete" data-grp="' + pEsc(g) + '">Delete</button>' +
+        '</td>';
+      tbody.appendChild(tr);
+    });
+  }
+  updateGroupsBulkBar();
+  updateUserMgmtCounts();
+}
+function updateGroupsBulkBar(){
+  const n = SELECTED_GROUPS.size;
+  const cnt = document.getElementById('groupsBulkCount'); if (cnt) cnt.textContent = n;
+  const bar = document.getElementById('groupsBulkBar'); if (bar) bar.classList.toggle('hidden', n === 0);
+  const all = document.querySelectorAll('#groupsTableBody .grp-check');
+  const sa = document.getElementById('selectAllGroups');
+  if (sa){ sa.checked = all.length > 0 && n === all.length; sa.indeterminate = n > 0 && n < all.length; }
+}
+function clearGroupsSelection(){
+  SELECTED_GROUPS.clear();
+  document.querySelectorAll('#groupsTableBody .grp-check').forEach(c => c.checked = false);
+  updateGroupsBulkBar();
+}
+// Remove one or more group names from every member (users are kept).
+async function removeGroupsFromMembers(names){
+  const set = new Set(names);
+  const res = await apiGet({ action: 'listTakers', token: ADMIN_TOKEN });
+  if (!res.ok) return;
+  for (const t of (res.takers || [])){
+    const groups = String(t.groups || '').split(',').map(s => s.trim()).filter(Boolean);
+    const kept = groups.filter(g => !set.has(g));
+    if (kept.length !== groups.length){
+      await apiPost({ action: 'saveTaker', token: ADMIN_TOKEN, taker: { takerId: t.takerId, name: t.name, email: t.email, groups: kept.join(', ') } });
+    }
+  }
+}
+document.getElementById('groupsTableBody').addEventListener('change', (e) => {
+  const cb = e.target.closest('.grp-check'); if (!cb) return;
+  if (cb.checked) SELECTED_GROUPS.add(cb.dataset.grp); else SELECTED_GROUPS.delete(cb.dataset.grp);
+  updateGroupsBulkBar();
+});
+document.getElementById('selectAllGroups').addEventListener('change', (e) => {
+  SELECTED_GROUPS.clear();
+  document.querySelectorAll('#groupsTableBody .grp-check').forEach(c => { c.checked = e.target.checked; if (e.target.checked) SELECTED_GROUPS.add(c.dataset.grp); });
+  updateGroupsBulkBar();
+});
+document.getElementById('groupsBulkClose').addEventListener('click', clearGroupsSelection);
+document.getElementById('groupsBulkDelete').addEventListener('click', async () => {
+  const names = [...SELECTED_GROUPS]; if (!names.length) return;
+  const ok = await confirmDialog({
+    title: 'Delete selected groups?',
+    message: 'Remove ' + names.length + ' group' + (names.length === 1 ? '' : 's') + ' from all their members? The users are kept. This cannot be undone.',
+    confirmText: 'Delete', danger: true
+  });
+  if (!ok) return;
+  await removeGroupsFromMembers(names);
+  toast('Deleted ' + names.length + ' group' + (names.length === 1 ? '' : 's'), 'success');
+  SELECTED_GROUPS.clear();
+  refreshTakerList();
+});
+document.getElementById('groupsTableBody').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  const g = btn.dataset.grp;
+  if (btn.dataset.gact === 'edit'){ openGroupEditor(g); }
+  else if (btn.dataset.gact === 'delete'){
+    const ok = await confirmDialog({ title: 'Delete group?', message: 'Remove “' + g + '” from all its members? The users are kept. This cannot be undone.', confirmText: 'Delete', danger: true });
+    if (!ok) return;
+    await removeGroupsFromMembers([g]);
+    toast('Deleted group “' + g + '”', 'success');
+    refreshTakerList();
+  }
+});
+
+/* ----- Group editor (create / edit via membership) ----- */
+function openGroupEditor(name){
+  editingGroupName = name || null;
+  document.getElementById('groupEditorTitle').textContent = name ? ('Editing “' + name + '”') : 'New group';
+  document.getElementById('groupNotice').innerHTML = '';
+  document.getElementById('g_name').value = name || '';
+  const box = document.getElementById('g_members');
+  const takers = LAST_TAKERS || [];
+  if (!takers.length){
+    box.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:13px;">No users yet — create users first, then group them.</div>';
+  } else {
+    box.innerHTML = takers.map(t => {
+      const inGroup = name && String(t.groups || '').split(',').map(s => s.trim()).includes(name);
+      return '<label><input type="checkbox" class="gm-check" data-id="' + pEsc(t.takerId) + '"' + (inGroup ? ' checked' : '') + '> ' +
+        pEsc(t.name || t.takerId) + ' <span style="color:var(--faint);font-size:12px;">' + pEsc(t.takerId) + '</span></label>';
+    }).join('');
+  }
+  document.getElementById('personEditor').classList.add('hidden');
+  document.getElementById('groupEditor').classList.remove('hidden');
+  document.getElementById('groupEditor').scrollIntoView({ behavior: 'smooth' });
+}
+document.getElementById('btnCancelGroup').addEventListener('click', () => {
+  document.getElementById('groupEditor').classList.add('hidden');
+});
+document.getElementById('btnSaveGroup').addEventListener('click', async () => {
+  const newName = document.getElementById('g_name').value.trim();
+  if (!newName){ document.getElementById('groupNotice').innerHTML = '<div class="notice error">Group name is required.</div>'; return; }
+  const oldName = editingGroupName;
+  const checked = new Set([...document.querySelectorAll('#g_members .gm-check:checked')].map(c => c.dataset.id));
+  const res = await apiGet({ action: 'listTakers', token: ADMIN_TOKEN });
+  if (!res.ok){ toast('Could not load users', 'error'); return; }
+  let changed = 0;
+  for (const t of (res.takers || [])){
+    let groups = String(t.groups || '').split(',').map(s => s.trim()).filter(Boolean);
+    const before = groups.join('|');
+    if (oldName && oldName !== newName) groups = groups.filter(g => g !== oldName); // rename: drop old name
+    const shouldHave = checked.has(t.takerId);
+    const has = groups.includes(newName);
+    if (shouldHave && !has) groups.push(newName);
+    else if (!shouldHave && has) groups = groups.filter(g => g !== newName);
+    if (groups.join('|') !== before){
+      await apiPost({ action: 'saveTaker', token: ADMIN_TOKEN, taker: { takerId: t.takerId, name: t.name, email: t.email, groups: groups.join(', ') } });
+      changed++;
+    }
+  }
+  toast('Saved group “' + newName + '”', 'success');
+  document.getElementById('groupEditor').classList.add('hidden');
+  refreshTakerList();
+});
 document.getElementById('btnCancelPerson').addEventListener('click', () => {
   document.getElementById('personEditor').classList.add('hidden');
 });
