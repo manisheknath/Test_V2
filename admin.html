@@ -197,6 +197,27 @@
   .g-members label:last-child{border-bottom:none;}
   .g-members input{width:auto;margin:0;}
 
+  /* ---------- Trainings ---------- */
+  .view-toggle{display:inline-flex;border:1px solid var(--border);margin-left:auto;flex-shrink:0;}
+  .view-toggle button{background:var(--surface);border:none;padding:8px 11px;color:var(--muted);display:grid;place-items:center;}
+  .view-toggle button + button{border-left:1px solid var(--border);}
+  .view-toggle button.active{background:var(--accent-soft);color:var(--accent);}
+  .view-toggle button svg{width:16px;height:16px;}
+  .tr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px;}
+  .tr-card{position:relative;aspect-ratio:1/1;border:1px solid var(--border);overflow:hidden;cursor:pointer;
+    background:var(--tr-bg);background-size:cover;background-position:center;display:flex;flex-direction:column;justify-content:flex-end;}
+  .tr-card::after{content:'';position:absolute;inset:0;background:linear-gradient(to top,rgba(9,18,13,.86),rgba(9,18,13,.28) 55%,rgba(9,18,13,.05));}
+  .tr-card .tr-body{position:relative;z-index:1;padding:14px 15px;color:#fff;}
+  .tr-name{font-size:15.5px;font-weight:700;letter-spacing:-.01em;margin-bottom:3px;line-height:1.2;text-shadow:0 1px 3px rgba(0,0,0,.45);}
+  .tr-desc{font-size:12.5px;line-height:1.4;color:rgba(255,255,255,.85);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+  .tr-check{position:absolute;top:10px;left:10px;z-index:2;width:auto;margin:0;cursor:pointer;}
+  .tr-badge{position:absolute;top:9px;right:10px;z-index:2;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:2px 7px;background:rgba(255,255,255,.92);color:var(--text);}
+  .tr-badge.draft{color:var(--amber-tx);}
+  .tr-badge.archived{color:var(--slate-tx);}
+  .tr-card.sel{outline:2px solid var(--accent);outline-offset:-2px;}
+  .tr-card.arch{opacity:.6;}
+  .tr-empty{color:var(--muted);font-size:13.5px;padding:34px 6px;text-align:center;}
+
   /* Bulk action utility bar — HubSpot-style single row of icon actions */
   .bulk-bar{display:flex;align-items:center;gap:4px;width:100%;flex-wrap:wrap;
     background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);
@@ -353,9 +374,89 @@
       <section class="view" id="view-trainings" hidden>
         <div class="page-head">
           <div><h1>Trainings</h1><p class="sub">Courses and learning material for your users.</p></div>
-          <div class="head-actions"><button class="primary" onclick="toast('Trainings management arrives with the backend migration.')">+ New training</button></div>
+          <div class="head-actions"><button class="primary" id="btnNewTraining">+ New training</button></div>
         </div>
-        <div class="card"><p class="sub" style="margin:0;">No trainings yet. Training management will let you build courses and assign them to groups — it lands with the multi-tenant backend.</p></div>
+        <div class="card">
+          <div class="list-toolbar" id="trToolbar">
+            <div class="list-controls" id="trControls">
+              <div class="list-search">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <input type="text" id="trSearch" placeholder="Search trainings…">
+              </div>
+              <div class="dropdown">
+                <button type="button" class="ghost toolbar-btn" id="btnTrFilter">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4-2v-4Z"/></svg>Filter
+                </button>
+                <div class="dropdown-menu hidden" id="trFilterMenu">
+                  <button type="button" data-trfilter="all">All statuses</button>
+                  <button type="button" data-trfilter="published">Published</button>
+                  <button type="button" data-trfilter="draft">Draft</button>
+                  <button type="button" data-trfilter="archived">Archived</button>
+                </div>
+              </div>
+              <div class="dropdown">
+                <button type="button" class="ghost toolbar-btn" id="btnTrSort">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h12M3 12h8M3 18h5"/><path d="M17 9l3-3 3 3M20 6v12"/></svg>Sort by
+                </button>
+                <div class="dropdown-menu hidden" id="trSortMenu">
+                  <button type="button" data-trsort="none">Default order</button>
+                  <button type="button" data-trsort="name">Name</button>
+                  <button type="button" data-trsort="updated">Recently updated</button>
+                </div>
+              </div>
+              <div class="view-toggle" id="trViewToggle">
+                <button type="button" data-trview="grid" class="active" title="Grid view" aria-label="Grid view">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                </button>
+                <button type="button" data-trview="list" title="List view" aria-label="List view">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>
+                </button>
+              </div>
+            </div>
+            <div id="trBulkBar" class="bulk-bar hidden">
+              <span class="bulk-count"><b id="trBulkCount">0</b> selected</span>
+              <span class="util-divider"></span>
+              <div class="util-actions">
+                <button type="button" class="util-btn" id="trAssign">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Assign
+                </button>
+                <button type="button" class="util-btn" id="trArchive">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h18v12H3z"/><path d="M3 8l1.6-4h14.8L21 8"/><path d="M10 12h4"/></svg>Archive
+                </button>
+                <button type="button" class="util-btn util-btn-danger" id="trDelete">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>Delete
+                </button>
+              </div>
+              <button type="button" class="util-close" id="trBulkClose" aria-label="Clear selection">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div id="trGrid" class="tr-grid"></div>
+          <div id="trList" class="table-wrap hidden">
+            <table>
+              <thead><tr><th style="width:1%;"><input type="checkbox" class="head-check" id="selectAllTr"></th><th>Training</th><th>Description</th><th>Status</th><th>Updated</th><th></th></tr></thead>
+              <tbody id="trListBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Training editor -->
+        <div id="trEditor" class="card hidden">
+          <h2 id="trEditorTitle">New training</h2>
+          <div id="trNotice"></div>
+          <label for="tr_name">Name</label>
+          <input type="text" id="tr_name" placeholder="e.g. Workplace Safety Essentials">
+          <label for="tr_desc">Short description</label>
+          <textarea id="tr_desc" placeholder="One or two lines shown on the training card"></textarea>
+          <label for="tr_status">Status</label>
+          <select id="tr_status"><option value="draft">Draft</option><option value="published">Published</option></select>
+          <div class="head-actions" style="justify-content:flex-end;margin-top:6px;">
+            <button class="ghost" id="btnCancelTraining">Cancel</button>
+            <button class="primary" id="btnSaveTraining">Save training</button>
+          </div>
+        </div>
       </section>
 
       <!-- ===== CERTIFICATES VIEW ===== -->
@@ -2541,6 +2642,156 @@ function parseTestDocument(rawText) {
    dashboard stat row. Kept separate from the logic above so
    none of the existing behaviour changes.
    ============================================================ */
+/* ---------- Trainings (scaffold, in-memory mock) ---------- */
+const TR_GRADS = [
+  'linear-gradient(135deg,#0F6146,#1FA574)', 'linear-gradient(135deg,#3A5A8C,#6C8FC7)',
+  'linear-gradient(135deg,#8A5A12,#D9A441)', 'linear-gradient(135deg,#6D3B8F,#A66FD1)',
+  'linear-gradient(135deg,#9C3D3D,#D67A6A)', 'linear-gradient(135deg,#256C6C,#4FB0A6)'
+];
+let TRAININGS = [
+  { id:'tr1', name:'Workplace Safety Essentials', desc:'Core safety practices every new hire must complete.', status:'published', updatedAt:'2026-07-20', g:0 },
+  { id:'tr2', name:'Customer Service Fundamentals', desc:'Handling calls, tickets, and difficult conversations with confidence.', status:'published', updatedAt:'2026-07-14', g:1 },
+  { id:'tr3', name:'Data Privacy & GDPR', desc:'What everyone needs to know about handling personal data.', status:'draft', updatedAt:'2026-07-25', g:2 },
+  { id:'tr4', name:'Leadership 101', desc:'Foundations of managing and motivating a team.', status:'published', updatedAt:'2026-06-30', g:3 },
+  { id:'tr5', name:'Financial Compliance', desc:'Anti-fraud, reporting, and the regulatory basics.', status:'archived', updatedAt:'2026-05-11', g:4 },
+  { id:'tr6', name:'Effective Communication', desc:'Writing, presenting, and active listening at work.', status:'published', updatedAt:'2026-07-02', g:5 }
+];
+const SEL_TR = new Set();
+let TR_SEARCH='', TR_FILTER='all', TR_SORT='none', TR_VIEW='grid', editingTrainingId=null;
+
+function trRows(){
+  const q = TR_SEARCH.trim().toLowerCase();
+  let rows = TRAININGS.filter(t => !q || t.name.toLowerCase().includes(q) || t.desc.toLowerCase().includes(q));
+  if (TR_FILTER !== 'all') rows = rows.filter(t => t.status === TR_FILTER);
+  if (TR_SORT !== 'none') rows = rows.slice().sort((a,b) =>
+    TR_SORT==='name' ? a.name.localeCompare(b.name) : TR_SORT==='updated' ? b.updatedAt.localeCompare(a.updatedAt) : 0);
+  return rows;
+}
+function renderTrainings(){
+  [...SEL_TR].forEach(id => { if (!TRAININGS.some(t=>t.id===id)) SEL_TR.delete(id); });
+  const rows = trRows();
+  const grid = document.getElementById('trGrid'), list = document.getElementById('trList');
+  grid.classList.toggle('hidden', TR_VIEW !== 'grid');
+  list.classList.toggle('hidden', TR_VIEW !== 'list');
+  if (TR_VIEW === 'grid'){
+    grid.innerHTML = rows.length ? rows.map(t =>
+      '<div class="tr-card'+(SEL_TR.has(t.id)?' sel':'')+(t.status==='archived'?' arch':'')+'" data-id="'+t.id+'" style="--tr-bg:'+(t.image?("url('"+t.image+"')"):TR_GRADS[t.g%TR_GRADS.length])+';">'+
+      '<input type="checkbox" class="tr-check" data-id="'+t.id+'"'+(SEL_TR.has(t.id)?' checked':'')+' aria-label="Select">'+
+      (t.status!=='published' ? '<span class="tr-badge '+t.status+'">'+t.status+'</span>' : '')+
+      '<div class="tr-body"><div class="tr-name">'+pEsc(t.name)+'</div><div class="tr-desc">'+pEsc(t.desc)+'</div></div></div>').join('')
+      : '<div class="tr-empty" style="grid-column:1/-1;">'+((TR_SEARCH||TR_FILTER!=='all')?'No trainings match the current filters.':'No trainings yet. Click “+ New training” to create one.')+'</div>';
+  } else {
+    document.getElementById('trListBody').innerHTML = rows.length ? rows.map(t =>
+      '<tr><td><input type="checkbox" class="tr-check" data-id="'+t.id+'"'+(SEL_TR.has(t.id)?' checked':'')+'></td>'+
+      '<td><b>'+pEsc(t.name)+'</b></td><td style="color:var(--muted);font-size:12.5px;max-width:360px;">'+pEsc(t.desc)+'</td>'+
+      '<td><span class="tag '+(t.status==='published'?'open':t.status==='draft'?'scheduled':'closed')+'">'+t.status+'</span></td>'+
+      '<td style="color:var(--muted);font-size:12px;">'+pEsc(t.updatedAt)+'</td>'+
+      '<td style="white-space:nowrap;"><button class="ghost small" data-tract="edit" data-id="'+t.id+'">Edit</button>'+
+      '<button class="danger small" data-tract="delete" data-id="'+t.id+'">Delete</button></td></tr>').join('')
+      : '<tr><td colspan="6" style="color:var(--muted);font-size:13px;padding:14px 10px;">'+((TR_SEARCH||TR_FILTER!=='all')?'No trainings match the current filters.':'No trainings yet.')+'</td></tr>';
+  }
+  updateTrBulk();
+}
+function updateTrBulk(){
+  const n = SEL_TR.size;
+  document.getElementById('trBulkCount').textContent = n;
+  document.getElementById('trBulkBar').classList.toggle('hidden', n === 0);
+  document.getElementById('trControls').classList.toggle('hidden', n > 0);
+  document.getElementById('trToolbar').classList.toggle('bulk-active', n > 0);
+  const sa = document.getElementById('selectAllTr'), all = document.querySelectorAll('#trListBody .tr-check');
+  if (TR_VIEW === 'list'){ sa.checked = all.length>0 && n===all.length; sa.indeterminate = n>0 && n<all.length; }
+}
+
+// Selection (grid + list checkboxes share .tr-check)
+document.getElementById('view-trainings').addEventListener('change', (e) => {
+  const cb = e.target.closest('.tr-check'); if (!cb || !cb.dataset.id) return;
+  if (cb.checked) SEL_TR.add(cb.dataset.id); else SEL_TR.delete(cb.dataset.id);
+  const card = document.querySelector('.tr-card[data-id="'+cb.dataset.id+'"]'); if (card) card.classList.toggle('sel', cb.checked);
+  updateTrBulk();
+});
+document.getElementById('selectAllTr').addEventListener('change', (e) => {
+  SEL_TR.clear(); if (e.target.checked) trRows().forEach(t => SEL_TR.add(t.id)); renderTrainings();
+});
+document.getElementById('trGrid').addEventListener('click', (e) => {
+  if (e.target.closest('.tr-check')) return;
+  const card = e.target.closest('.tr-card'); if (!card) return;
+  const t = TRAININGS.find(x=>x.id===card.dataset.id); if (t) toast('Opening “'+t.name+'” (builder needs backend).');
+});
+document.getElementById('trListBody').addEventListener('click', async (e) => {
+  const btn = e.target.closest('button'); if (!btn) return;
+  const t = TRAININGS.find(x=>x.id===btn.dataset.id); if (!t) return;
+  if (btn.dataset.tract==='edit') openTrainingEditor(t);
+  else if (btn.dataset.tract==='delete'){
+    if (!await confirmDialog({ title:'Delete training?', message:'Delete “'+t.name+'”? This cannot be undone.', confirmText:'Delete', danger:true })) return;
+    TRAININGS = TRAININGS.filter(x=>x.id!==t.id); toast('Deleted “'+t.name+'”','success'); renderTrainings();
+  }
+});
+
+// Toolbar: search + view toggle + filter/sort
+document.getElementById('trSearch').addEventListener('input', (e) => { TR_SEARCH = e.target.value; renderTrainings(); });
+document.querySelectorAll('#trViewToggle button').forEach(b => b.addEventListener('click', () => {
+  TR_VIEW = b.dataset.trview;
+  document.querySelectorAll('#trViewToggle button').forEach(x => x.classList.toggle('active', x===b));
+  renderTrainings();
+}));
+(function(){
+  const fm = document.getElementById('trFilterMenu'), sm = document.getElementById('trSortMenu');
+  const bf = document.getElementById('btnTrFilter'), bs = document.getElementById('btnTrSort');
+  const closeAll = () => { fm.classList.add('hidden'); sm.classList.add('hidden'); };
+  const mark = (menu, attr, val) => menu.querySelectorAll('button').forEach(b => b.classList.toggle('sel', b.getAttribute(attr)===val));
+  mark(fm,'data-trfilter',TR_FILTER); mark(sm,'data-trsort',TR_SORT);
+  bf.addEventListener('click', (e)=>{ e.stopPropagation(); sm.classList.add('hidden'); fm.classList.toggle('hidden'); });
+  bs.addEventListener('click', (e)=>{ e.stopPropagation(); fm.classList.add('hidden'); sm.classList.toggle('hidden'); });
+  document.addEventListener('click', (e)=>{ if(!e.target.closest('.dropdown')) closeAll(); });
+  fm.addEventListener('click', (e)=>{ const b=e.target.closest('button[data-trfilter]'); if(!b) return; TR_FILTER=b.dataset.trfilter; bf.classList.toggle('active', TR_FILTER!=='all'); mark(fm,'data-trfilter',TR_FILTER); closeAll(); renderTrainings(); });
+  sm.addEventListener('click', (e)=>{ const b=e.target.closest('button[data-trsort]'); if(!b) return; TR_SORT=b.dataset.trsort; bs.classList.toggle('active', TR_SORT!=='none'); mark(sm,'data-trsort',TR_SORT); closeAll(); renderTrainings(); });
+})();
+
+// Bulk actions: Assign / Archive / Delete
+document.getElementById('trBulkClose').addEventListener('click', () => { SEL_TR.clear(); renderTrainings(); });
+document.getElementById('trAssign').addEventListener('click', () => toast('Assigning '+SEL_TR.size+' training'+(SEL_TR.size===1?'':'s')+' to groups/users (needs backend).'));
+document.getElementById('trArchive').addEventListener('click', () => {
+  const ids=[...SEL_TR]; if(!ids.length) return;
+  ids.forEach(id => { const t=TRAININGS.find(x=>x.id===id); if(t) t.status='archived'; });
+  toast('Archived '+ids.length+' training'+(ids.length===1?'':'s'),'success'); SEL_TR.clear(); renderTrainings();
+});
+document.getElementById('trDelete').addEventListener('click', async () => {
+  const ids=[...SEL_TR]; if(!ids.length) return;
+  if (!await confirmDialog({ title:'Delete trainings?', message:'Delete '+ids.length+' training'+(ids.length===1?'':'s')+'? This cannot be undone.', confirmText:'Delete', danger:true })) return;
+  TRAININGS = TRAININGS.filter(t=>!ids.includes(t.id)); SEL_TR.clear();
+  toast('Deleted '+ids.length+' training'+(ids.length===1?'':'s'),'success'); renderTrainings();
+});
+
+// Editor
+function openTrainingEditor(t){
+  editingTrainingId = t ? t.id : null;
+  document.getElementById('trEditorTitle').textContent = t ? 'Edit training' : 'New training';
+  document.getElementById('trNotice').innerHTML = '';
+  document.getElementById('tr_name').value = t ? t.name : '';
+  document.getElementById('tr_desc').value = t ? t.desc : '';
+  document.getElementById('tr_status').value = t ? (t.status==='archived'?'draft':t.status) : 'draft';
+  document.getElementById('trEditor').classList.remove('hidden');
+  document.getElementById('trEditor').scrollIntoView({ behavior:'smooth' });
+}
+document.getElementById('btnNewTraining').addEventListener('click', () => openTrainingEditor(null));
+document.getElementById('btnCancelTraining').addEventListener('click', () => document.getElementById('trEditor').classList.add('hidden'));
+document.getElementById('btnSaveTraining').addEventListener('click', () => {
+  const name = document.getElementById('tr_name').value.trim();
+  const desc = document.getElementById('tr_desc').value.trim();
+  const status = document.getElementById('tr_status').value;
+  if (!name){ document.getElementById('trNotice').innerHTML = '<div class="notice error">A name is required.</div>'; return; }
+  const today = new Date().toISOString().slice(0,10);
+  if (editingTrainingId){
+    const t = TRAININGS.find(x=>x.id===editingTrainingId);
+    if (t){ t.name=name; t.desc=desc; t.status=status; t.updatedAt=today; }
+  } else {
+    TRAININGS.unshift({ id:'tr'+Date.now(), name, desc, status, updatedAt:today, g:TRAININGS.length%TR_GRADS.length });
+  }
+  document.getElementById('trEditor').classList.add('hidden');
+  toast('Saved “'+name+'”','success'); renderTrainings();
+});
+renderTrainings();
+
 document.querySelectorAll('.nav-item[data-view]').forEach(item => {
   item.addEventListener('click', () => {
     const view = item.dataset.view;
@@ -2549,6 +2800,7 @@ document.querySelectorAll('.nav-item[data-view]').forEach(item => {
     window.scrollTo(0, 0);
     if (view === 'results' && typeof refreshResults === 'function') refreshResults();
     if (view === 'dashboard') renderAdminDashboard();
+    if (view === 'trainings') renderTrainings();
   });
 });
 
