@@ -290,9 +290,21 @@
   <div class="shell">
     <aside class="sidebar">
       <div class="nav-label">Manage</div>
-      <button class="nav-item active" data-view="tests">
+      <button class="nav-item active" data-view="dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 12h7v8h-7zM4 15h7v5H4z"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-item" data-view="tests">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
         Test Management<span class="cnt" id="navTestsCount"></span>
+      </button>
+      <button class="nav-item" data-view="trainings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6l8-3 8 3-8 3-8-3Z"/><path d="M7 9v5c0 1.5 2.2 2.5 5 2.5s5-1 5-2.5V9"/><path d="M20 7v6"/></svg>
+        Trainings
+      </button>
+      <button class="nav-item" data-view="certificates">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="9" r="5"/><path d="M8.5 13.2 7 22l5-2.8L17 22l-1.5-8.8"/></svg>
+        Certificates
       </button>
       <button class="nav-item" data-view="people">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M17 7.5a3 3 0 0 1 0 5.6M21 20c0-2.4-1.2-4.2-3-5"/></svg>
@@ -315,8 +327,48 @@
 
     <main class="main">
 
+      <!-- ===== DASHBOARD VIEW ===== -->
+      <section class="view" id="view-dashboard">
+        <div class="page-head"><div><h1>Dashboard</h1><p class="sub">An overview of your organization's activity.</p></div></div>
+        <div class="stat-row">
+          <div class="stat"><div class="k">Total tests</div><div class="v tnum" id="statTotal">0</div></div>
+          <div class="stat"><div class="k">Active</div><div class="v tnum" id="statActive">0</div></div>
+          <div class="stat"><div class="k">Scheduled</div><div class="v tnum" id="statScheduled">0</div></div>
+          <div class="stat"><div class="k">Completed</div><div class="v tnum" id="statCompleted">0</div></div>
+          <div class="stat"><div class="k">Users</div><div class="v tnum" id="statUsers">0</div></div>
+          <div class="stat"><div class="k">Groups</div><div class="v tnum" id="statGroups">0</div></div>
+        </div>
+        <div class="card">
+          <h2>Newest tests</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Code</th><th>Title</th><th>Questions</th><th>Status</th><th>Opens</th></tr></thead>
+              <tbody id="dashRecentBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== TRAININGS VIEW ===== -->
+      <section class="view" id="view-trainings" hidden>
+        <div class="page-head">
+          <div><h1>Trainings</h1><p class="sub">Courses and learning material for your users.</p></div>
+          <div class="head-actions"><button class="primary" onclick="toast('Trainings management arrives with the backend migration.')">+ New training</button></div>
+        </div>
+        <div class="card"><p class="sub" style="margin:0;">No trainings yet. Training management will let you build courses and assign them to groups — it lands with the multi-tenant backend.</p></div>
+      </section>
+
+      <!-- ===== CERTIFICATES VIEW ===== -->
+      <section class="view" id="view-certificates" hidden>
+        <div class="page-head">
+          <div><h1>Certificates</h1><p class="sub">Certificates issued to users on completion.</p></div>
+          <div class="head-actions"><button class="primary" onclick="toast('Certificate templates arrive with the backend migration.')">+ New certificate</button></div>
+        </div>
+        <div class="card"><p class="sub" style="margin:0;">No certificates yet. You'll be able to design certificate templates and issue them automatically when a user passes a test or completes a training.</p></div>
+      </section>
+
       <!-- ===== TESTS VIEW ===== -->
-      <section class="view" id="view-tests">
+      <section class="view" id="view-tests" hidden>
        <div id="testsListView">
         <div class="page-head">
           <div><h1>Test Management</h1><p class="sub">Create, schedule, and assign assessments to users and groups.</p></div>
@@ -330,15 +382,6 @@
               </div>
             </div>
           </div>
-        </div>
-
-        <div class="stat-row">
-          <div class="stat"><div class="k">Total tests</div><div class="v tnum" id="statTotal">0</div></div>
-          <div class="stat"><div class="k">Active</div><div class="v tnum" id="statActive">0</div></div>
-          <div class="stat"><div class="k">Scheduled</div><div class="v tnum" id="statScheduled">0</div></div>
-          <div class="stat"><div class="k">Completed</div><div class="v tnum" id="statCompleted">0</div></div>
-          <div class="stat"><div class="k">Users</div><div class="v tnum" id="statUsers">0</div></div>
-          <div class="stat"><div class="k">Groups</div><div class="v tnum" id="statGroups">0</div></div>
         </div>
 
         <input type="file" id="wordFileInput" accept=".docx" class="hidden">
@@ -865,6 +908,20 @@ function renderTests(tests){
   LAST_TESTS = tests || [];
   renderTestRows();
   clearSelection();
+  renderAdminDashboard();
+}
+// Dashboard: newest tests (stats are set by updateStats).
+function renderAdminDashboard(){
+  const body = document.getElementById('dashRecentBody');
+  if (!body) return;
+  const rows = (LAST_TESTS || []).slice()
+    .sort((a, b) => new Date(b.startDate || 0) - new Date(a.startDate || 0)).slice(0, 5);
+  body.innerHTML = rows.length ? rows.map(t => {
+    const s = computeStatus(t.startDate, t.deadline);
+    return '<tr><td><code>' + pEsc(t.testCode) + '</code></td><td>' + pEsc(t.title || '') + '</td>' +
+      '<td>' + t.questionCount + '</td><td><span class="tag ' + s + '">' + s + '</span></td>' +
+      '<td style="font-size:12px;color:var(--muted);">' + fmt(t.startDate) + '</td></tr>';
+  }).join('') : '<tr><td colspan="5" style="color:var(--muted);font-size:13px;padding:14px 10px;">No tests yet.</td></tr>';
 }
 // Renders the (search + status filtered, optionally sorted) rows; keeps selection checked.
 function renderTestRows(){
@@ -2491,6 +2548,7 @@ document.querySelectorAll('.nav-item[data-view]').forEach(item => {
     document.querySelectorAll('.view').forEach(v => { v.hidden = (v.id !== 'view-' + view); });
     window.scrollTo(0, 0);
     if (view === 'results' && typeof refreshResults === 'function') refreshResults();
+    if (view === 'dashboard') renderAdminDashboard();
   });
 });
 
