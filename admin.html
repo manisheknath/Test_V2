@@ -218,6 +218,14 @@
   .tr-card.arch{opacity:.6;}
   .tr-empty{color:var(--muted);font-size:13.5px;padding:34px 6px;text-align:center;}
 
+  /* ---------- Roles + seats ---------- */
+  .rtag{font-size:11px;font-weight:600;padding:3px 9px;display:inline-block;background:var(--surface-3);color:var(--muted);white-space:nowrap;}
+  .rtag.admin,.rtag.user_admin{background:var(--accent-soft);color:var(--accent);}
+  .rtag.coach,.rtag.contributor{background:var(--slate-bg);color:var(--slate-tx);}
+  .role-seats{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .seat-chip{font-size:12px;font-weight:500;padding:6px 12px;border:1px solid var(--border);background:var(--surface);color:var(--muted);}
+  .seat-chip b{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums;margin-right:5px;}
+
   /* Bulk action utility bar — HubSpot-style single row of icon actions */
   .bulk-bar{display:flex;align-items:center;gap:4px;width:100%;flex-wrap:wrap;
     background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--accent);
@@ -674,6 +682,7 @@
 
         <!-- USERS panel -->
         <div id="usersPanel">
+          <div class="role-seats" id="roleSeats"></div>
           <div class="card">
             <div class="list-toolbar" id="usersToolbar">
               <div class="list-controls" id="userControls">
@@ -727,7 +736,7 @@
             </div>
             <div class="table-wrap">
               <table id="takersTable">
-                <thead><tr><th style="width:1%;"><input type="checkbox" id="selectAllUsers" aria-label="Select all"></th><th>ID</th><th>Name</th><th>Email</th><th>Groups</th><th>Password</th><th></th></tr></thead>
+                <thead><tr><th style="width:1%;"><input type="checkbox" id="selectAllUsers" aria-label="Select all"></th><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Groups</th><th>Password</th><th></th></tr></thead>
                 <tbody id="takersTableBody"></tbody>
               </table>
             </div>
@@ -797,6 +806,16 @@
             <div>
               <label for="p_email">Email (optional — labels their result)</label>
               <input type="text" id="p_email" placeholder="e.g. jordan@email.com">
+            </div>
+            <div>
+              <label for="p_role">Role</label>
+              <select id="p_role">
+                <option value="learner">Learner</option>
+                <option value="contributor">Contributor</option>
+                <option value="coach">Coach</option>
+                <option value="user_admin">User Admin</option>
+                <option value="admin">Admin</option>
+              </select>
             </div>
           </div>
           <label for="p_password" id="p_passwordLabel">Password</label>
@@ -1306,7 +1325,7 @@ function renderUserRows(){
   tbody.innerHTML = '';
   if (!rows.length){
     const filtered = q || USER_FILTER !== 'all';
-    tbody.innerHTML = '<tr><td colspan="7" style="color:var(--muted);font-size:13px;">' +
+    tbody.innerHTML = '<tr><td colspan="8" style="color:var(--muted);font-size:13px;">' +
       (filtered ? 'No users match the current filters.' : 'No users yet. Click “+ Create → User” to add the first account.') + '</td></tr>';
   } else {
     rows.forEach(t => {
@@ -1316,6 +1335,7 @@ function renderUserRows(){
         '<td><code>' + pEsc(t.takerId) + '</code></td>' +
         '<td>' + pEsc(t.name || '') + '</td>' +
         '<td style="font-size:12px;color:var(--muted);">' + pEsc(t.email || '') + '</td>' +
+        '<td><span class="rtag ' + (t.role || 'learner') + '">' + roleLabel(t.role || 'learner') + '</span></td>' +
         '<td style="font-size:12px;">' + pEsc(t.groups || '') + '</td>' +
         '<td>' + (t.hasPassword ? '<span class="tag open">set</span>' : '<span class="tag closed">none</span>') + '</td>' +
         '<td style="white-space:nowrap;">' +
@@ -1326,6 +1346,7 @@ function renderUserRows(){
     });
   }
   if (typeof updateUsersBulkBar === 'function') updateUsersBulkBar();
+  renderRoleSeats();
 }
 async function refreshTakerList(){
   const result = await apiGet({ action: 'listTakers', token: ADMIN_TOKEN });
@@ -1340,6 +1361,7 @@ function openPersonEditor(taker){
   document.getElementById('p_name').value = taker ? (taker.name || '') : '';
   document.getElementById('p_email').value = taker ? (taker.email || '') : '';
   document.getElementById('p_groups').value = taker ? (taker.groups || '') : '';
+  document.getElementById('p_role').value = taker ? (taker.role || 'learner') : 'learner';
   document.getElementById('p_password').value = '';
   document.getElementById('p_passwordLabel').textContent = taker ? 'Reset password (leave blank to keep current)' : 'Password';
   document.getElementById('p_password').placeholder = taker ? 'Leave blank to keep existing' : 'Set a password';
@@ -1355,6 +1377,19 @@ let USER_FILTER = 'all';   // all | none | group:<name>
 let USER_SORT = 'none';    // none | id | name | email
 let GROUP_SEARCH = '';
 let GROUP_SORT = 'name';   // name | members
+
+// Roles (assignment persists once the backend stores accounts.role;
+// quotas are enforced against each org's seat limits set by the Master).
+const ROLES = [
+  { v:'admin', label:'Admin' }, { v:'user_admin', label:'User Admin' },
+  { v:'coach', label:'Coach' }, { v:'contributor', label:'Contributor' }, { v:'learner', label:'Learner' }
+];
+function roleLabel(v){ const r = ROLES.find(x => x.v === v); return r ? r.label : 'Learner'; }
+function renderRoleSeats(){
+  const strip = document.getElementById('roleSeats'); if (!strip) return;
+  const counts = {}; (LAST_TAKERS || []).forEach(t => { const r = t.role || 'learner'; counts[r] = (counts[r] || 0) + 1; });
+  strip.innerHTML = ROLES.map(r => '<span class="seat-chip"><b>' + (counts[r.v] || 0) + '</b>' + r.label + (counts[r.v]===1?'':'s') + '</span>').join('');
+}
 
 // Build the Users filter dropdown from the current groups.
 function buildUserFilterMenu(){
@@ -1703,6 +1738,7 @@ document.getElementById('btnSavePerson').addEventListener('click', async () => {
     name: document.getElementById('p_name').value.trim(),
     email: document.getElementById('p_email').value.trim(),
     groups: document.getElementById('p_groups').value.trim(),
+    role: document.getElementById('p_role').value,
     password: document.getElementById('p_password').value
   };
   const errs = [];

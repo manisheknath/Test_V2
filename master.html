@@ -276,7 +276,7 @@
           </div>
           <div class="table-wrap">
             <table id="orgsTable">
-              <thead><tr><th style="width:1%;"><input type="checkbox" class="head-check" id="selectAllOrgs"></th><th>Organization</th><th>Slug</th><th>Status</th><th>Admins</th><th>Users</th><th>Tests</th><th>Created</th><th></th></tr></thead>
+              <thead><tr><th style="width:1%;"><input type="checkbox" class="head-check" id="selectAllOrgs"></th><th>Organization</th><th>Slug</th><th>Status</th><th>Admins</th><th>Learners</th><th>Tests</th><th>Created</th><th></th></tr></thead>
               <tbody id="orgsBody"></tbody>
             </table>
           </div>
@@ -284,19 +284,32 @@
 
         <!-- Org editor -->
         <div id="orgEditor" class="card hidden">
-          <h2>New organization</h2>
+          <h2 id="orgEditorTitle">New organization</h2>
           <div id="orgNotice"></div>
           <div class="row">
             <div><label for="o_name">Organization name</label><input type="text" id="o_name" placeholder="e.g. Acme Corp"></div>
             <div><label for="o_slug">Slug (portal URL)</label><input type="text" id="o_slug" placeholder="e.g. acme"></div>
           </div>
-          <div class="sub" style="margin:2px 0 14px;">Create the organization's first admin:</div>
+          <div class="sub" style="margin:2px 0 10px;">Role seat limits — the most of each role this org's admin may create:</div>
           <div class="row">
-            <div><label for="o_adminName">Admin name</label><input type="text" id="o_adminName" placeholder="e.g. Dana Reeves"></div>
-            <div><label for="o_adminEmail">Admin email</label><input type="email" id="o_adminEmail" placeholder="e.g. dana@acme.com"></div>
+            <div><label for="o_lim_admin">Admins</label><input type="number" id="o_lim_admin" min="0" value="2"></div>
+            <div><label for="o_lim_userAdmin">User Admins</label><input type="number" id="o_lim_userAdmin" min="0" value="2"></div>
+            <div><label for="o_lim_coach">Coaches</label><input type="number" id="o_lim_coach" min="0" value="10"></div>
           </div>
-          <label for="o_adminPass">Admin password</label>
-          <input type="text" id="o_adminPass" placeholder="Set a password">
+          <div class="row">
+            <div><label for="o_lim_contributor">Contributors</label><input type="number" id="o_lim_contributor" min="0" value="20"></div>
+            <div><label for="o_lim_learner">Learners</label><input type="number" id="o_lim_learner" min="0" value="200"></div>
+            <div></div>
+          </div>
+          <div id="orgAdminSection">
+            <div class="sub" style="margin:2px 0 14px;">Create the organization's first admin:</div>
+            <div class="row">
+              <div><label for="o_adminName">Admin name</label><input type="text" id="o_adminName" placeholder="e.g. Dana Reeves"></div>
+              <div><label for="o_adminEmail">Admin email</label><input type="email" id="o_adminEmail" placeholder="e.g. dana@acme.com"></div>
+            </div>
+            <label for="o_adminPass">Admin password</label>
+            <input type="text" id="o_adminPass" placeholder="Set a password">
+          </div>
           <div class="head-actions" style="justify-content:flex-end;margin-top:6px;">
             <button class="ghost" id="btnCancelOrg">Cancel</button>
             <button class="primary" id="btnSaveOrg">Create organization</button>
@@ -403,12 +416,14 @@ const MKEY = 'masterKey';
 
 /* ---------- Mock data ---------- */
 let ORGS = [
-  { id:'o1', name:'Acme Corp',         slug:'acme',     status:'active',    admins:3, users:142, tests:28, createdAt:'2026-05-12' },
-  { id:'o2', name:'Globex Institute',  slug:'globex',   status:'active',    admins:2, users:87,  tests:14, createdAt:'2026-06-03' },
-  { id:'o3', name:'Initech Academy',   slug:'initech',  status:'active',    admins:1, users:45,  tests:9,  createdAt:'2026-06-21' },
-  { id:'o4', name:'Umbrella Training', slug:'umbrella', status:'suspended', admins:1, users:12,  tests:3,  createdAt:'2026-07-01' },
-  { id:'o5', name:'Stark Skills',      slug:'stark',    status:'active',    admins:4, users:210, tests:41, createdAt:'2026-07-18' }
+  { id:'o1', name:'Acme Corp',         slug:'acme',     status:'active',    admins:3, users:142, tests:28, createdAt:'2026-05-12', limits:{ admin:3, userAdmin:2, coach:15, contributor:25, learner:200 } },
+  { id:'o2', name:'Globex Institute',  slug:'globex',   status:'active',    admins:2, users:87,  tests:14, createdAt:'2026-06-03', limits:{ admin:2, userAdmin:2, coach:10, contributor:20, learner:150 } },
+  { id:'o3', name:'Initech Academy',   slug:'initech',  status:'active',    admins:1, users:45,  tests:9,  createdAt:'2026-06-21', limits:{ admin:1, userAdmin:1, coach:5,  contributor:10, learner:60 } },
+  { id:'o4', name:'Umbrella Training', slug:'umbrella', status:'suspended', admins:1, users:12,  tests:3,  createdAt:'2026-07-01', limits:{ admin:1, userAdmin:1, coach:3,  contributor:5,  learner:20 } },
+  { id:'o5', name:'Stark Skills',      slug:'stark',    status:'active',    admins:4, users:210, tests:41, createdAt:'2026-07-18', limits:{ admin:4, userAdmin:3, coach:20, contributor:40, learner:300 } }
 ];
+const ROLE_LIMS = ['admin','userAdmin','coach','contributor','learner'];
+const defaultLimits = () => ({ admin:2, userAdmin:2, coach:10, contributor:20, learner:200 });
 let ADMINS = [
   { id:'a1', name:'Dana Reeves',   email:'dana@acme.com',      org:'Acme Corp',         status:'active', createdAt:'2026-05-12' },
   { id:'a2', name:'Marcus Webb',   email:'marcus@acme.com',    org:'Acme Corp',         status:'active', createdAt:'2026-05-20' },
@@ -491,7 +506,9 @@ function renderOrgs(){
     '<tr><td><input type="checkbox" class="row-check" data-id="'+o.id+'"'+(SEL_ORGS.has(o.id)?' checked':'')+'></td>'+
     '<td><b>'+esc(o.name)+'</b></td><td><code>'+esc(o.slug)+'</code></td>'+
     '<td><span class="tag '+o.status+'">'+o.status+'</span></td>'+
-    '<td class="tnum">'+o.admins+'</td><td class="tnum">'+o.users+'</td><td class="tnum">'+o.tests+'</td>'+
+    '<td class="tnum">'+o.admins+' <span style="color:var(--faint);">/ '+(o.limits?o.limits.admin:'–')+'</span></td>'+
+    '<td class="tnum">'+o.users+' <span style="color:var(--faint);">/ '+(o.limits?o.limits.learner:'–')+'</span></td>'+
+    '<td class="tnum">'+o.tests+'</td>'+
     '<td style="color:var(--muted);font-size:12px;">'+esc(o.createdAt)+'</td>'+
     '<td style="white-space:nowrap;"><button class="ghost small" data-oact="manage" data-id="'+o.id+'">Manage</button>'+
     '<button class="danger small" data-oact="delete" data-id="'+o.id+'">Delete</button></td></tr>').join('')
@@ -531,7 +548,7 @@ document.getElementById('orgsBulkDelete').addEventListener('click', async () => 
 document.getElementById('orgsBody').addEventListener('click', async (e) => {
   const btn = e.target.closest('button'); if (!btn) return;
   const o = ORGS.find(x => x.id === btn.dataset.id); if (!o) return;
-  if (btn.dataset.oact === 'manage'){ toast('Managing “'+o.name+'” opens its admin console (needs backend).'); }
+  if (btn.dataset.oact === 'manage'){ openOrgEditor(o); }
   else if (btn.dataset.oact === 'delete'){
     if (!await confirmDialog({ title:'Delete organization?', message:'Delete “'+o.name+'” and everything in it? This cannot be undone.', confirmText:'Delete', danger:true })) return;
     ORGS = ORGS.filter(x => x.id !== o.id);
@@ -540,29 +557,48 @@ document.getElementById('orgsBody').addEventListener('click', async (e) => {
 });
 document.getElementById('orgSearch').addEventListener('input', (e) => { ORG_SEARCH = e.target.value; renderOrgs(); });
 
-/* Org create editor */
-document.getElementById('btnCreateOrg').addEventListener('click', () => {
+/* Org create / edit editor */
+let editingOrgId = null;
+function openOrgEditor(org){
+  editingOrgId = org ? org.id : null;
+  document.getElementById('orgEditorTitle').textContent = org ? ('Edit “'+org.name+'”') : 'New organization';
   document.getElementById('orgNotice').innerHTML = '';
-  ['o_name','o_slug','o_adminName','o_adminEmail','o_adminPass'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('o_name').value = org ? org.name : '';
+  document.getElementById('o_slug').value = org ? org.slug : '';
+  const lim = org && org.limits ? org.limits : defaultLimits();
+  ROLE_LIMS.forEach(r => document.getElementById('o_lim_'+r).value = lim[r]);
+  document.getElementById('orgAdminSection').classList.toggle('hidden', !!org); // first admin only on create
+  ['o_adminName','o_adminEmail','o_adminPass'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('btnSaveOrg').textContent = org ? 'Save changes' : 'Create organization';
   document.getElementById('orgEditor').classList.remove('hidden');
   document.getElementById('orgEditor').scrollIntoView({ behavior:'smooth' });
-});
+}
+document.getElementById('btnCreateOrg').addEventListener('click', () => openOrgEditor(null));
 document.getElementById('btnCancelOrg').addEventListener('click', () => document.getElementById('orgEditor').classList.add('hidden'));
 document.getElementById('btnSaveOrg').addEventListener('click', () => {
   const name = document.getElementById('o_name').value.trim();
   const slug = document.getElementById('o_slug').value.trim().toLowerCase();
-  const an = document.getElementById('o_adminName').value.trim();
-  const ae = document.getElementById('o_adminEmail').value.trim();
+  const limits = {}; ROLE_LIMS.forEach(r => limits[r] = Math.max(0, parseInt(document.getElementById('o_lim_'+r).value, 10) || 0));
   const errs = [];
   if (!name) errs.push('Organization name is required.');
-  if (!slug) errs.push('A slug is required.'); else if (ORGS.some(o=>o.slug===slug)) errs.push('That slug is already taken.');
-  if (!an || !ae) errs.push('The first admin needs a name and email.');
-  if (errs.length){ document.getElementById('orgNotice').innerHTML = '<div class="err">'+errs.join('<br>')+'</div>'; return; }
+  if (!slug) errs.push('A slug is required.'); else if (ORGS.some(o => o.slug===slug && o.id!==editingOrgId)) errs.push('That slug is already taken.');
   const today = new Date().toISOString().slice(0,10);
-  ORGS.unshift({ id:'o'+Date.now(), name, slug, status:'active', admins:1, users:0, tests:0, createdAt:today });
-  ADMINS.unshift({ id:'a'+Date.now(), name:an, email:ae, org:name, status:'active', createdAt:today });
+  if (!editingOrgId){
+    const an = document.getElementById('o_adminName').value.trim();
+    const ae = document.getElementById('o_adminEmail').value.trim();
+    if (!an || !ae) errs.push('The first admin needs a name and email.');
+    if (errs.length){ document.getElementById('orgNotice').innerHTML = '<div class="err">'+errs.join('<br>')+'</div>'; return; }
+    ORGS.unshift({ id:'o'+Date.now(), name, slug, status:'active', admins:1, users:0, tests:0, createdAt:today, limits });
+    ADMINS.unshift({ id:'a'+Date.now(), name:an, email:ae, org:name, status:'active', createdAt:today });
+    toast('Created “'+name+'”','success');
+  } else {
+    if (errs.length){ document.getElementById('orgNotice').innerHTML = '<div class="err">'+errs.join('<br>')+'</div>'; return; }
+    const o = ORGS.find(x => x.id === editingOrgId);
+    if (o){ const oldName = o.name; o.name = name; o.slug = slug; o.limits = limits;
+      if (oldName !== name) ADMINS.forEach(a => { if (a.org === oldName) a.org = name; }); }
+    toast('Saved “'+name+'”','success');
+  }
   document.getElementById('orgEditor').classList.add('hidden');
-  toast('Created “'+name+'”','success');
   renderOrgs();
 });
 
