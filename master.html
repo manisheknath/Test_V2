@@ -152,12 +152,14 @@
   <div class="login-card">
     <div class="login-brand"><span class="logo">T</span><span class="nm">TestPortal</span></div>
     <h2>Master console</h2>
-    <p class="lede">Platform administration — manage organizations and their admins. <b>Demo:</b> enter any key to explore the scaffold (no backend yet).</p>
+    <p class="lede">Platform administration — sign in with your Master account.</p>
     <div class="err hidden" id="loginError"></div>
     <form id="loginForm">
-      <label for="masterKey">Master key</label>
-      <input type="password" id="masterKey" placeholder="Enter your master key">
-      <button type="submit" class="primary" style="width:100%;">Enter</button>
+      <label for="masterEmail">Email</label>
+      <input type="text" id="masterEmail" autocomplete="username" placeholder="you@platform.com">
+      <label for="masterPass" style="margin-top:12px;">Password</label>
+      <input type="password" id="masterPass" autocomplete="current-password" placeholder="Your password">
+      <button type="submit" class="primary" style="width:100%;margin-top:16px;">Sign in</button>
     </form>
   </div>
 </div>
@@ -407,49 +409,66 @@
 
 <script>
 /* ============================================================
-   Master console — UI scaffold with in-memory mock data.
-   No backend calls: organizations/admins live in the arrays
-   below. Wire these to the multi-tenant backend during the
-   D1/Supabase migration (see the architecture doc).
+   Master console — wired to the live LMS API (Cloudflare Worker).
+   Organizations + admins load from / write to the backend.
    ============================================================ */
-const MKEY = 'masterKey';
+const API = 'https://lms-api.manish-eknath.workers.dev';
+const TKEY = 'masterToken';
+let TOKEN = sessionStorage.getItem(TKEY) || '';
 
-/* ---------- Mock data ---------- */
-let ORGS = [
-  { id:'o1', name:'Acme Corp',         slug:'acme',     status:'active',    admins:3, users:142, tests:28, createdAt:'2026-05-12', limits:{ admin:3, userAdmin:2, coach:15, contributor:25, learner:200 } },
-  { id:'o2', name:'Globex Institute',  slug:'globex',   status:'active',    admins:2, users:87,  tests:14, createdAt:'2026-06-03', limits:{ admin:2, userAdmin:2, coach:10, contributor:20, learner:150 } },
-  { id:'o3', name:'Initech Academy',   slug:'initech',  status:'active',    admins:1, users:45,  tests:9,  createdAt:'2026-06-21', limits:{ admin:1, userAdmin:1, coach:5,  contributor:10, learner:60 } },
-  { id:'o4', name:'Umbrella Training', slug:'umbrella', status:'suspended', admins:1, users:12,  tests:3,  createdAt:'2026-07-01', limits:{ admin:1, userAdmin:1, coach:3,  contributor:5,  learner:20 } },
-  { id:'o5', name:'Stark Skills',      slug:'stark',    status:'active',    admins:4, users:210, tests:41, createdAt:'2026-07-18', limits:{ admin:4, userAdmin:3, coach:20, contributor:40, learner:300 } }
-];
 const ROLE_LIMS = ['admin','userAdmin','coach','contributor','learner'];
 const defaultLimits = () => ({ admin:2, userAdmin:2, coach:10, contributor:20, learner:200 });
-let ADMINS = [
-  { id:'a1', name:'Dana Reeves',   email:'dana@acme.com',      org:'Acme Corp',         status:'active', createdAt:'2026-05-12' },
-  { id:'a2', name:'Marcus Webb',   email:'marcus@acme.com',    org:'Acme Corp',         status:'active', createdAt:'2026-05-20' },
-  { id:'a3', name:'Ines Fabre',    email:'ines@globex.com',    org:'Globex Institute',  status:'active', createdAt:'2026-06-03' },
-  { id:'a4', name:'Ravi Menon',    email:'ravi@initech.com',   org:'Initech Academy',   status:'active', createdAt:'2026-06-21' },
-  { id:'a5', name:'Ophelia Cruz',  email:'ophelia@umbrella.com', org:'Umbrella Training', status:'suspended', createdAt:'2026-07-01' },
-  { id:'a6', name:'Tony Vane',     email:'tony@stark.com',     org:'Stark Skills',      status:'active', createdAt:'2026-07-18' }
-];
+let ORGS = [];
+let ADMINS = [];
 
-/* ---------- Auth (demo gate) ---------- */
-document.getElementById('loginForm').addEventListener('submit', (e) => {
+async function api(path, opts){
+  opts = opts || {};
+  const headers = Object.assign({ 'content-type':'application/json' }, opts.headers || {});
+  if (TOKEN) headers['authorization'] = 'Bearer ' + TOKEN;
+  let data;
+  try{ const res = await fetch(API + path, Object.assign({}, opts, { headers })); data = await res.json(); }
+  catch(e){ data = { ok:false, error:'network' }; }
+  return data;
+}
+// UI uses camelCase role keys; the API uses snake_case.
+function limitsToApi(l){ return { admin:l.admin, user_admin:l.userAdmin, coach:l.coach, contributor:l.contributor, learner:l.learner }; }
+function limitsFromApi(l){ l = l || {}; return { admin:l.admin||0, userAdmin:l.user_admin||0, coach:l.coach||0, contributor:l.contributor||0, learner:l.learner||0 }; }
+function normOrg(o){ return { id:o.id, name:o.name, slug:o.slug, status:o.status,
+  admins:(o.counts&&o.counts.admin)||0, users:(o.counts&&o.counts.learner)||0, tests:o.assessments||0,
+  createdAt:(o.created_at||'').slice(0,10), limits:limitsFromApi(o.limits) }; }
+function normAdmin(a){ return { id:a.id, name:a.name, email:a.email, org:a.org, orgSlug:a.org_slug,
+  status:a.status, createdAt:(a.created_at||'').slice(0,10) }; }
+
+/* ---------- Auth ---------- */
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const key = document.getElementById('masterKey').value.trim();
-  const err = document.getElementById('loginError');
-  if (!key){ err.textContent = 'Enter your master key to continue.'; err.classList.remove('hidden'); return; }
-  sessionStorage.setItem(MKEY, key);
+  const err = document.getElementById('loginError'); err.classList.add('hidden');
+  const identifier = document.getElementById('masterEmail').value.trim();
+  const password = document.getElementById('masterPass').value;
+  if (!identifier || !password){ err.textContent = 'Enter your email and password.'; err.classList.remove('hidden'); return; }
+  const data = await api('/api/auth/login', { method:'POST', body: JSON.stringify({ identifier, password }) });
+  if (!data.ok || !data.token){ err.textContent = data.error==='invalid_login' ? 'Wrong email or password.' : ('Sign-in failed: ' + (data.error||'error')); err.classList.remove('hidden'); return; }
+  if (data.account.role !== 'master'){ err.textContent = 'That account is not a Master account.'; err.classList.remove('hidden'); return; }
+  TOKEN = data.token; sessionStorage.setItem(TKEY, TOKEN);
   showApp();
 });
-document.getElementById('btnSignOut').addEventListener('click', () => { sessionStorage.removeItem(MKEY); location.reload(); });
-function showApp(){
+document.getElementById('btnSignOut').addEventListener('click', () => { sessionStorage.removeItem(TKEY); TOKEN = ''; location.reload(); });
+async function showApp(){
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  renderAll();
+  await loadData();
   switchView('overview');
 }
-(function autoLogin(){ if (sessionStorage.getItem(MKEY)) showApp(); })();
+async function loadData(){
+  const [o, a] = await Promise.all([ api('/api/master/orgs'), api('/api/master/admins') ]);
+  if (o && (o.error==='no_token' || o.error==='unauthorized' || o.error==='bad_token' || o.error==='expired')){
+    sessionStorage.removeItem(TKEY); location.reload(); return;
+  }
+  ORGS = (o && o.ok) ? (o.orgs||[]).map(normOrg) : [];
+  ADMINS = (a && a.ok) ? (a.admins||[]).map(normAdmin) : [];
+  renderAll();
+}
+(async function autoLogin(){ if (TOKEN) await showApp(); })();
 
 /* ---------- View switching ---------- */
 function switchView(view){
@@ -539,11 +558,11 @@ document.getElementById('selectAllOrgs').addEventListener('change', (e) => {
 document.getElementById('orgsBulkClose').addEventListener('click', () => { SEL_ORGS.clear(); renderOrgs(); });
 document.getElementById('orgsBulkDelete').addEventListener('click', async () => {
   const ids = [...SEL_ORGS]; if (!ids.length) return;
-  if (!await confirmDialog({ title:'Delete organizations?', message:'Delete '+ids.length+' organization'+(ids.length===1?'':'s')+' and all their admins, users and tests? This cannot be undone.', confirmText:'Delete', danger:true })) return;
-  ORGS = ORGS.filter(o => !ids.includes(o.id));
+  if (!await confirmDialog({ title:'Delete organizations?', message:'Delete '+ids.length+' organization'+(ids.length===1?'':'s')+' and everything in them? This cannot be undone.', confirmText:'Delete', danger:true })) return;
+  for (const id of ids){ await api('/api/master/orgs/'+id, { method:'DELETE' }); }
   SEL_ORGS.clear();
   toast('Deleted '+ids.length+' organization'+(ids.length===1?'':'s'),'success');
-  renderOrgs();
+  await loadData();
 });
 document.getElementById('orgsBody').addEventListener('click', async (e) => {
   const btn = e.target.closest('button'); if (!btn) return;
@@ -551,8 +570,9 @@ document.getElementById('orgsBody').addEventListener('click', async (e) => {
   if (btn.dataset.oact === 'manage'){ openOrgEditor(o); }
   else if (btn.dataset.oact === 'delete'){
     if (!await confirmDialog({ title:'Delete organization?', message:'Delete “'+o.name+'” and everything in it? This cannot be undone.', confirmText:'Delete', danger:true })) return;
-    ORGS = ORGS.filter(x => x.id !== o.id);
-    toast('Deleted “'+o.name+'”','success'); renderOrgs();
+    const d = await api('/api/master/orgs/'+o.id, { method:'DELETE' });
+    if (!d.ok){ toast('Delete failed: '+(d.error||'error'),'error'); return; }
+    toast('Deleted “'+o.name+'”','success'); await loadData();
   }
 });
 document.getElementById('orgSearch').addEventListener('input', (e) => { ORG_SEARCH = e.target.value; renderOrgs(); });
@@ -575,31 +595,31 @@ function openOrgEditor(org){
 }
 document.getElementById('btnCreateOrg').addEventListener('click', () => openOrgEditor(null));
 document.getElementById('btnCancelOrg').addEventListener('click', () => document.getElementById('orgEditor').classList.add('hidden'));
-document.getElementById('btnSaveOrg').addEventListener('click', () => {
+document.getElementById('btnSaveOrg').addEventListener('click', async () => {
   const name = document.getElementById('o_name').value.trim();
   const slug = document.getElementById('o_slug').value.trim().toLowerCase();
-  const limits = {}; ROLE_LIMS.forEach(r => limits[r] = Math.max(0, parseInt(document.getElementById('o_lim_'+r).value, 10) || 0));
+  const uiLimits = {}; ROLE_LIMS.forEach(r => uiLimits[r] = Math.max(0, parseInt(document.getElementById('o_lim_'+r).value, 10) || 0));
+  const fail = (msg) => { document.getElementById('orgNotice').innerHTML = '<div class="err">'+msg+'</div>'; };
   const errs = [];
   if (!name) errs.push('Organization name is required.');
   if (!slug) errs.push('A slug is required.'); else if (ORGS.some(o => o.slug===slug && o.id!==editingOrgId)) errs.push('That slug is already taken.');
-  const today = new Date().toISOString().slice(0,10);
   if (!editingOrgId){
     const an = document.getElementById('o_adminName').value.trim();
     const ae = document.getElementById('o_adminEmail').value.trim();
-    if (!an || !ae) errs.push('The first admin needs a name and email.');
-    if (errs.length){ document.getElementById('orgNotice').innerHTML = '<div class="err">'+errs.join('<br>')+'</div>'; return; }
-    ORGS.unshift({ id:'o'+Date.now(), name, slug, status:'active', admins:1, users:0, tests:0, createdAt:today, limits });
-    ADMINS.unshift({ id:'a'+Date.now(), name:an, email:ae, org:name, status:'active', createdAt:today });
+    const ap = document.getElementById('o_adminPass').value;
+    if (!an || !ae || !ap) errs.push('The first admin needs a name, email and password.');
+    if (errs.length){ fail(errs.join('<br>')); return; }
+    const d = await api('/api/master/orgs', { method:'POST', body: JSON.stringify({ name, slug, limits: limitsToApi(uiLimits), admin:{ name:an, email:ae, password:ap } }) });
+    if (!d.ok){ fail(d.error==='slug_taken' ? 'That slug is already taken.' : ('Could not create: '+(d.error||'error'))); return; }
     toast('Created “'+name+'”','success');
   } else {
-    if (errs.length){ document.getElementById('orgNotice').innerHTML = '<div class="err">'+errs.join('<br>')+'</div>'; return; }
-    const o = ORGS.find(x => x.id === editingOrgId);
-    if (o){ const oldName = o.name; o.name = name; o.slug = slug; o.limits = limits;
-      if (oldName !== name) ADMINS.forEach(a => { if (a.org === oldName) a.org = name; }); }
+    if (errs.length){ fail(errs.join('<br>')); return; }
+    const d = await api('/api/master/orgs/'+editingOrgId, { method:'PATCH', body: JSON.stringify({ name, slug, limits: limitsToApi(uiLimits) }) });
+    if (!d.ok){ fail('Could not save: '+(d.error||'error')); return; }
     toast('Saved “'+name+'”','success');
   }
   document.getElementById('orgEditor').classList.add('hidden');
-  renderOrgs();
+  await loadData();
 });
 
 /* ---------- Admins ---------- */
@@ -661,18 +681,19 @@ document.getElementById('adminsBulkClose').addEventListener('click', () => { SEL
 document.getElementById('adminsBulkDelete').addEventListener('click', async () => {
   const ids = [...SEL_ADMINS]; if (!ids.length) return;
   if (!await confirmDialog({ title:'Delete admins?', message:'Remove '+ids.length+' admin'+(ids.length===1?'':'s')+'? Their access ends immediately. This cannot be undone.', confirmText:'Delete', danger:true })) return;
-  ADMINS = ADMINS.filter(a => !ids.includes(a.id));
+  for (const id of ids){ await api('/api/master/admins/'+id, { method:'DELETE' }); }
   SEL_ADMINS.clear();
   toast('Deleted '+ids.length+' admin'+(ids.length===1?'':'s'),'success');
-  renderAdmins();
+  await loadData();
 });
 document.getElementById('adminsBody').addEventListener('click', async (e) => {
   const btn = e.target.closest('button'); if (!btn) return;
   const a = ADMINS.find(x => x.id === btn.dataset.id); if (!a) return;
   if (btn.dataset.aact === 'delete'){
     if (!await confirmDialog({ title:'Delete admin?', message:'Remove “'+a.name+'” from '+a.org+'? This cannot be undone.', confirmText:'Delete', danger:true })) return;
-    ADMINS = ADMINS.filter(x => x.id !== a.id);
-    toast('Deleted “'+a.name+'”','success'); renderAdmins();
+    const d = await api('/api/master/admins/'+a.id, { method:'DELETE' });
+    if (!d.ok){ toast('Delete failed: '+(d.error||'error'),'error'); return; }
+    toast('Deleted “'+a.name+'”','success'); await loadData();
   }
 });
 document.getElementById('adminSearch').addEventListener('input', (e) => { ADMIN_SEARCH = e.target.value; renderAdmins(); });
@@ -681,26 +702,27 @@ document.getElementById('adminSearch').addEventListener('input', (e) => { ADMIN_
 document.getElementById('btnCreateAdmin').addEventListener('click', () => {
   document.getElementById('adminNotice').innerHTML = '';
   ['a_name','a_email','a_pass'].forEach(id => document.getElementById(id).value='');
-  document.getElementById('a_org').innerHTML = ORGS.map(o=>'<option value="'+esc(o.name)+'">'+esc(o.name)+'</option>').join('');
+  document.getElementById('a_org').innerHTML = ORGS.map(o=>'<option value="'+esc(o.slug)+'">'+esc(o.name)+'</option>').join('');
   document.getElementById('adminEditor').classList.remove('hidden');
   document.getElementById('adminEditor').scrollIntoView({ behavior:'smooth' });
 });
 document.getElementById('btnCancelAdmin').addEventListener('click', () => document.getElementById('adminEditor').classList.add('hidden'));
-document.getElementById('btnSaveAdmin').addEventListener('click', () => {
+document.getElementById('btnSaveAdmin').addEventListener('click', async () => {
   const name = document.getElementById('a_name').value.trim();
   const email = document.getElementById('a_email').value.trim();
-  const org = document.getElementById('a_org').value;
+  const orgSlug = document.getElementById('a_org').value;
+  const password = document.getElementById('a_pass').value;
   const errs = [];
   if (!name) errs.push('Name is required.');
   if (!email) errs.push('Email is required.');
-  if (!org) errs.push('Pick an organization.');
+  if (!password) errs.push('A password is required.');
+  if (!orgSlug) errs.push('Pick an organization.');
   if (errs.length){ document.getElementById('adminNotice').innerHTML = '<div class="err">'+errs.join('<br>')+'</div>'; return; }
-  const today = new Date().toISOString().slice(0,10);
-  ADMINS.unshift({ id:'a'+Date.now(), name, email, org, status:'active', createdAt:today });
-  const o = ORGS.find(x => x.name === org); if (o) o.admins++;
+  const d = await api('/api/master/admins', { method:'POST', body: JSON.stringify({ orgSlug, name, email, password }) });
+  if (!d.ok){ document.getElementById('adminNotice').innerHTML = '<div class="err">'+(d.error==='seat_limit_reached' ? 'This organization has reached its Admin seat limit.' : ('Could not create: '+(d.error||'error')))+'</div>'; return; }
   document.getElementById('adminEditor').classList.add('hidden');
   toast('Created “'+name+'”','success');
-  renderAdmins();
+  await loadData();
 });
 
 /* ---------- Filter / sort dropdowns ---------- */

@@ -34,6 +34,9 @@ export default {
       else if (path === "/api/master/orgs" && m === "POST") r = await createOrg(request, env);
       else if (path.match(/^\/api\/master\/orgs\/[^/]+$/) && m === "PATCH") r = await updateOrg(request, env, path.split("/").pop());
       else if (path.match(/^\/api\/master\/orgs\/[^/]+$/) && m === "DELETE") r = await deleteOrg(request, env, path.split("/").pop());
+      else if (path === "/api/master/admins" && m === "GET") r = await listAdmins(request, env);
+      else if (path === "/api/master/admins" && m === "POST") r = await createAdmin(request, env);
+      else if (path.match(/^\/api\/master\/admins\/[^/]+$/) && m === "DELETE") r = await deleteAdminAcct(request, env, path.split("/").pop());
 
       // ---- tenant (example scoped read) ----
       else if (path === "/api/courses" && m === "GET") r = await listCourses(request, env);
@@ -118,9 +121,12 @@ async function listOrgs(request, env) {
   const orgs = (await env.DB.prepare("SELECT * FROM organizations ORDER BY created_at DESC").all()).results;
   const limits = (await env.DB.prepare("SELECT org_id, role, seats FROM org_role_limits").all()).results;
   const counts = (await env.DB.prepare("SELECT org_id, role, COUNT(*) AS n FROM accounts WHERE org_id IS NOT NULL GROUP BY org_id, role").all()).results;
+  const asmts = (await env.DB.prepare("SELECT org_id, COUNT(*) AS n FROM assessments GROUP BY org_id").all()).results;
+  const crs = (await env.DB.prepare("SELECT org_id, COUNT(*) AS n FROM courses GROUP BY org_id").all()).results;
   const byOrg = (rows, val) => rows.reduce((a, r) => (((a[r.org_id] ||= {})[r.role] = r[val]), a), {});
-  const L = byOrg(limits, "seats"), C = byOrg(counts, "n");
-  return json({ ok: true, orgs: orgs.map(o => ({ ...o, limits: L[o.id] || {}, counts: C[o.id] || {} })) });
+  const flat = rows => rows.reduce((a, r) => ((a[r.org_id] = r.n), a), {});
+  const L = byOrg(limits, "seats"), C = byOrg(counts, "n"), AS = flat(asmts), CR = flat(crs);
+  return json({ ok: true, orgs: orgs.map(o => ({ ...o, limits: L[o.id] || {}, counts: C[o.id] || {}, assessments: AS[o.id] || 0, courses: CR[o.id] || 0 })) });
 }
 
 async function createOrg(request, env) {
@@ -165,6 +171,38 @@ async function deleteOrg(request, env, orgId) {
   const ctx = await auth(request, env); requireMaster(ctx);
   await env.DB.prepare("DELETE FROM organizations WHERE id = ?").bind(orgId).run(); // cascades
   await audit(env, ctx.accountId, orgId, "org.delete", {});
+  return json({ ok: true });
+}
+
+/* ---------- Master: admins across orgs ---------- */
+async function listAdmins(request, env) {
+  const ctx = await auth(request, env); requireMaster(ctx);
+  const { results } = await env.DB.prepare(
+    "SELECT a.id, a.name, a.email, a.status, a.created_at, o.name AS org, o.slug AS org_slug " +
+    "FROM accounts a JOIN organizations o ON o.id = a.org_id WHERE a.role = 'admin' ORDER BY a.created_at DESC").all();
+  return json({ ok: true, admins: results });
+}
+async function createAdmin(request, env) {
+  const ctx = await auth(request, env); requireMaster(ctx);
+  const { orgSlug, orgId, name, email, password } = await body(request);
+  if (!name || !email || !password) throw httpError(400, "missing_fields");
+  const org = orgId
+    ? await env.DB.prepare("SELECT id FROM organizations WHERE id = ?").bind(orgId).first()
+    : await env.DB.prepare("SELECT id FROM organizations WHERE slug = ?").bind(orgSlug).first();
+  if (!org) throw httpError(404, "org_not_found");
+  await assertSeatAvailable({ db: env.DB }, org.id, "admin");
+  const id = crypto.randomUUID();
+  await env.DB.prepare("INSERT INTO accounts (id, org_id, role, name, email, password_hash) VALUES (?, ?, 'admin', ?, ?, ?)")
+    .bind(id, org.id, name, email, await hashPassword(password)).run();
+  await audit(env, ctx.accountId, org.id, "admin.create", { email });
+  return json({ ok: true, id });
+}
+async function deleteAdminAcct(request, env, id) {
+  const ctx = await auth(request, env); requireMaster(ctx);
+  const acc = await env.DB.prepare("SELECT org_id FROM accounts WHERE id = ? AND role = 'admin'").bind(id).first();
+  if (!acc) throw httpError(404, "not_found");
+  await env.DB.prepare("DELETE FROM accounts WHERE id = ?").bind(id).run();
+  await audit(env, ctx.accountId, acc.org_id, "admin.delete", { id });
   return json({ ok: true });
 }
 
