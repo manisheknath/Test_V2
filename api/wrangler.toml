@@ -1,0 +1,29 @@
+# Cloudflare Worker — the LMS platform API (the one trust boundary).
+# This is separate from the static site on Pages. Deploy from this folder
+# with `npx wrangler deploy`.
+
+name = "lms-api"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+
+# ---- D1: the pooled database (every org starts here) --------------------
+# Create it, then paste the id below (see README.md):
+#   npx wrangler d1 create lms-pooled
+[[d1_databases]]
+binding = "DB"
+database_name = "lms-pooled"
+database_id = "PASTE_D1_DATABASE_ID_HERE"
+
+# ---- R2: media + certificates (keyed by org_id) -------------------------
+#   npx wrangler r2 bucket create lms-media
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "lms-media"
+
+# ---- Secrets (never in this file) ---------------------------------------
+# Set with:
+#   npx wrangler secret put SESSION_SECRET   # signs session cookies/JWTs
+#   npx wrangler secret put MASTER_KEY       # bootstraps the Master
+#
+# Siloed orgs (added later) get their own [[d1_databases]] binding, e.g.
+#   binding = "DB_acme", database_name = "lms-acme", database_id = "…"
