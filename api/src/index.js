@@ -38,6 +38,12 @@ export default {
       else if (path === "/api/master/admins" && m === "POST") r = await createAdmin(request, env);
       else if (path.match(/^\/api\/master\/admins\/[^/]+$/) && m === "DELETE") r = await deleteAdminAcct(request, env, path.split("/").pop());
 
+      // ---- tenant: members (User Management) ----
+      else if (path === "/api/members" && m === "GET") r = await listMembers(request, env);
+      else if (path === "/api/members" && m === "POST") r = await createMember(request, env);
+      else if (path.match(/^\/api\/members\/[^/]+$/) && m === "PATCH") r = await updateMember(request, env, path.split("/").pop());
+      else if (path.match(/^\/api\/members\/[^/]+$/) && m === "DELETE") r = await deleteMember(request, env, path.split("/").pop());
+
       // ---- tenant (example scoped read) ----
       else if (path === "/api/courses" && m === "GET") r = await listCourses(request, env);
 
@@ -73,7 +79,13 @@ async function login(request, env) {
     sub: acc.id, org: acc.org_id, role: acc.role,
     exp: Math.floor(Date.now() / 1000) + 60 * 60 * 12, // 12h
   });
-  return json({ ok: true, token, account: publicAccount(acc) });
+  let orgInfo = null;
+  if (acc.org_id) {
+    const o = await env.DB.prepare("SELECT slug, name FROM organizations WHERE id = ?").bind(acc.org_id).first();
+    const lims = (await env.DB.prepare("SELECT role, seats FROM org_role_limits WHERE org_id = ?").bind(acc.org_id).all()).results;
+    orgInfo = { slug: o && o.slug, name: o && o.name, limits: lims.reduce((a, r) => ((a[r.role] = r.seats), a), {}) };
+  }
+  return json({ ok: true, token, account: publicAccount(acc), org: orgInfo });
 }
 
 async function me(request, env) {
@@ -213,6 +225,73 @@ async function listCourses(request, env) {
     .prepare("SELECT id, title, summary, status FROM courses WHERE org_id = ? AND status != 'archived' ORDER BY created_at DESC")
     .bind(ctx.orgId).all();
   return json({ ok: true, courses: results });
+}
+
+/* ---------- Tenant: members (User Management) ---------- */
+const MEMBER_ROLES = ["learner", "coach", "contributor", "user_admin", "admin"];
+
+async function listMembers(request, env) {
+  const ctx = await auth(request, env); requireRole(ctx, ["admin", "user_admin"]);
+  const members = (await ctx.db.prepare(
+    "SELECT id, login_id, name, email, role, (password_hash IS NOT NULL) AS has_password " +
+    "FROM accounts WHERE org_id = ? AND role != 'master' ORDER BY created_at DESC").bind(ctx.orgId).all()).results;
+  const ag = (await ctx.db.prepare(
+    "SELECT ag.account_id AS aid, g.name AS name FROM account_groups ag JOIN groups g ON g.id = ag.group_id WHERE g.org_id = ?").bind(ctx.orgId).all()).results;
+  const gby = ag.reduce((a, r) => (((a[r.aid] ||= []).push(r.name)), a), {});
+  return json({ ok: true, members: members.map(m => ({
+    id: m.id, loginId: m.login_id, name: m.name, email: m.email, role: m.role,
+    hasPassword: !!m.has_password, groups: (gby[m.id] || []).join(", "),
+  })) });
+}
+async function createMember(request, env) {
+  const ctx = await auth(request, env); requireRole(ctx, ["admin", "user_admin"]);
+  const b = await body(request);
+  const role = b.role || "learner";
+  if (!b.name) throw httpError(400, "name_required");
+  if (!MEMBER_ROLES.includes(role)) throw httpError(400, "bad_role");
+  if (ctx.role === "user_admin" && role !== "learner") throw httpError(403, "cannot_grant_role");
+  await assertSeatAvailable(ctx, ctx.orgId, role);
+  const id = crypto.randomUUID();
+  await ctx.db.prepare("INSERT INTO accounts (id, org_id, role, name, email, login_id, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .bind(id, ctx.orgId, role, b.name, b.email || null, (b.loginId || "").trim() || null, b.password ? await hashPassword(b.password) : null).run();
+  await setMemberGroups(env, ctx.orgId, id, b.groups);
+  return json({ ok: true, id });
+}
+async function updateMember(request, env, id) {
+  const ctx = await auth(request, env); requireRole(ctx, ["admin", "user_admin"]);
+  const b = await body(request);
+  const m = await ctx.db.prepare("SELECT id, role FROM accounts WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first();
+  if (!m) throw httpError(404, "not_found");
+  if (ctx.role === "user_admin" && (m.role !== "learner" || (b.role && b.role !== "learner"))) throw httpError(403, "forbidden");
+  if (b.role && !MEMBER_ROLES.includes(b.role)) throw httpError(400, "bad_role");
+  const sets = [], vals = [];
+  if (b.name != null) { sets.push("name = ?"); vals.push(b.name); }
+  if (b.email != null) { sets.push("email = ?"); vals.push(b.email || null); }
+  if (b.loginId != null) { sets.push("login_id = ?"); vals.push((b.loginId || "").trim() || null); }
+  if (b.role != null) { sets.push("role = ?"); vals.push(b.role); }
+  if (b.password) { sets.push("password_hash = ?"); vals.push(await hashPassword(b.password)); }
+  if (sets.length) await ctx.db.prepare(`UPDATE accounts SET ${sets.join(", ")} WHERE id = ?`).bind(...vals, id).run();
+  if (b.groups != null) await setMemberGroups(env, ctx.orgId, id, b.groups);
+  return json({ ok: true });
+}
+async function deleteMember(request, env, id) {
+  const ctx = await auth(request, env); requireRole(ctx, ["admin", "user_admin"]);
+  const m = await ctx.db.prepare("SELECT role FROM accounts WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first();
+  if (!m) throw httpError(404, "not_found");
+  if (ctx.role === "user_admin" && m.role !== "learner") throw httpError(403, "forbidden");
+  await ctx.db.prepare("DELETE FROM accounts WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).run();
+  return json({ ok: true });
+}
+// Reconcile a member's groups from a comma-separated list (creating groups as needed).
+async function setMemberGroups(env, orgId, accountId, csv) {
+  if (csv == null) return;
+  const names = [...new Set(String(csv).split(",").map(s => s.trim()).filter(Boolean))];
+  await env.DB.prepare("DELETE FROM account_groups WHERE account_id = ?").bind(accountId).run();
+  for (const name of names) {
+    let g = await env.DB.prepare("SELECT id FROM groups WHERE org_id = ? AND name = ?").bind(orgId, name).first();
+    if (!g) { const gid = crypto.randomUUID(); await env.DB.prepare("INSERT INTO groups (id, org_id, name) VALUES (?, ?, ?)").bind(gid, orgId, name).run(); g = { id: gid }; }
+    await env.DB.prepare("INSERT OR IGNORE INTO account_groups (account_id, group_id) VALUES (?, ?)").bind(accountId, g.id).run();
+  }
 }
 
 /* ---------- Password hashing (PBKDF2) ---------- */

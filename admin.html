@@ -283,12 +283,16 @@
 <div id="loginScreen">
   <div class="login-card">
     <div class="login-brand"><span class="logo">T</span><span class="nm">TestPortal</span></div>
-    <h2>Admin Login</h2>
-    <p class="lede">Enter your unique admin token.</p>
+    <h2>Admin sign in</h2>
+    <p class="lede">Sign in to your organization's console.</p>
     <div id="loginError" class="notice error hidden"></div>
-    <label for="tokenInput">Admin token</label>
-    <input type="password" id="tokenInput" placeholder="Paste your ADMIN_TOKEN">
-    <button class="primary" id="btnLogin" style="width:100%;">Enter</button>
+    <label for="loginSlug">Company</label>
+    <input type="text" id="loginSlug" placeholder="your company short-name (slug)">
+    <label for="loginEmail" style="margin-top:12px;">Email</label>
+    <input type="text" id="loginEmail" autocomplete="username" placeholder="you@company.com">
+    <label for="loginPass" style="margin-top:12px;">Password</label>
+    <input type="password" id="loginPass" autocomplete="current-password" placeholder="Your password">
+    <button class="primary" id="btnLogin" style="width:100%;margin-top:16px;">Sign in</button>
   </div>
 </div>
 
@@ -946,50 +950,65 @@ function apiPost(body) {
 
 /* toast() and confirmDialog() are provided by ui.js (shared). */
 
+/* ============================================================
+   New LMS backend (Cloudflare Worker). User Management is wired
+   here; other sections (tests/results/settings) still use the
+   Apps Script helpers above until they're migrated too.
+   ============================================================ */
+const LMS_API = 'https://lms-api.manish-eknath.workers.dev';
+const LTKEY = 'lmsToken';
+let LMS_TOKEN = sessionStorage.getItem(LTKEY) || '';
+let LMS_ORG = null;     // { slug, name, limits }
+let LMS_ROLE = null;
+
+async function lmsApi(path, opts){
+  opts = opts || {};
+  const headers = Object.assign({ 'content-type':'application/json' }, opts.headers || {});
+  if (LMS_TOKEN) headers['authorization'] = 'Bearer ' + LMS_TOKEN;
+  try{ const res = await fetch(LMS_API + path, Object.assign({}, opts, { headers })); return await res.json(); }
+  catch(e){ return { ok:false, error:'network' }; }
+}
+// Member helpers (User Management data layer).
+async function mList(){
+  const r = await lmsApi('/api/members');
+  if (r && (r.error==='no_token' || r.error==='unauthorized' || r.error==='bad_token' || r.error==='expired')){ lmsSignOut(); return []; }
+  return (r && r.ok) ? r.members.map(m => ({ takerId:m.id, loginId:m.loginId||'', name:m.name, email:m.email||'', role:m.role, hasPassword:m.hasPassword, groups:m.groups||'' })) : [];
+}
+async function mCreate(member){ return lmsApi('/api/members', { method:'POST', body: JSON.stringify(member) }); }
+async function mPatch(id, patch){ return lmsApi('/api/members/'+id, { method:'PATCH', body: JSON.stringify(patch) }); }
+async function mDelete(id){ return lmsApi('/api/members/'+id, { method:'DELETE' }); }
+
 /* ---------- Login ---------- */
-document.getElementById('btnLogin').addEventListener('click', async () => {
-  const token = document.getElementById('tokenInput').value.trim();
-  if (!token) return;
-  const errEl = document.getElementById('loginError');
-  errEl.classList.add('hidden');
-  let result;
-  try {
-    result = await apiGet({ action: 'listTests', token });
-  } catch (err) {
-    errEl.textContent = "Couldn't reach the backend at all (network/CORS error): " + err.message +
-      ". This usually means the Apps Script deployment isn't set to \"Anyone\" access, or the appsScriptUrl in this file is wrong/outdated. Check the browser console for details.";
-    errEl.classList.remove('hidden');
-    return;
+async function doAdminLogin(){
+  const errEl = document.getElementById('loginError'); errEl.classList.add('hidden');
+  const orgSlug = document.getElementById('loginSlug').value.trim().toLowerCase();
+  const identifier = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPass').value;
+  if (!orgSlug || !identifier || !password){ errEl.textContent = 'Enter your company, email and password.'; errEl.classList.remove('hidden'); return; }
+  const data = await lmsApi('/api/auth/login', { method:'POST', headers:{}, body: JSON.stringify({ orgSlug, identifier, password }) });
+  if (!data.ok || !data.token){
+    errEl.textContent = data.error==='org_not_found' ? 'No company with that short-name.' :
+      data.error==='invalid_login' ? 'Wrong email or password.' : ('Sign-in failed: ' + (data.error||'error'));
+    errEl.classList.remove('hidden'); return;
   }
-  if (!result || !result.ok) {
-    errEl.textContent = "That token wasn't accepted — check it matches ADMIN_TOKEN in your Apps Script properties exactly (no extra spaces)." +
-      (result && result.error ? (' Backend said: ' + result.error) : '');
-    errEl.classList.remove('hidden');
-    return;
-  }
-  ADMIN_TOKEN = token;
-  sessionStorage.setItem('adminToken', token);
+  if (!['admin','user_admin'].includes(data.account.role)){ errEl.textContent = 'This console is for organization admins.'; errEl.classList.remove('hidden'); return; }
+  LMS_TOKEN = data.token; sessionStorage.setItem(LTKEY, LMS_TOKEN);
+  LMS_ORG = data.org; LMS_ROLE = data.account.role;
+  lmsShowApp();
+}
+document.getElementById('btnLogin').addEventListener('click', doAdminLogin);
+['loginSlug','loginEmail','loginPass'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if (e.key==='Enter') doAdminLogin(); }));
+
+function lmsSignOut(){ sessionStorage.removeItem(LTKEY); LMS_TOKEN=''; location.reload(); }
+async function lmsShowApp(){
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  renderTests(result.tests);
-  loadSettings();
-  refreshTakerList();
-  refreshAdminNotifs();
-});
-
-// Auto-login if we already have a token this session
-(async function tryAutoLogin(){
-  if (!ADMIN_TOKEN) return;
-  const result = await apiGet({ action: 'listTests', token: ADMIN_TOKEN });
-  if (result.ok) {
-    document.getElementById('loginScreen').classList.add('hidden');
-    document.getElementById('app').classList.remove('hidden');
-    renderTests(result.tests);
-    loadSettings();
-    refreshTakerList();
-    refreshAdminNotifs();
-  }
-})();
+  await refreshTakerList();      // members, via the new API
+  renderAdminDashboard();
+  // NOTE: tests / results / settings / notifications still run on the old
+  // Apps Script backend and aren't loaded here — they're migrated next.
+}
+(async function tryAutoLogin(){ if (LMS_TOKEN) await lmsShowApp(); })();
 
 /* ---------- Settings ---------- */
 async function loadSettings(){
@@ -1332,7 +1351,7 @@ function renderUserRows(){
       const tr = document.createElement('tr');
       tr.innerHTML =
         '<td><input type="checkbox" class="user-check" data-id="' + pEsc(t.takerId) + '"' + (SELECTED_USERS.has(t.takerId) ? ' checked' : '') + '></td>' +
-        '<td><code>' + pEsc(t.takerId) + '</code></td>' +
+        '<td>' + (t.loginId ? '<code>' + pEsc(t.loginId) + '</code>' : '<span style="color:var(--faint);">—</span>') + '</td>' +
         '<td>' + pEsc(t.name || '') + '</td>' +
         '<td style="font-size:12px;color:var(--muted);">' + pEsc(t.email || '') + '</td>' +
         '<td><span class="rtag ' + (t.role || 'learner') + '">' + roleLabel(t.role || 'learner') + '</span></td>' +
@@ -1349,15 +1368,14 @@ function renderUserRows(){
   renderRoleSeats();
 }
 async function refreshTakerList(){
-  const result = await apiGet({ action: 'listTakers', token: ADMIN_TOKEN });
-  if (result.ok) renderTakers(result.takers);
+  renderTakers(await mList());
 }
 function openPersonEditor(taker){
   editingTakerId = taker ? taker.takerId : null;
   document.getElementById('personEditorTitle').textContent = taker ? ('Editing ' + taker.takerId) : 'New user';
   document.getElementById('personNotice').innerHTML = '';
-  document.getElementById('p_takerId').value = taker ? taker.takerId : '';
-  document.getElementById('p_takerId').disabled = !!taker; // never change an existing ID
+  document.getElementById('p_takerId').value = taker ? (taker.loginId || '') : '';
+  document.getElementById('p_takerId').disabled = false;
   document.getElementById('p_name').value = taker ? (taker.name || '') : '';
   document.getElementById('p_email').value = taker ? (taker.email || '') : '';
   document.getElementById('p_groups').value = taker ? (taker.groups || '') : '';
@@ -1534,16 +1552,14 @@ document.getElementById('usersAssignApply').addEventListener('click', async () =
   const ids = [...SELECTED_USERS];
   if (!grp){ toast('Enter a group name', 'error'); return; }
   if (!ids.length) return;
-  const res = await apiGet({ action: 'listTakers', token: ADMIN_TOKEN });
-  if (!res.ok){ toast('Could not load users', 'error'); return; }
-  const byId = new Map((res.takers || []).map(t => [t.takerId, t]));
+  const byId = new Map(LAST_TAKERS.map(t => [t.takerId, t]));
   let count = 0;
   for (const id of ids){
     const t = byId.get(id); if (!t) continue;
     const groups = String(t.groups || '').split(',').map(s => s.trim()).filter(Boolean);
     if (!groups.includes(grp)){
       groups.push(grp);
-      await apiPost({ action: 'saveTaker', token: ADMIN_TOKEN, taker: { takerId: t.takerId, name: t.name, email: t.email, groups: groups.join(', '), password: '' } });
+      await mPatch(t.takerId, { groups: groups.join(', ') });
       count++;
     }
   }
@@ -1560,7 +1576,7 @@ document.getElementById('usersBulkDelete').addEventListener('click', async () =>
     confirmText: 'Delete', danger: true
   });
   if (!ok) return;
-  for (const id of ids){ await apiPost({ action: 'deleteTaker', token: ADMIN_TOKEN, takerId: id }); }
+  for (const id of ids){ await mDelete(id); }
   toast('Deleted ' + ids.length + ' user' + (ids.length === 1 ? '' : 's'), 'success');
   refreshTakerList();
 });
@@ -1617,13 +1633,11 @@ function clearGroupsSelection(){
 // Remove one or more group names from every member (users are kept).
 async function removeGroupsFromMembers(names){
   const set = new Set(names);
-  const res = await apiGet({ action: 'listTakers', token: ADMIN_TOKEN });
-  if (!res.ok) return;
-  for (const t of (res.takers || [])){
+  for (const t of LAST_TAKERS){
     const groups = String(t.groups || '').split(',').map(s => s.trim()).filter(Boolean);
     const kept = groups.filter(g => !set.has(g));
     if (kept.length !== groups.length){
-      await apiPost({ action: 'saveTaker', token: ADMIN_TOKEN, taker: { takerId: t.takerId, name: t.name, email: t.email, groups: kept.join(', '), password: '' } });
+      await mPatch(t.takerId, { groups: kept.join(', ') });
     }
   }
 }
@@ -1693,10 +1707,7 @@ document.getElementById('btnSaveGroup').addEventListener('click', async () => {
   if (!newName){ document.getElementById('groupNotice').innerHTML = '<div class="notice error">Group name is required.</div>'; return; }
   const oldName = editingGroupName;
   const checked = new Set([...document.querySelectorAll('#g_members .gm-check:checked')].map(c => c.dataset.id));
-  const res = await apiGet({ action: 'listTakers', token: ADMIN_TOKEN });
-  if (!res.ok){ toast('Could not load users', 'error'); return; }
-  let changed = 0;
-  for (const t of (res.takers || [])){
+  for (const t of LAST_TAKERS){
     let groups = String(t.groups || '').split(',').map(s => s.trim()).filter(Boolean);
     const before = groups.join('|');
     if (oldName && oldName !== newName) groups = groups.filter(g => g !== oldName); // rename: drop old name
@@ -1705,8 +1716,7 @@ document.getElementById('btnSaveGroup').addEventListener('click', async () => {
     if (shouldHave && !has) groups.push(newName);
     else if (!shouldHave && has) groups = groups.filter(g => g !== newName);
     if (groups.join('|') !== before){
-      await apiPost({ action: 'saveTaker', token: ADMIN_TOKEN, taker: { takerId: t.takerId, name: t.name, email: t.email, groups: groups.join(', '), password: '' } });
-      changed++;
+      await mPatch(t.takerId, { groups: groups.join(', ') });
     }
   }
   toast('Saved group “' + newName + '”', 'success');
@@ -1720,21 +1730,19 @@ document.getElementById('takersTableBody').addEventListener('click', async (e) =
   const btn = e.target.closest('button'); if (!btn) return;
   const id = btn.dataset.id;
   if (btn.dataset.pact === 'edit'){
-    const result = await apiGet({ action: 'listTakers', token: ADMIN_TOKEN });
-    if (result.ok){
-      const taker = (result.takers || []).find(t => t.takerId === id);
-      if (taker) openPersonEditor(taker);
-    }
+    const taker = LAST_TAKERS.find(t => t.takerId === id);
+    if (taker) openPersonEditor(taker);
   } else if (btn.dataset.pact === 'delete'){
-    if (!(await confirmDialog({ title: 'Delete user?', message: 'Delete "' + id + '"? Their login stops working. Past results stay in the sheet. This cannot be undone.', confirmText: 'Delete', danger: true }))) return;
-    const result = await apiPost({ action: 'deleteTaker', token: ADMIN_TOKEN, takerId: id });
-    if (result.ok) refreshTakerList();
+    const who = (LAST_TAKERS.find(t => t.takerId === id) || {}).name || 'this user';
+    if (!(await confirmDialog({ title: 'Delete user?', message: 'Delete “' + who + '”? Their login stops working. Past results stay in the sheet. This cannot be undone.', confirmText: 'Delete', danger: true }))) return;
+    const result = await mDelete(id);
+    if (result.ok) refreshTakerList(); else toast('Delete failed: ' + (result.error || 'error'), 'error');
   }
 });
 document.getElementById('btnSavePerson').addEventListener('click', async () => {
   const isNew = !editingTakerId;
-  const taker = {
-    takerId: document.getElementById('p_takerId').value.trim(),
+  const member = {
+    loginId: document.getElementById('p_takerId').value.trim(),
     name: document.getElementById('p_name').value.trim(),
     email: document.getElementById('p_email').value.trim(),
     groups: document.getElementById('p_groups').value.trim(),
@@ -1742,19 +1750,22 @@ document.getElementById('btnSavePerson').addEventListener('click', async () => {
     password: document.getElementById('p_password').value
   };
   const errs = [];
-  if (!taker.name) errs.push('Name is required.');
-  if (isNew && !taker.password) errs.push('A password is required for a new user.');
+  if (!member.name) errs.push('Name is required.');
+  if (isNew && !member.password) errs.push('A password is required for a new user.');
   if (errs.length){
     document.getElementById('personNotice').innerHTML = '<div class="notice error">' + errs.join('<br>') + '</div>';
     return;
   }
-  const result = await apiPost({ action: 'saveTaker', token: ADMIN_TOKEN, taker });
+  const result = isNew ? await mCreate(member) : await mPatch(editingTakerId, member);
   if (!result.ok){
-    document.getElementById('personNotice').innerHTML = '<div class="notice error">Save failed: ' + (result.error || 'unknown error') + '</div>';
+    const msg = result.error === 'seat_limit_reached' ? 'This role has reached its seat limit for your organization.'
+      : result.error === 'cannot_grant_role' ? 'A User Admin can only add Learners.'
+      : ('Save failed: ' + (result.error || 'unknown error'));
+    document.getElementById('personNotice').innerHTML = '<div class="notice error">' + msg + '</div>';
     return;
   }
   document.getElementById('personEditor').classList.add('hidden');
-  toast('Saved ' + (result.takerId || taker.takerId), 'success');
+  toast('Saved ' + member.name, 'success');
   refreshTakerList();
 });
 
@@ -2842,8 +2853,8 @@ document.querySelectorAll('.nav-item[data-view]').forEach(item => {
 
 document.getElementById('btnSignOut').addEventListener('click', () => {
   sessionStorage.removeItem('adminToken');
-  document.getElementById('app').classList.add('hidden');
-  document.getElementById('loginScreen').classList.remove('hidden');
+  sessionStorage.removeItem(LTKEY);
+  location.reload();
 });
 
 // Stat row + sidebar counts, recomputed whenever the tests or people
