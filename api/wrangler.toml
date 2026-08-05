@@ -15,10 +15,11 @@ database_name = "lms-pooled"
 database_id = "PASTE_D1_DATABASE_ID_HERE"
 
 # ---- R2: media + certificates (keyed by org_id) -------------------------
+# Not used yet — uncomment (and create the bucket) when we add course media:
 #   npx wrangler r2 bucket create lms-media
-[[r2_buckets]]
-binding = "MEDIA"
-bucket_name = "lms-media"
+# [[r2_buckets]]
+# binding = "MEDIA"
+# bucket_name = "lms-media"
 
 # ---- Secrets (never in this file) ---------------------------------------
 # Set with:
