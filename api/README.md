@@ -31,24 +31,59 @@ npx wrangler deploy
 Then `GET https://lms-api.<your-subdomain>.workers.dev/health` should return
 `{ ok: true }`.
 
-## What's here now
+## Endpoints (built so far)
 
-- `schema.sql` — the full D1 schema (organizations, accounts+roles,
-  org_role_limits, courses→modules→lessons, assessments, enrollments,
-  progress, submissions/grades, certificates, audit_log).
-- `wrangler.toml` — Worker config with the `DB` (D1) and `MEDIA` (R2) bindings.
-- `src/index.js` — the Worker skeleton: `/health`, plus the `withTenant`
-  middleware and one example org-scoped route (`GET /api/courses`) showing the
-  isolation + role + quota pattern.
+Auth uses a **Bearer token** (not cookies): login returns `token`; send it as
+`Authorization: Bearer <token>` on every call.
+
+| Method | Path | Who | Does |
+|---|---|---|---|
+| `GET`  | `/health` | public | liveness |
+| `POST` | `/api/auth/login` | public | `{orgSlug?, identifier, password}` → `{token, account}` (omit `orgSlug` for Master) |
+| `GET`  | `/api/auth/me` | any | current account |
+| `POST` | `/api/master/bootstrap` | `x-master-key` header | one-time: create the first Master `{name,email,password}` |
+| `GET`  | `/api/master/orgs` | Master | list orgs with limits + role counts |
+| `POST` | `/api/master/orgs` | Master | `{name, slug, limits, admin:{name,email,password}}` → creates org, quotas, first admin |
+| `PATCH`| `/api/master/orgs/:id` | Master | `{name?, slug?, status?, limits?}` |
+| `DELETE`| `/api/master/orgs/:id` | Master | delete org (cascades) |
+| `GET`  | `/api/courses` | any (org-scoped) | example: courses in the caller's org |
+
+Every Master action writes to `audit_log`. Password hashing is PBKDF2
+(100k rounds, per-user salt); sessions are HMAC-signed and expire in 12h.
+
+## Quickstart flow (after setup + deploy)
+
+```bash
+API=https://lms-api.<your-subdomain>.workers.dev
+
+# 1. Create the Master (once). MASTER_KEY is the secret you set.
+curl -X POST $API/api/master/bootstrap -H "x-master-key: $MASTER_KEY" \
+  -H "content-type: application/json" \
+  -d '{"name":"You","email":"you@platform.com","password":"change-me"}'
+
+# 2. Log in as Master → grab the token
+TOKEN=$(curl -s -X POST $API/api/auth/login -H "content-type: application/json" \
+  -d '{"identifier":"you@platform.com","password":"change-me"}' | jq -r .token)
+
+# 3. Create an org (+ quotas + its first admin)
+curl -X POST $API/api/master/orgs -H "authorization: Bearer $TOKEN" \
+  -H "content-type: application/json" \
+  -d '{"name":"Acme Corp","slug":"acme",
+       "limits":{"admin":2,"user_admin":2,"coach":10,"contributor":20,"learner":200},
+       "admin":{"name":"Dana","email":"dana@acme.com","password":"welcome1"}}'
+
+# 4. That admin can now log in scoped to their org
+curl -X POST $API/api/auth/login -H "content-type: application/json" \
+  -d '{"orgSlug":"acme","identifier":"dana@acme.com","password":"welcome1"}'
+```
 
 ## Next (not built yet)
 
-- `POST /api/auth/login` — verify credentials, mint the signed `sid` session.
-- The Master control-plane routes (create org, set quotas, provision admin).
-- The tenant routes (members, groups, courses, assessments, enrollments,
-  submissions, certificates) — porting the admin/portal/engine data calls off
-  Apps Script.
-- Silo routing (`DB_<slug>` bindings) for promoted orgs.
+- Tenant routes: members (with quota + role rules), groups, courses,
+  assessments, enrollments, submissions, certificates — porting the
+  admin/portal/engine data calls off Apps Script.
+- Wire the static consoles (master/admin/portal) to call this API.
+- Silo routing (`DB_<slug>` bindings) for promoted orgs; SSO; per-org region.
 
 ## Note on Pages
 
