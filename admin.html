@@ -327,28 +327,28 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 12h7v8h-7zM4 15h7v5H4z"/></svg>
         Dashboard
       </button>
-      <button class="nav-item" data-view="tests">
+      <button class="nav-item" data-view="tests" data-cap="manage_content">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h5"/></svg>
         Test Management<span class="cnt" id="navTestsCount"></span>
       </button>
-      <button class="nav-item" data-view="trainings">
+      <button class="nav-item" data-view="trainings" data-cap="manage_content">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6l8-3 8 3-8 3-8-3Z"/><path d="M7 9v5c0 1.5 2.2 2.5 5 2.5s5-1 5-2.5V9"/><path d="M20 7v6"/></svg>
         Trainings
       </button>
-      <button class="nav-item" data-view="certificates">
+      <button class="nav-item" data-view="certificates" data-cap="manage_content">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="9" r="5"/><path d="M8.5 13.2 7 22l5-2.8L17 22l-1.5-8.8"/></svg>
         Certificates
       </button>
-      <button class="nav-item" data-view="people">
+      <button class="nav-item" data-view="people" data-cap="manage_users">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><path d="M17 7.5a3 3 0 0 1 0 5.6M21 20c0-2.4-1.2-4.2-3-5"/></svg>
         User Management<span class="cnt" id="navPeopleCount"></span>
       </button>
-      <button class="nav-item" data-view="results">
+      <button class="nav-item" data-view="results" data-cap="grade">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
         Results<span class="cnt" id="navResultsCount"></span>
       </button>
-      <div class="nav-label" style="margin-top:10px;">Setup</div>
-      <button class="nav-item" data-view="settings">
+      <div class="nav-label" id="navSetupLabel" style="margin-top:10px;">Setup</div>
+      <button class="nav-item" data-view="settings" data-cap="manage_org_settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.2-1.3L14 2h-4l-.3 2.2a7 7 0 0 0-2.2 1.3l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.2 1.3L10 22h4l.3-2.2a7 7 0 0 0 2.2-1.3l2.3 1 2-3.4-2-1.5c.1-.4.1-.9.1-1.3Z"/></svg>
         Site settings
       </button>
@@ -960,6 +960,8 @@ const LTKEY = 'lmsToken';
 let LMS_TOKEN = sessionStorage.getItem(LTKEY) || '';
 let LMS_ORG = null;     // { slug, name, limits }
 let LMS_ROLE = null;
+let LMS_CAPS = [];      // capabilities for the signed-in member
+function cap(c){ return LMS_CAPS.includes(c); }
 
 async function lmsApi(path, opts){
   opts = opts || {};
@@ -991,19 +993,46 @@ async function doAdminLogin(){
       data.error==='invalid_login' ? 'Wrong email or password.' : ('Sign-in failed: ' + (data.error||'error'));
     errEl.classList.remove('hidden'); return;
   }
-  if (!['admin','user_admin'].includes(data.account.role)){ errEl.textContent = 'This console is for organization admins.'; errEl.classList.remove('hidden'); return; }
+  if (data.account.role === 'learner'){ errEl.innerHTML = 'Learners take courses in the <a href="'+new URL('home.html', location.href).href+'">learner portal</a>, not here.'; errEl.classList.remove('hidden'); return; }
+  if (!['admin','user_admin','coach','contributor'].includes(data.account.role)){ errEl.textContent = 'This console is for organization staff.'; errEl.classList.remove('hidden'); return; }
   LMS_TOKEN = data.token; sessionStorage.setItem(LTKEY, LMS_TOKEN);
-  LMS_ORG = data.org; LMS_ROLE = data.account.role;
+  LMS_ORG = data.org; LMS_ROLE = data.account.role; LMS_CAPS = data.account.capabilities || [];
   lmsShowApp();
 }
 document.getElementById('btnLogin').addEventListener('click', doAdminLogin);
 ['loginSlug','loginEmail','loginPass'].forEach(id => document.getElementById(id).addEventListener('keydown', e => { if (e.key==='Enter') doAdminLogin(); }));
 
 function lmsSignOut(){ sessionStorage.removeItem(LTKEY); LMS_TOKEN=''; location.reload(); }
+
+// Show/hide sidebar entries based on the member's capabilities, then land the
+// user on the first view they're allowed to see (Dashboard is always allowed).
+function applyCapsToNav(){
+  document.querySelectorAll('.nav-item[data-cap]').forEach(btn => {
+    btn.hidden = !cap(btn.dataset.cap);
+  });
+  // Hide the "Setup" label if its only child (settings) is hidden.
+  const setupLabel = document.getElementById('navSetupLabel');
+  if (setupLabel) setupLabel.hidden = !cap('manage_org_settings');
+  // Land on the current active view if still visible, else Dashboard.
+  const active = document.querySelector('.nav-item[data-view].active');
+  if (!active || active.hidden){
+    const first = document.querySelector('.nav-item[data-view]:not([hidden])');
+    if (first) first.click();
+  }
+}
+
 async function lmsShowApp(){
+  // Auto-login path: we have a token but no capabilities yet — fetch identity.
+  if (!LMS_CAPS.length){
+    const me = await lmsApi('/api/auth/me');
+    if (!me.ok){ lmsSignOut(); return; }
+    LMS_ORG = me.org || LMS_ORG; LMS_ROLE = me.account.role; LMS_CAPS = me.account.capabilities || [];
+    if (me.account.role === 'learner'){ lmsSignOut(); return; }
+  }
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  await refreshTakerList();      // members, via the new API
+  applyCapsToNav();
+  if (cap('manage_users')) await refreshTakerList();  // members, via the new API
   renderAdminDashboard();
   // NOTE: tests / results / settings / notifications still run on the old
   // Apps Script backend and aren't loaded here — they're migrated next.

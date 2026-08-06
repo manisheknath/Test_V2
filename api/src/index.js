@@ -81,18 +81,20 @@ async function login(request, env) {
     sub: acc.id, org: acc.org_id, role: acc.role,
     exp: Math.floor(Date.now() / 1000) + 60 * 60 * 12, // 12h
   });
-  let orgInfo = null;
-  if (acc.org_id) {
-    const o = await env.DB.prepare("SELECT slug, name FROM organizations WHERE id = ?").bind(acc.org_id).first();
-    const lims = (await env.DB.prepare("SELECT role, seats FROM org_role_limits WHERE org_id = ?").bind(acc.org_id).all()).results;
-    orgInfo = { slug: o && o.slug, name: o && o.name, limits: lims.reduce((a, r) => ((a[r.role] = r.seats), a), {}) };
-  }
-  return json({ ok: true, token, account: { ...publicAccount(acc), capabilities: await getCaps(env, acc.role) }, org: orgInfo });
+  return json({ ok: true, token, account: { ...publicAccount(acc), capabilities: await getCaps(env, acc.role) }, org: await orgInfoFor(env, acc.org_id) });
+}
+
+// Org context (name, slug, seat limits) — shared by login and me.
+async function orgInfoFor(env, orgId) {
+  if (!orgId) return null;
+  const o = await env.DB.prepare("SELECT slug, name FROM organizations WHERE id = ?").bind(orgId).first();
+  const lims = (await env.DB.prepare("SELECT role, seats FROM org_role_limits WHERE org_id = ?").bind(orgId).all()).results;
+  return { slug: o && o.slug, name: o && o.name, limits: lims.reduce((a, r) => ((a[r.role] = r.seats), a), {}) };
 }
 
 async function me(request, env) {
   const ctx = await auth(request, env);
-  return json({ ok: true, account: { ...publicAccount(ctx.account), capabilities: ctx.caps } });
+  return json({ ok: true, account: { ...publicAccount(ctx.account), capabilities: ctx.caps }, org: await orgInfoFor(env, ctx.account.org_id) });
 }
 
 // Resolve the caller from the Bearer token; load their (active) account.
