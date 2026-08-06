@@ -390,8 +390,17 @@
       <section class="view" id="view-trainings" hidden>
         <div class="page-head">
           <div><h1>Trainings</h1><p class="sub">Courses and learning material for your users.</p></div>
-          <div class="head-actions"><button class="primary" id="btnNewTraining">+ New training</button></div>
+          <div class="head-actions">
+            <div class="dropdown">
+              <button class="primary" id="btnNewTraining">+ New training ▾</button>
+              <div class="dropdown-menu hidden" id="trNewMenu">
+                <button id="btnTrCreateNew">Create new</button>
+                <button id="btnTrUpload">Upload…</button>
+              </div>
+            </div>
+          </div>
         </div>
+        <input type="file" id="trFileInput" accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mov,.m4v,.zip" class="hidden">
         <div class="card">
           <div class="list-toolbar" id="trToolbar">
             <div class="list-controls" id="trControls">
@@ -462,6 +471,10 @@
         <div id="trEditor" class="card hidden">
           <h2 id="trEditorTitle">New training</h2>
           <div id="trNotice"></div>
+          <div id="tr_fileRow" class="hidden" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:9px 11px;background:var(--surface-3);font-size:12.5px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.5 12.5 21a4.5 4.5 0 0 1-6.4-6.4l8.5-8.5a3 3 0 0 1 4.2 4.2l-8.5 8.5a1.5 1.5 0 0 1-2.1-2.1l7.8-7.8"/></svg>
+            <span>Uploaded file: <b id="tr_fileName"></b></span>
+          </div>
           <label for="tr_name">Name</label>
           <input type="text" id="tr_name" placeholder="e.g. Workplace Safety Essentials">
           <label for="tr_desc">Short description</label>
@@ -2934,17 +2947,37 @@ document.getElementById('trDelete').addEventListener('click', async () => {
   toast('Deleted '+ids.length+' training'+(ids.length===1?'':'s'),'success'); renderTrainings();
 });
 
-// Editor
-function openTrainingEditor(t){
+// Editor. `uploaded` is a File chosen via the Upload option; its name seeds
+// the training and is shown in the popup so the user just fills in details.
+let trUploadFile = null; // filename attached to the training being edited
+function openTrainingEditor(t, uploaded){
   editingTrainingId = t ? t.id : null;
-  document.getElementById('trEditorTitle').textContent = t ? 'Edit training' : 'New training';
+  trUploadFile = uploaded ? uploaded.name : (t && t.file ? t.file : null);
+  document.getElementById('trEditorTitle').textContent = t ? 'Edit training' : (uploaded ? 'Upload training' : 'New training');
   document.getElementById('trNotice').innerHTML = '';
-  document.getElementById('tr_name').value = t ? t.name : '';
+  const stripExt = n => n.replace(/\.[^.]+$/, '');
+  document.getElementById('tr_name').value = t ? t.name : (uploaded ? stripExt(uploaded.name) : '');
   document.getElementById('tr_desc').value = t ? t.desc : '';
   document.getElementById('tr_status').value = t ? (t.status==='archived'?'draft':t.status) : 'draft';
+  const fileRow = document.getElementById('tr_fileRow');
+  if (trUploadFile){ document.getElementById('tr_fileName').textContent = trUploadFile; fileRow.classList.remove('hidden'); }
+  else fileRow.classList.add('hidden');
   openSheet(document.getElementById('trEditor'));
 }
-document.getElementById('btnNewTraining').addEventListener('click', () => openTrainingEditor(null));
+/* ---------- New-training dropdown (Create new / Upload) ---------- */
+(function(){
+  const menu = document.getElementById('trNewMenu');
+  document.getElementById('btnNewTraining').addEventListener('click', (e) => { e.stopPropagation(); menu.classList.toggle('hidden'); });
+  menu.addEventListener('click', () => menu.classList.add('hidden'));
+  document.addEventListener('click', (e) => { if (!e.target.closest('.dropdown')) menu.classList.add('hidden'); });
+})();
+document.getElementById('btnTrCreateNew').addEventListener('click', () => openTrainingEditor(null));
+document.getElementById('btnTrUpload').addEventListener('click', () => document.getElementById('trFileInput').click());
+document.getElementById('trFileInput').addEventListener('change', (e) => {
+  const f = e.target.files && e.target.files[0];
+  e.target.value = ''; // allow re-picking the same file later
+  if (f) openTrainingEditor(null, f);
+});
 document.getElementById('btnCancelTraining').addEventListener('click', () => closeSheet(document.getElementById('trEditor')));
 document.getElementById('btnSaveTraining').addEventListener('click', () => {
   const name = document.getElementById('tr_name').value.trim();
@@ -2954,9 +2987,9 @@ document.getElementById('btnSaveTraining').addEventListener('click', () => {
   const today = new Date().toISOString().slice(0,10);
   if (editingTrainingId){
     const t = TRAININGS.find(x=>x.id===editingTrainingId);
-    if (t){ t.name=name; t.desc=desc; t.status=status; t.updatedAt=today; }
+    if (t){ t.name=name; t.desc=desc; t.status=status; t.updatedAt=today; t.file=trUploadFile||t.file||null; }
   } else {
-    TRAININGS.unshift({ id:'tr'+Date.now(), name, desc, status, updatedAt:today, g:TRAININGS.length%TR_GRADS.length });
+    TRAININGS.unshift({ id:'tr'+Date.now(), name, desc, status, updatedAt:today, file:trUploadFile||null, g:TRAININGS.length%TR_GRADS.length });
   }
   closeSheet(document.getElementById('trEditor'));
   toast('Saved “'+name+'”','success'); renderTrainings();
