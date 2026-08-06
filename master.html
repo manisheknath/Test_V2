@@ -511,8 +511,7 @@ async function loadData(){
 function switchView(view){
   document.querySelectorAll('.sidebar .nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === view));
   ['overview','orgs','admins','roles','settings'].forEach(v => { const el = document.getElementById('view-'+v); if (el) el.hidden = (v !== view); });
-  document.getElementById('orgEditor').classList.add('hidden');
-  document.getElementById('adminEditor').classList.add('hidden');
+  closeSheet(); // close any open editor popup when navigating
   if (view === 'overview') renderOverview();
   if (view === 'orgs') renderOrgs();
   if (view === 'admins') renderAdmins();
@@ -711,8 +710,7 @@ function openOrgEditor(org){
   paintLogoPreview(document.getElementById('o_logoPreview'), org && org.logo, org && org.name);
   document.getElementById('o_logoClear').hidden = !(org && org.logo);
   document.getElementById('btnSaveOrg').textContent = org ? 'Save changes' : 'Create organization';
-  document.getElementById('orgEditor').classList.remove('hidden');
-  document.getElementById('orgEditor').scrollIntoView({ behavior:'smooth' });
+  openSheet(document.getElementById('orgEditor'));
 }
 document.getElementById('o_logoPick').addEventListener('click', () => document.getElementById('o_logoFile').click());
 document.getElementById('o_logoFile').addEventListener('change', async (e) => {
@@ -734,7 +732,7 @@ document.getElementById('o_logoClear').addEventListener('click', () => {
   document.getElementById('o_logoNote').textContent = 'Logo will be removed on Save.';
 });
 document.getElementById('btnCreateOrg').addEventListener('click', () => openOrgEditor(null));
-document.getElementById('btnCancelOrg').addEventListener('click', () => document.getElementById('orgEditor').classList.add('hidden'));
+document.getElementById('btnCancelOrg').addEventListener('click', () => closeSheet(document.getElementById('orgEditor')));
 document.getElementById('btnSaveOrg').addEventListener('click', async () => {
   const name = document.getElementById('o_name').value.trim();
   const slug = document.getElementById('o_slug').value.trim().toLowerCase();
@@ -760,7 +758,7 @@ document.getElementById('btnSaveOrg').addEventListener('click', async () => {
     if (!d.ok){ fail(d.error==='logo_too_large' ? 'That logo image is too large.' : d.error==='bad_logo' ? 'That logo file type isn’t supported.' : ('Could not save: '+(d.error||'error'))); return; }
     toast('Saved “'+name+'”','success');
   }
-  document.getElementById('orgEditor').classList.add('hidden');
+  closeSheet(document.getElementById('orgEditor'));
   await loadData();
 });
 
@@ -845,10 +843,9 @@ document.getElementById('btnCreateAdmin').addEventListener('click', () => {
   document.getElementById('adminNotice').innerHTML = '';
   ['a_name','a_email','a_pass'].forEach(id => document.getElementById(id).value='');
   document.getElementById('a_org').innerHTML = ORGS.map(o=>'<option value="'+esc(o.slug)+'">'+esc(o.name)+'</option>').join('');
-  document.getElementById('adminEditor').classList.remove('hidden');
-  document.getElementById('adminEditor').scrollIntoView({ behavior:'smooth' });
+  openSheet(document.getElementById('adminEditor'));
 });
-document.getElementById('btnCancelAdmin').addEventListener('click', () => document.getElementById('adminEditor').classList.add('hidden'));
+document.getElementById('btnCancelAdmin').addEventListener('click', () => closeSheet(document.getElementById('adminEditor')));
 document.getElementById('btnSaveAdmin').addEventListener('click', async () => {
   const name = document.getElementById('a_name').value.trim();
   const email = document.getElementById('a_email').value.trim();
@@ -862,7 +859,7 @@ document.getElementById('btnSaveAdmin').addEventListener('click', async () => {
   if (errs.length){ document.getElementById('adminNotice').innerHTML = '<div class="err">'+errs.join('<br>')+'</div>'; return; }
   const d = await api('/api/master/admins', { method:'POST', body: JSON.stringify({ orgSlug, name, email, password }) });
   if (!d.ok){ document.getElementById('adminNotice').innerHTML = '<div class="err">'+(d.error==='seat_limit_reached' ? 'This organization has reached its Admin seat limit.' : ('Could not create: '+(d.error||'error')))+'</div>'; return; }
-  document.getElementById('adminEditor').classList.add('hidden');
+  closeSheet(document.getElementById('adminEditor'));
   toast('Created “'+name+'”','success');
   await loadData();
 });

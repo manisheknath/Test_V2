@@ -98,6 +98,21 @@ html,body{margin:0;padding:0;}
 .cbtn.ok.danger{background:#C4453A;border-color:#C4453A;}
 
 /* ============================================================
+   Sheet / modal  (JS: openSheet(el) / closeSheet() in ui.js)
+   Hosts an existing editor card as a centered popup with a
+   backdrop, instead of an inline panel below the page.
+   ============================================================ */
+.sheet-overlay{position:fixed;inset:0;background:rgba(15,25,20,.5);z-index:400;
+  overflow-y:auto;padding:48px 20px;animation:sheetFade .12s ease;}
+/* The portaled editor is centered horizontally; the overlay scrolls when the
+   editor is taller than the viewport (no flex clipping of the top edge). */
+.sheet-overlay > *{width:100%;max-width:660px;margin:0 auto;box-shadow:var(--shadow-lg);
+  animation:sheetRise .14s ease;}
+@keyframes sheetFade{from{opacity:0}to{opacity:1}}
+@keyframes sheetRise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (max-width:560px){ .sheet-overlay{padding:20px 12px;} }
+
+/* ============================================================
    Buttons  —  canonical primary / ghost / danger / small
    ------------------------------------------------------------
    Works with either markup convention:

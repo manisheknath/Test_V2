@@ -51,3 +51,44 @@ function confirmDialog(opts){
     ok.focus();
   });
 }
+
+/* ============================================================
+   Sheet — turn an existing inline editor card into a centered
+   popup. openSheet(el) moves the element into a shared backdrop
+   overlay and shows it; closeSheet() hides it again. The element
+   keeps its id + event handlers (DOM moves preserve listeners),
+   so existing editor code keeps working unchanged.
+   Styles: .sheet-overlay in styles.css.
+   ============================================================ */
+function _sheetOverlay(){
+  let ov = document.getElementById('sheetOverlay');
+  if (!ov){
+    ov = document.createElement('div');
+    ov.id = 'sheetOverlay'; ov.className = 'sheet-overlay hidden';
+    ov.addEventListener('mousedown', e => { if (e.target === ov) closeSheet(); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && !ov.classList.contains('hidden')) closeSheet(); });
+    document.body.appendChild(ov);
+  }
+  return ov;
+}
+function openSheet(el){
+  if (typeof el === 'string') el = document.getElementById(el);
+  if (!el) return;
+  const ov = _sheetOverlay();
+  if (el.parentNode !== ov) ov.appendChild(el);   // portal it in (once)
+  ov._current = el;
+  el.classList.remove('hidden');
+  ov.classList.remove('hidden');
+  document.documentElement.style.overflow = 'hidden';   // freeze background scroll
+  const f = el.querySelector('input:not([type=file]):not([type=hidden]),select,textarea');
+  if (f) setTimeout(() => { try { f.focus(); } catch (_) {} }, 30);
+}
+function closeSheet(el){
+  const ov = document.getElementById('sheetOverlay');
+  if (!ov) return;
+  el = (typeof el === 'string' ? document.getElementById(el) : el) || ov._current;
+  if (el) el.classList.add('hidden');
+  ov._current = null;
+  ov.classList.add('hidden');
+  document.documentElement.style.overflow = '';
+}

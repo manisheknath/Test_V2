@@ -1511,8 +1511,7 @@ function openPersonEditor(taker){
   document.getElementById('p_password').value = '';
   document.getElementById('p_passwordLabel').textContent = taker ? 'Reset password (leave blank to keep current)' : 'Password';
   document.getElementById('p_password').placeholder = taker ? 'Leave blank to keep existing' : 'Set a password';
-  document.getElementById('personEditor').classList.remove('hidden');
-  document.getElementById('personEditor').scrollIntoView({ behavior: 'smooth' });
+  openSheet(document.getElementById('personEditor'));
 }
 /* ---------- User Management: tabs, selection, groups ---------- */
 const SELECTED_USERS = new Set();
@@ -1574,8 +1573,7 @@ function switchUserTab(tab){
   document.querySelectorAll('#userSubtabs button').forEach(b => b.classList.toggle('active', b.dataset.utab === tab));
   document.getElementById('usersPanel').classList.toggle('hidden', tab !== 'users');
   document.getElementById('groupsPanel').classList.toggle('hidden', tab !== 'groups');
-  document.getElementById('personEditor').classList.add('hidden');
-  document.getElementById('groupEditor').classList.add('hidden');
+  closeSheet(); // close any open person/group popup
   if (tab === 'groups') renderGroups();
 }
 document.querySelectorAll('#userSubtabs button').forEach(b => b.addEventListener('click', () => switchUserTab(b.dataset.utab)));
@@ -1824,11 +1822,10 @@ function openGroupEditor(name){
     }).join('');
   }
   document.getElementById('personEditor').classList.add('hidden');
-  document.getElementById('groupEditor').classList.remove('hidden');
-  document.getElementById('groupEditor').scrollIntoView({ behavior: 'smooth' });
+  openSheet(document.getElementById('groupEditor'));
 }
 document.getElementById('btnCancelGroup').addEventListener('click', () => {
-  document.getElementById('groupEditor').classList.add('hidden');
+  closeSheet(document.getElementById('groupEditor'));
 });
 document.getElementById('btnSaveGroup').addEventListener('click', async () => {
   const newName = document.getElementById('g_name').value.trim();
@@ -1848,11 +1845,11 @@ document.getElementById('btnSaveGroup').addEventListener('click', async () => {
     }
   }
   toast('Saved group “' + newName + '”', 'success');
-  document.getElementById('groupEditor').classList.add('hidden');
+  closeSheet(document.getElementById('groupEditor'));
   refreshTakerList();
 });
 document.getElementById('btnCancelPerson').addEventListener('click', () => {
-  document.getElementById('personEditor').classList.add('hidden');
+  closeSheet(document.getElementById('personEditor'));
 });
 document.getElementById('takersTableBody').addEventListener('click', async (e) => {
   const btn = e.target.closest('button'); if (!btn) return;
@@ -1892,7 +1889,7 @@ document.getElementById('btnSavePerson').addEventListener('click', async () => {
     document.getElementById('personNotice').innerHTML = '<div class="notice error">' + msg + '</div>';
     return;
   }
-  document.getElementById('personEditor').classList.add('hidden');
+  closeSheet(document.getElementById('personEditor'));
   toast('Saved ' + member.name, 'success');
   refreshTakerList();
 });
@@ -2476,11 +2473,11 @@ document.getElementById('btnSaveTest').addEventListener('click', async () => {
 
 /* ---------- Paste import (text template OR JS/JSON config) ---------- */
 document.getElementById('btnPasteImport').addEventListener('click', () => {
-  document.getElementById('pasteImportPanel').classList.remove('hidden');
+  openSheet(document.getElementById('pasteImportPanel'));
   document.getElementById('pasteImportText').focus();
 });
 document.getElementById('btnCancelPaste').addEventListener('click', () => {
-  document.getElementById('pasteImportPanel').classList.add('hidden');
+  closeSheet(document.getElementById('pasteImportPanel'));
 });
 
 function stripLeadingComments(text) {
@@ -2629,7 +2626,7 @@ document.getElementById('btnParsePasted').addEventListener('click', () => {
       return;
     }
     noticeEl.innerHTML = '<div class="notice ok">Imported "' + normalized.test.title + '" from pasted JS — review below, then click Save test.</div>';
-    document.getElementById('pasteImportPanel').classList.add('hidden');
+    closeSheet(document.getElementById('pasteImportPanel'));
     document.getElementById('pasteImportText').value = '';
     openEditor(normalized.test);
   } else {
@@ -2639,7 +2636,7 @@ document.getElementById('btnParsePasted').addEventListener('click', () => {
       return;
     }
     noticeEl.innerHTML = '<div class="notice ok">Imported "' + result.test.title + '" from pasted text — review below, then click Save test.</div>';
-    document.getElementById('pasteImportPanel').classList.add('hidden');
+    closeSheet(document.getElementById('pasteImportPanel'));
     document.getElementById('pasteImportText').value = '';
     openEditor(result.test);
   }
@@ -2945,11 +2942,10 @@ function openTrainingEditor(t){
   document.getElementById('tr_name').value = t ? t.name : '';
   document.getElementById('tr_desc').value = t ? t.desc : '';
   document.getElementById('tr_status').value = t ? (t.status==='archived'?'draft':t.status) : 'draft';
-  document.getElementById('trEditor').classList.remove('hidden');
-  document.getElementById('trEditor').scrollIntoView({ behavior:'smooth' });
+  openSheet(document.getElementById('trEditor'));
 }
 document.getElementById('btnNewTraining').addEventListener('click', () => openTrainingEditor(null));
-document.getElementById('btnCancelTraining').addEventListener('click', () => document.getElementById('trEditor').classList.add('hidden'));
+document.getElementById('btnCancelTraining').addEventListener('click', () => closeSheet(document.getElementById('trEditor')));
 document.getElementById('btnSaveTraining').addEventListener('click', () => {
   const name = document.getElementById('tr_name').value.trim();
   const desc = document.getElementById('tr_desc').value.trim();
@@ -2962,7 +2958,7 @@ document.getElementById('btnSaveTraining').addEventListener('click', () => {
   } else {
     TRAININGS.unshift({ id:'tr'+Date.now(), name, desc, status, updatedAt:today, g:TRAININGS.length%TR_GRADS.length });
   }
-  document.getElementById('trEditor').classList.add('hidden');
+  closeSheet(document.getElementById('trEditor'));
   toast('Saved “'+name+'”','success'); renderTrainings();
 });
 renderTrainings();
