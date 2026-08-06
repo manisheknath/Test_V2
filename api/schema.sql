@@ -178,6 +178,15 @@ CREATE TABLE IF NOT EXISTS certificates (
   issued_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- ---- Role permissions (Master-editable capability matrix) --
+-- A row (role, capability) means that role HAS that capability.
+-- Empty for a role => the app falls back to its built-in defaults.
+CREATE TABLE IF NOT EXISTS role_permissions (
+  role       TEXT NOT NULL,
+  capability TEXT NOT NULL,
+  PRIMARY KEY (role, capability)
+);
+
 -- ---- Audit: every Master access to an org ------------------
 CREATE TABLE IF NOT EXISTS audit_log (
   id         TEXT PRIMARY KEY,

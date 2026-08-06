@@ -196,6 +196,10 @@
         Admins<span class="cnt" id="navAdminsCount"></span>
       </button>
       <div class="nav-label" style="margin-top:10px;">Setup</div>
+      <button class="nav-item" data-view="roles">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2l7 4v6c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-4Z"/><path d="M9 12l2 2 4-4"/></svg>
+        Roles &amp; permissions
+      </button>
       <button class="nav-item" data-view="settings">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.2-1.3L14 2h-4l-.3 2.2a7 7 0 0 0-2.2 1.3l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.2 1.3L10 22h4l.3-2.2a7 7 0 0 0 2.2-1.3l2.3 1 2-3.4-2-1.5c.1-.4.1-.9.1-1.3Z"/></svg>
         Platform settings
@@ -391,6 +395,24 @@
       </section>
 
       <!-- SETTINGS -->
+      <!-- ROLES & PERMISSIONS -->
+      <section class="view" id="view-roles" hidden>
+        <div class="page-head">
+          <div><h1>Roles &amp; permissions</h1><p class="sub">Choose what each role can do. Applies across every organization.</p></div>
+          <div class="head-actions"><button class="primary" id="btnSaveRoles">Save changes</button></div>
+        </div>
+        <div id="rolesNotice"></div>
+        <div class="card">
+          <div class="table-wrap">
+            <table id="rolesTable">
+              <thead id="rolesHead"></thead>
+              <tbody id="rolesBody"></tbody>
+            </table>
+          </div>
+          <p class="muted-note" style="margin-top:14px;">The Master (you) always has full control and isn't listed. Tip: keep <b>Learn</b> on for anyone who takes courses.</p>
+        </div>
+      </section>
+
       <section class="view" id="view-settings" hidden>
         <div class="page-head"><div><h1>Platform settings</h1><p class="sub">Global configuration for the whole platform.</p></div></div>
         <div class="card">
@@ -473,13 +495,44 @@ async function loadData(){
 /* ---------- View switching ---------- */
 function switchView(view){
   document.querySelectorAll('.sidebar .nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === view));
-  ['overview','orgs','admins','settings'].forEach(v => { const el = document.getElementById('view-'+v); if (el) el.hidden = (v !== view); });
+  ['overview','orgs','admins','roles','settings'].forEach(v => { const el = document.getElementById('view-'+v); if (el) el.hidden = (v !== view); });
   document.getElementById('orgEditor').classList.add('hidden');
   document.getElementById('adminEditor').classList.add('hidden');
   if (view === 'overview') renderOverview();
   if (view === 'orgs') renderOrgs();
   if (view === 'admins') renderAdmins();
+  if (view === 'roles') renderRolesEditor();
 }
+
+/* ---------- Roles & permissions editor ---------- */
+const CAP_LABELS = {
+  manage_users: 'Manage users', assign_roles: 'Assign roles', manage_groups: 'Manage groups',
+  manage_content: 'Manage courses & tests', edit_assigned_content: 'Edit assigned content',
+  enroll: 'Assign / enroll', grade: 'Grade & results', manage_org_settings: 'Org settings',
+  learn: 'Learn (take courses/tests)',
+};
+const ROLE_LABELS = { admin:'Admin', user_admin:'User Admin', coach:'Coach', contributor:'Contributor', learner:'Learner' };
+let ROLES_MATRIX = null, ALL_CAPS = [];
+async function renderRolesEditor(){
+  const data = await api('/api/master/roles');
+  if (!data.ok){ document.getElementById('rolesNotice').innerHTML = '<div class="err">Could not load roles: '+(data.error||'error')+'</div>'; return; }
+  ROLES_MATRIX = data.roles; ALL_CAPS = data.allCaps;
+  const roles = Object.keys(ROLE_LABELS);
+  document.getElementById('rolesHead').innerHTML =
+    '<tr><th>Capability</th>' + roles.map(r => '<th style="text-align:center;">'+esc(ROLE_LABELS[r])+'</th>').join('') + '</tr>';
+  document.getElementById('rolesBody').innerHTML = ALL_CAPS.map(cap =>
+    '<tr><td>'+esc(CAP_LABELS[cap]||cap)+'</td>' +
+    roles.map(r => '<td style="text-align:center;"><input type="checkbox" class="rp" data-role="'+r+'" data-cap="'+cap+'" style="width:auto;margin:0;"'+
+      ((ROLES_MATRIX[r]||[]).includes(cap) ? ' checked' : '')+'></td>').join('') + '</tr>').join('');
+}
+document.getElementById('btnSaveRoles').addEventListener('click', async () => {
+  const roles = {};
+  Object.keys(ROLE_LABELS).forEach(r => roles[r] = []);
+  document.querySelectorAll('#rolesBody .rp:checked').forEach(cb => roles[cb.dataset.role].push(cb.dataset.cap));
+  const d = await api('/api/master/roles', { method:'PUT', body: JSON.stringify({ roles }) });
+  if (d.ok){ toast('Permissions saved','success'); document.getElementById('rolesNotice').innerHTML=''; }
+  else document.getElementById('rolesNotice').innerHTML = '<div class="err">Could not save: '+(d.error||'error')+'</div>';
+});
 document.querySelectorAll('.sidebar .nav-item').forEach(b => b.addEventListener('click', () => switchView(b.dataset.view)));
 
 function renderAll(){ renderOverview(); renderOrgs(); renderAdmins(); updateNavCounts(); }

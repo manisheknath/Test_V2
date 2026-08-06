@@ -37,6 +37,8 @@ export default {
       else if (path === "/api/master/admins" && m === "GET") r = await listAdmins(request, env);
       else if (path === "/api/master/admins" && m === "POST") r = await createAdmin(request, env);
       else if (path.match(/^\/api\/master\/admins\/[^/]+$/) && m === "DELETE") r = await deleteAdminAcct(request, env, path.split("/").pop());
+      else if (path === "/api/master/roles" && m === "GET") r = await getRoles(request, env);
+      else if (path === "/api/master/roles" && m === "PUT") r = await setRoles(request, env);
 
       // ---- tenant: members (User Management) ----
       else if (path === "/api/members" && m === "GET") r = await listMembers(request, env);
@@ -85,12 +87,12 @@ async function login(request, env) {
     const lims = (await env.DB.prepare("SELECT role, seats FROM org_role_limits WHERE org_id = ?").bind(acc.org_id).all()).results;
     orgInfo = { slug: o && o.slug, name: o && o.name, limits: lims.reduce((a, r) => ((a[r.role] = r.seats), a), {}) };
   }
-  return json({ ok: true, token, account: publicAccount(acc), org: orgInfo });
+  return json({ ok: true, token, account: { ...publicAccount(acc), capabilities: await getCaps(env, acc.role) }, org: orgInfo });
 }
 
 async function me(request, env) {
   const ctx = await auth(request, env);
-  return json({ ok: true, account: publicAccount(ctx.account) });
+  return json({ ok: true, account: { ...publicAccount(ctx.account), capabilities: ctx.caps } });
 }
 
 // Resolve the caller from the Bearer token; load their (active) account.
@@ -100,7 +102,7 @@ async function auth(request, env) {
   const s = await verifySession(env, token);
   const account = await env.DB.prepare("SELECT * FROM accounts WHERE id = ?").bind(s.sub).first();
   if (!account || account.status !== "active") throw httpError(401, "unauthorized");
-  return { env, db: tenantDB(env, account), accountId: account.id, orgId: account.org_id, role: account.role, account };
+  return { env, db: tenantDB(env, account), accountId: account.id, orgId: account.org_id, role: account.role, caps: await getCaps(env, account.role), account };
 }
 function requireRole(ctx, roles) { if (ctx.role !== "master" && !roles.includes(ctx.role)) throw httpError(403, "forbidden"); }
 function requireMaster(ctx) { if (ctx.role !== "master") throw httpError(403, "forbidden"); }
@@ -109,7 +111,7 @@ function requireMaster(ctx) { if (ctx.role !== "master") throw httpError(403, "f
    The permission matrix. The frontend maps its UI to caps(role);
    routes gate with requireCap. Keep this and the architecture doc
    in sync. */
-const CAPS = {
+const CAPS = { // seed defaults — used until the Master customizes a role
   master:      ["manage_platform"],
   admin:       ["manage_users", "assign_roles", "manage_groups", "manage_content", "edit_assigned_content", "enroll", "grade", "manage_org_settings", "learn"],
   user_admin:  ["manage_users", "manage_groups", "learn"],
@@ -117,9 +119,16 @@ const CAPS = {
   contributor: ["edit_assigned_content", "learn"],
   learner:     ["learn"],
 };
-function caps(role) { return CAPS[role] || []; }
-function can(role, cap) { return role === "master" || caps(role).includes(cap); }
-function requireCap(ctx, cap) { if (!can(ctx.role, cap)) throw httpError(403, "forbidden"); }
+const ALL_CAPS = ["manage_users", "assign_roles", "manage_groups", "manage_content", "edit_assigned_content", "enroll", "grade", "manage_org_settings", "learn"];
+const EDITABLE_ROLES = ["admin", "user_admin", "coach", "contributor", "learner"];
+function defaultCaps(role) { return CAPS[role] || []; }
+// Effective capabilities: Master-set overrides in role_permissions, else the seed defaults.
+async function getCaps(env, role) {
+  if (role === "master") return CAPS.master;
+  const rows = (await env.DB.prepare("SELECT capability FROM role_permissions WHERE role = ?").bind(role).all()).results;
+  return rows.length ? rows.map(r => r.capability) : defaultCaps(role);
+}
+function requireCap(ctx, cap) { if (ctx.role !== "master" && !(ctx.caps || []).includes(cap)) throw httpError(403, "forbidden"); }
 function tenantDB(env, account) { return env.DB; } // TODO: silo → env["DB_"+slug]
 
 // Seat-quota guard (before creating a member).
@@ -243,6 +252,29 @@ async function listCourses(request, env) {
   return json({ ok: true, courses: results });
 }
 
+/* ---------- Master: role permissions (editable matrix) ---------- */
+async function getRoles(request, env) {
+  const ctx = await auth(request, env); requireMaster(ctx);
+  const roles = {};
+  for (const role of EDITABLE_ROLES) roles[role] = await getCaps(env, role);
+  return json({ ok: true, roles, allCaps: ALL_CAPS });
+}
+async function setRoles(request, env) {
+  const ctx = await auth(request, env); requireMaster(ctx);
+  const wanted = (await body(request)).roles || {};
+  const stmts = [];
+  for (const role of Object.keys(wanted)) {
+    if (!EDITABLE_ROLES.includes(role)) continue;
+    stmts.push(env.DB.prepare("DELETE FROM role_permissions WHERE role = ?").bind(role));
+    for (const cap of (wanted[role] || [])) {
+      if (ALL_CAPS.includes(cap)) stmts.push(env.DB.prepare("INSERT OR IGNORE INTO role_permissions (role, capability) VALUES (?, ?)").bind(role, cap));
+    }
+  }
+  if (stmts.length) await env.DB.batch(stmts);
+  await audit(env, ctx.accountId, null, "roles.update", { roles: Object.keys(wanted) });
+  return json({ ok: true });
+}
+
 /* ---------- Tenant: members (User Management) ---------- */
 const MEMBER_ROLES = ["learner", "coach", "contributor", "user_admin", "admin"];
 
@@ -345,7 +377,7 @@ async function audit(env, actorId, orgId, action, detail) {
   await env.DB.prepare("INSERT INTO audit_log (id, actor_id, org_id, action, detail) VALUES (?, ?, ?, ?, ?)")
     .bind(crypto.randomUUID(), actorId, orgId, action, JSON.stringify(detail || {})).run();
 }
-function publicAccount(a) { return { id: a.id, name: a.name, role: a.role, orgId: a.org_id, email: a.email, loginId: a.login_id, capabilities: caps(a.role) }; }
+function publicAccount(a) { return { id: a.id, name: a.name, role: a.role, orgId: a.org_id, email: a.email, loginId: a.login_id }; }
 async function body(request) { try { return await request.json(); } catch { return {}; } }
 function bearer(request) { const h = request.headers.get("authorization") || ""; return h.startsWith("Bearer ") ? h.slice(7) : null; }
 function json(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json;charset=utf-8" } }); }
