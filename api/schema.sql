@@ -178,13 +178,16 @@ CREATE TABLE IF NOT EXISTS certificates (
   issued_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- ---- Role permissions (Master-editable capability matrix) --
--- A row (role, capability) means that role HAS that capability.
--- Empty for a role => the app falls back to its built-in defaults.
+-- ---- Role permissions (per-org, editable capability matrix) --
+-- A row (org_id, role, capability) means that role HAS that capability
+-- within that org. org_id = '' is the platform-default template every
+-- org inherits until it sets its own rows. Resolution order:
+--   org's own rows  ->  platform template ('')  ->  built-in defaults.
 CREATE TABLE IF NOT EXISTS role_permissions (
+  org_id     TEXT NOT NULL DEFAULT '',   -- '' = platform template; else an org id
   role       TEXT NOT NULL,
   capability TEXT NOT NULL,
-  PRIMARY KEY (role, capability)
+  PRIMARY KEY (org_id, role, capability)
 );
 
 -- ---- Audit: every Master access to an org ------------------

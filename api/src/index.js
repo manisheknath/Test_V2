@@ -40,6 +40,10 @@ export default {
       else if (path === "/api/master/roles" && m === "GET") r = await getRoles(request, env);
       else if (path === "/api/master/roles" && m === "PUT") r = await setRoles(request, env);
 
+      // ---- tenant: this org's own role permissions (org admin) ----
+      else if (path === "/api/roles" && m === "GET") r = await getOrgRoles(request, env);
+      else if (path === "/api/roles" && m === "PUT") r = await setOrgRoles(request, env);
+
       // ---- tenant: members (User Management) ----
       else if (path === "/api/members" && m === "GET") r = await listMembers(request, env);
       else if (path === "/api/members" && m === "POST") r = await createMember(request, env);
@@ -81,7 +85,7 @@ async function login(request, env) {
     sub: acc.id, org: acc.org_id, role: acc.role,
     exp: Math.floor(Date.now() / 1000) + 60 * 60 * 12, // 12h
   });
-  return json({ ok: true, token, account: { ...publicAccount(acc), capabilities: await getCaps(env, acc.role) }, org: await orgInfoFor(env, acc.org_id) });
+  return json({ ok: true, token, account: { ...publicAccount(acc), capabilities: await getCaps(env, acc.role, acc.org_id) }, org: await orgInfoFor(env, acc.org_id) });
 }
 
 // Org context (name, slug, seat limits) — shared by login and me.
@@ -104,7 +108,7 @@ async function auth(request, env) {
   const s = await verifySession(env, token);
   const account = await env.DB.prepare("SELECT * FROM accounts WHERE id = ?").bind(s.sub).first();
   if (!account || account.status !== "active") throw httpError(401, "unauthorized");
-  return { env, db: tenantDB(env, account), accountId: account.id, orgId: account.org_id, role: account.role, caps: await getCaps(env, account.role), account };
+  return { env, db: tenantDB(env, account), accountId: account.id, orgId: account.org_id, role: account.role, caps: await getCaps(env, account.role, account.org_id), account };
 }
 function requireRole(ctx, roles) { if (ctx.role !== "master" && !roles.includes(ctx.role)) throw httpError(403, "forbidden"); }
 function requireMaster(ctx) { if (ctx.role !== "master") throw httpError(403, "forbidden"); }
@@ -122,13 +126,40 @@ const CAPS = { // seed defaults — used until the Master customizes a role
   learner:     ["learn"],
 };
 const ALL_CAPS = ["manage_users", "assign_roles", "manage_groups", "manage_content", "edit_assigned_content", "enroll", "grade", "manage_org_settings", "learn"];
-const EDITABLE_ROLES = ["admin", "user_admin", "coach", "contributor", "learner"];
+const EDITABLE_ROLES = ["admin", "user_admin", "coach", "contributor", "learner"]; // Master edits all of these
+const ORG_EDITABLE_ROLES = ["user_admin", "coach", "contributor", "learner"];      // an org edits its user roles (not admin)
+const PLATFORM = ""; // role_permissions.org_id sentinel for the platform-default template
 function defaultCaps(role) { return CAPS[role] || []; }
-// Effective capabilities: Master-set overrides in role_permissions, else the seed defaults.
-async function getCaps(env, role) {
+
+// Effective capabilities for a role in an org: the org's own override, else the
+// platform-default template (org_id=''), else the built-in seed defaults.
+async function getCaps(env, role, orgId) {
   if (role === "master") return CAPS.master;
-  const rows = (await env.DB.prepare("SELECT capability FROM role_permissions WHERE role = ?").bind(role).all()).results;
-  return rows.length ? rows.map(r => r.capability) : defaultCaps(role);
+  if (orgId) {
+    const own = (await env.DB.prepare("SELECT capability FROM role_permissions WHERE org_id = ? AND role = ?").bind(orgId, role).all()).results;
+    if (own.length) return own.map(r => r.capability);
+  }
+  const plat = (await env.DB.prepare("SELECT capability FROM role_permissions WHERE org_id = ? AND role = ?").bind(PLATFORM, role).all()).results;
+  if (plat.length) return plat.map(r => r.capability);
+  return defaultCaps(role);
+}
+// Read every role's effective caps for one scope (an org id, or PLATFORM).
+async function rolesForScope(env, orgId, roleList) {
+  const roles = {};
+  for (const role of roleList) roles[role] = await getCaps(env, role, orgId);
+  return roles;
+}
+// Replace the stored caps for the given roles within one scope.
+async function writeRoles(env, orgId, wanted, allowedRoles) {
+  const stmts = [];
+  for (const role of Object.keys(wanted)) {
+    if (!allowedRoles.includes(role)) continue;
+    stmts.push(env.DB.prepare("DELETE FROM role_permissions WHERE org_id = ? AND role = ?").bind(orgId, role));
+    for (const c of (wanted[role] || [])) {
+      if (ALL_CAPS.includes(c)) stmts.push(env.DB.prepare("INSERT OR IGNORE INTO role_permissions (org_id, role, capability) VALUES (?, ?, ?)").bind(orgId, role, c));
+    }
+  }
+  if (stmts.length) await env.DB.batch(stmts);
 }
 function requireCap(ctx, cap) { if (ctx.role !== "master" && !(ctx.caps || []).includes(cap)) throw httpError(403, "forbidden"); }
 function tenantDB(env, account) { return env.DB; } // TODO: silo → env["DB_"+slug]
@@ -254,26 +285,39 @@ async function listCourses(request, env) {
   return json({ ok: true, courses: results });
 }
 
-/* ---------- Master: role permissions (editable matrix) ---------- */
+/* ---------- Master: role permissions per scope ----------
+   Scope = a specific org id, or PLATFORM ('') for the template that
+   every org inherits until it sets its own. Master edits all roles. */
 async function getRoles(request, env) {
   const ctx = await auth(request, env); requireMaster(ctx);
-  const roles = {};
-  for (const role of EDITABLE_ROLES) roles[role] = await getCaps(env, role);
-  return json({ ok: true, roles, allCaps: ALL_CAPS });
+  const org = new URL(request.url).searchParams.get("org") || PLATFORM;
+  const roles = await rolesForScope(env, org, EDITABLE_ROLES);
+  return json({ ok: true, scope: org, roles, allCaps: ALL_CAPS });
 }
 async function setRoles(request, env) {
   const ctx = await auth(request, env); requireMaster(ctx);
-  const wanted = (await body(request)).roles || {};
-  const stmts = [];
-  for (const role of Object.keys(wanted)) {
-    if (!EDITABLE_ROLES.includes(role)) continue;
-    stmts.push(env.DB.prepare("DELETE FROM role_permissions WHERE role = ?").bind(role));
-    for (const cap of (wanted[role] || [])) {
-      if (ALL_CAPS.includes(cap)) stmts.push(env.DB.prepare("INSERT OR IGNORE INTO role_permissions (role, capability) VALUES (?, ?)").bind(role, cap));
-    }
-  }
-  if (stmts.length) await env.DB.batch(stmts);
-  await audit(env, ctx.accountId, null, "roles.update", { roles: Object.keys(wanted) });
+  const b = await body(request);
+  const org = b.orgId || PLATFORM;
+  if (org !== PLATFORM && !(await env.DB.prepare("SELECT id FROM organizations WHERE id = ?").bind(org).first())) throw httpError(404, "org_not_found");
+  await writeRoles(env, org, b.roles || {}, EDITABLE_ROLES);
+  await audit(env, ctx.accountId, org || null, "roles.update", { scope: org || "platform", roles: Object.keys(b.roles || {}) });
+  return json({ ok: true });
+}
+
+/* ---------- Tenant: an org configures its own user roles ----------
+   Gated by manage_org_settings. Only the user roles are editable here;
+   the Admin role is platform-controlled (prevents self-lockout). */
+async function getOrgRoles(request, env) {
+  const ctx = await auth(request, env); requireCap(ctx, "manage_org_settings");
+  if (!ctx.orgId) throw httpError(400, "no_org");
+  const roles = await rolesForScope(env, ctx.orgId, ORG_EDITABLE_ROLES);
+  return json({ ok: true, roles, adminCaps: await getCaps(env, "admin", ctx.orgId), editableRoles: ORG_EDITABLE_ROLES, allCaps: ALL_CAPS });
+}
+async function setOrgRoles(request, env) {
+  const ctx = await auth(request, env); requireCap(ctx, "manage_org_settings");
+  if (!ctx.orgId) throw httpError(400, "no_org");
+  await writeRoles(env, ctx.orgId, (await body(request)).roles || {}, ORG_EDITABLE_ROLES);
+  await audit(env, ctx.accountId, ctx.orgId, "org_roles.update", { roles: "user roles" });
   return json({ ok: true });
 }
 

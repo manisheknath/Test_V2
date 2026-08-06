@@ -352,6 +352,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.2-1.3L14 2h-4l-.3 2.2a7 7 0 0 0-2.2 1.3l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12c0 .4 0 .9.1 1.3l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.2 1.3L10 22h4l.3-2.2a7 7 0 0 0 2.2-1.3l2.3 1 2-3.4-2-1.5c.1-.4.1-.9.1-1.3Z"/></svg>
         Site settings
       </button>
+      <button class="nav-item" data-view="roles" data-cap="manage_org_settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2 4 5v6c0 5 3.5 8 8 11 4.5-3 8-6 8-11V5l-8-3Z"/><path d="M9 12l2 2 4-4"/></svg>
+        Roles &amp; permissions
+      </button>
       <div class="foot">
         <div class="avatar">AD</div>
         <div style="flex:1;min-width:0;"><div class="nm" style="font-size:12.5px;font-weight:600;">Administrator</div></div>
@@ -908,6 +912,26 @@
             <button class="primary" id="btnSaveSettings">Save site settings</button>
             <span id="settingsSavedNote" style="font-size:12px;color:var(--muted);"></span>
           </div>
+        </div>
+      </section>
+
+      <!-- ===== ROLES & PERMISSIONS VIEW ===== -->
+      <section class="view" id="view-roles" hidden>
+        <div class="page-head">
+          <div><h1>Roles &amp; permissions</h1><p class="sub">Choose what each of your user roles can do in this organization.</p></div>
+          <div class="head-actions"><button class="primary" id="btnSaveOrgRoles">Save changes</button></div>
+        </div>
+        <div id="orgRolesNotice"></div>
+        <div class="card">
+          <div class="table-wrap">
+            <table id="orgRolesTable">
+              <thead id="orgRolesHead"></thead>
+              <tbody id="orgRolesBody"></tbody>
+            </table>
+          </div>
+          <p style="margin-top:14px;font-size:12.5px;color:var(--muted);">
+            The <b>Admin</b> role is set by the platform and shown for reference only. Keep <b>Learn</b> on for anyone who takes courses or tests.
+          </p>
         </div>
       </section>
 
@@ -2868,6 +2892,48 @@ document.getElementById('btnSaveTraining').addEventListener('click', () => {
 });
 renderTrainings();
 
+/* ---------- Roles & permissions (this org's user roles) ----------
+   Admins configure what their own user roles can do. The Admin role is
+   platform-controlled and shown locked for reference. Saved to /api/roles,
+   which the Worker scopes to this org automatically (from the token). */
+const ORP_CAP_LABELS = {
+  manage_users:'Manage users', assign_roles:'Assign roles', manage_groups:'Manage groups',
+  manage_content:'Manage courses & tests', edit_assigned_content:'Edit assigned content',
+  enroll:'Assign / enroll', grade:'Grade & results', manage_org_settings:'Org settings',
+  learn:'Learn (take courses/tests)',
+};
+const ORP_ROLE_LABELS = { admin:'Admin', user_admin:'User Admin', coach:'Coach', contributor:'Contributor', learner:'Learner' };
+let ORP_ROLES = null, ORP_ALLCAPS = [], ORP_EDITABLE = [];
+async function renderOrgRolesEditor(){
+  const notice = document.getElementById('orgRolesNotice'); notice.innerHTML = '';
+  const data = await lmsApi('/api/roles');
+  if (!data.ok){ notice.innerHTML = '<div class="notice error">Could not load roles: '+(data.error||'error')+'</div>'; return; }
+  ORP_ROLES = data.roles || {}; ORP_ALLCAPS = data.allCaps || []; ORP_EDITABLE = data.editableRoles || [];
+  const adminCaps = data.adminCaps || [];
+  const cols = ['admin', ...ORP_EDITABLE];
+  const capsOf = r => r === 'admin' ? adminCaps : (ORP_ROLES[r] || []);
+  document.getElementById('orgRolesHead').innerHTML =
+    '<tr><th>Capability</th>' + cols.map(r => '<th style="text-align:center;">'+pEsc(ORP_ROLE_LABELS[r]||r)+(r==='admin'?' 🔒':'')+'</th>').join('') + '</tr>';
+  document.getElementById('orgRolesBody').innerHTML = ORP_ALLCAPS.map(cap =>
+    '<tr><td>'+pEsc(ORP_CAP_LABELS[cap]||cap)+'</td>' +
+    cols.map(r => {
+      const on = capsOf(r).includes(cap), locked = (r === 'admin');
+      return '<td style="text-align:center;"><input type="checkbox" class="orp" data-role="'+r+'" data-cap="'+cap+'"'+
+        (on?' checked':'')+(locked?' disabled':'')+' style="width:auto;margin:0;'+(locked?'opacity:.45;':'')+'"></td>';
+    }).join('') + '</tr>').join('');
+}
+document.getElementById('btnSaveOrgRoles').addEventListener('click', async () => {
+  const notice = document.getElementById('orgRolesNotice');
+  const roles = {};
+  ORP_EDITABLE.forEach(r => roles[r] = []);
+  document.querySelectorAll('#orgRolesBody .orp:checked').forEach(cb => {
+    if (ORP_EDITABLE.includes(cb.dataset.role)) roles[cb.dataset.role].push(cb.dataset.cap);
+  });
+  const d = await lmsApi('/api/roles', { method:'PUT', body: JSON.stringify({ roles }) });
+  if (d.ok){ toast('Permissions saved','success'); notice.innerHTML = ''; }
+  else notice.innerHTML = '<div class="notice error">Could not save: '+(d.error||'error')+'</div>';
+});
+
 document.querySelectorAll('.nav-item[data-view]').forEach(item => {
   item.addEventListener('click', () => {
     const view = item.dataset.view;
@@ -2877,6 +2943,7 @@ document.querySelectorAll('.nav-item[data-view]').forEach(item => {
     if (view === 'results' && typeof refreshResults === 'function') refreshResults();
     if (view === 'dashboard') renderAdminDashboard();
     if (view === 'trainings') renderTrainings();
+    if (view === 'roles') renderOrgRolesEditor();
   });
 });
 
