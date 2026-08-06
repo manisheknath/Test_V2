@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS organizations (
   status     TEXT NOT NULL DEFAULT 'active',  -- active | suspended
   isolation  TEXT NOT NULL DEFAULT 'pooled',  -- pooled | silo
   region     TEXT,                            -- data residency, e.g. 'eu'
+  logo       TEXT,                            -- company logo as a data: URL (shown in org views)
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 

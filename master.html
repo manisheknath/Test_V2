@@ -296,6 +296,16 @@
             <div><label for="o_name">Organization name</label><input type="text" id="o_name" placeholder="e.g. Acme Corp"></div>
             <div><label for="o_slug">Slug (portal URL)</label><input type="text" id="o_slug" placeholder="e.g. acme"></div>
           </div>
+          <div id="orgLogoSection" style="margin:4px 0 14px;">
+            <label>Company logo <span class="sub" style="font-weight:400;">— shown in this organization's console</span></label>
+            <div style="display:flex;align-items:center;gap:14px;margin-top:6px;">
+              <span id="o_logoPreview" class="logo" style="width:44px;height:44px;font-size:18px;overflow:hidden;background:var(--surface-3);color:var(--muted);"></span>
+              <input type="file" id="o_logoFile" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none;">
+              <button type="button" class="ghost small" id="o_logoPick">Upload logo…</button>
+              <button type="button" class="ghost small" id="o_logoClear" hidden>Remove</button>
+              <span id="o_logoNote" class="sub"></span>
+            </div>
+          </div>
           <div class="sub" style="margin:2px 0 10px;">Role seat limits — the most of each role this org's admin may create:</div>
           <div class="row">
             <div><label for="o_lim_admin">Admins</label><input type="number" id="o_lim_admin" min="0" value="2"></div>
@@ -460,7 +470,7 @@ async function api(path, opts){
 // UI uses camelCase role keys; the API uses snake_case.
 function limitsToApi(l){ return { admin:l.admin, user_admin:l.userAdmin, coach:l.coach, contributor:l.contributor, learner:l.learner }; }
 function limitsFromApi(l){ l = l || {}; return { admin:l.admin||0, userAdmin:l.user_admin||0, coach:l.coach||0, contributor:l.contributor||0, learner:l.learner||0 }; }
-function normOrg(o){ return { id:o.id, name:o.name, slug:o.slug, status:o.status,
+function normOrg(o){ return { id:o.id, name:o.name, slug:o.slug, status:o.status, logo:o.logo||null,
   admins:(o.counts&&o.counts.admin)||0, users:(o.counts&&o.counts.learner)||0, tests:o.assessments||0,
   createdAt:(o.created_at||'').slice(0,10), limits:limitsFromApi(o.limits) }; }
 function normAdmin(a){ return { id:a.id, name:a.name, email:a.email, org:a.org, orgSlug:a.org_slug,
@@ -652,6 +662,37 @@ document.getElementById('orgSearch').addEventListener('input', (e) => { ORG_SEAR
 
 /* Org create / edit editor */
 let editingOrgId = null;
+/* ---------- Logo helper (shared) ---------- */
+// Downscale a chosen image to <= maxDim px and return a data: URL. SVGs pass
+// through unchanged (they're vector). The server also guards the final size.
+function fileToLogoDataURL(file, maxDim){
+  maxDim = maxDim || 240;
+  return new Promise((resolve, reject) => {
+    if (!file || !/^image\//.test(file.type)) return reject(new Error('Please choose an image (PNG, JPG, WEBP or SVG).'));
+    const fr = new FileReader();
+    fr.onerror = () => reject(new Error('Could not read that file.'));
+    fr.onload = () => {
+      if (file.type === 'image/svg+xml'){ resolve(fr.result); return; }
+      const img = new Image();
+      img.onload = () => {
+        const s = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width*s)), h = Math.max(1, Math.round(img.height*s));
+        const c = document.createElement('canvas'); c.width = w; c.height = h;
+        c.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(c.toDataURL('image/png'));
+      };
+      img.onerror = () => reject(new Error('That image could not be loaded.'));
+      img.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+function paintLogoPreview(el, dataUrl, fallbackText){
+  if (dataUrl) el.innerHTML = '<img src="'+dataUrl+'" alt="" style="width:100%;height:100%;object-fit:contain;">';
+  else el.textContent = (fallbackText||'?').trim().slice(0,1).toUpperCase() || '?';
+}
+
+let orgLogoVal; // undefined = unchanged, null = remove, string = new data URL
 function openOrgEditor(org){
   editingOrgId = org ? org.id : null;
   document.getElementById('orgEditorTitle').textContent = org ? ('Edit “'+org.name+'”') : 'New organization';
@@ -662,10 +703,36 @@ function openOrgEditor(org){
   ROLE_LIMS.forEach(r => document.getElementById('o_lim_'+r).value = lim[r]);
   document.getElementById('orgAdminSection').classList.toggle('hidden', !!org); // first admin only on create
   ['o_adminName','o_adminEmail','o_adminPass'].forEach(id => document.getElementById(id).value='');
+  // Logo: only offered when managing an existing org.
+  orgLogoVal = undefined;
+  document.getElementById('orgLogoSection').classList.toggle('hidden', !org);
+  document.getElementById('o_logoNote').textContent = '';
+  document.getElementById('o_logoFile').value = '';
+  paintLogoPreview(document.getElementById('o_logoPreview'), org && org.logo, org && org.name);
+  document.getElementById('o_logoClear').hidden = !(org && org.logo);
   document.getElementById('btnSaveOrg').textContent = org ? 'Save changes' : 'Create organization';
   document.getElementById('orgEditor').classList.remove('hidden');
   document.getElementById('orgEditor').scrollIntoView({ behavior:'smooth' });
 }
+document.getElementById('o_logoPick').addEventListener('click', () => document.getElementById('o_logoFile').click());
+document.getElementById('o_logoFile').addEventListener('change', async (e) => {
+  const f = e.target.files && e.target.files[0]; if (!f) return;
+  const note = document.getElementById('o_logoNote');
+  try{
+    const url = await fileToLogoDataURL(f);
+    if (url.length > 580000){ note.textContent = 'That image is too large — pick a smaller one.'; return; }
+    orgLogoVal = url;
+    paintLogoPreview(document.getElementById('o_logoPreview'), url, null);
+    document.getElementById('o_logoClear').hidden = false;
+    note.textContent = 'Ready — click Save changes.';
+  }catch(err){ note.textContent = err.message; }
+});
+document.getElementById('o_logoClear').addEventListener('click', () => {
+  orgLogoVal = null;
+  paintLogoPreview(document.getElementById('o_logoPreview'), null, document.getElementById('o_name').value);
+  document.getElementById('o_logoClear').hidden = true;
+  document.getElementById('o_logoNote').textContent = 'Logo will be removed on Save.';
+});
 document.getElementById('btnCreateOrg').addEventListener('click', () => openOrgEditor(null));
 document.getElementById('btnCancelOrg').addEventListener('click', () => document.getElementById('orgEditor').classList.add('hidden'));
 document.getElementById('btnSaveOrg').addEventListener('click', async () => {
@@ -687,8 +754,10 @@ document.getElementById('btnSaveOrg').addEventListener('click', async () => {
     toast('Created “'+name+'”','success');
   } else {
     if (errs.length){ fail(errs.join('<br>')); return; }
-    const d = await api('/api/master/orgs/'+editingOrgId, { method:'PATCH', body: JSON.stringify({ name, slug, limits: limitsToApi(uiLimits) }) });
-    if (!d.ok){ fail('Could not save: '+(d.error||'error')); return; }
+    const patch = { name, slug, limits: limitsToApi(uiLimits) };
+    if (orgLogoVal !== undefined) patch.logo = orgLogoVal; // string (new) or null (remove)
+    const d = await api('/api/master/orgs/'+editingOrgId, { method:'PATCH', body: JSON.stringify(patch) });
+    if (!d.ok){ fail(d.error==='logo_too_large' ? 'That logo image is too large.' : d.error==='bad_logo' ? 'That logo file type isn’t supported.' : ('Could not save: '+(d.error||'error'))); return; }
     toast('Saved “'+name+'”','success');
   }
   document.getElementById('orgEditor').classList.add('hidden');

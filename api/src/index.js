@@ -43,6 +43,7 @@ export default {
       // ---- tenant: this org's own role permissions (org admin) ----
       else if (path === "/api/roles" && m === "GET") r = await getOrgRoles(request, env);
       else if (path === "/api/roles" && m === "PUT") r = await setOrgRoles(request, env);
+      else if (path === "/api/org" && m === "PATCH") r = await updateOrgSelf(request, env);
 
       // ---- tenant: members (User Management) ----
       else if (path === "/api/members" && m === "GET") r = await listMembers(request, env);
@@ -88,12 +89,12 @@ async function login(request, env) {
   return json({ ok: true, token, account: { ...publicAccount(acc), capabilities: await getCaps(env, acc.role, acc.org_id) }, org: await orgInfoFor(env, acc.org_id) });
 }
 
-// Org context (name, slug, seat limits) — shared by login and me.
+// Org context (name, slug, logo, seat limits) — shared by login and me.
 async function orgInfoFor(env, orgId) {
   if (!orgId) return null;
-  const o = await env.DB.prepare("SELECT slug, name FROM organizations WHERE id = ?").bind(orgId).first();
+  const o = await env.DB.prepare("SELECT slug, name, logo FROM organizations WHERE id = ?").bind(orgId).first();
   const lims = (await env.DB.prepare("SELECT role, seats FROM org_role_limits WHERE org_id = ?").bind(orgId).all()).results;
-  return { slug: o && o.slug, name: o && o.name, limits: lims.reduce((a, r) => ((a[r.role] = r.seats), a), {}) };
+  return { slug: o && o.slug, name: o && o.name, logo: (o && o.logo) || null, limits: lims.reduce((a, r) => ((a[r.role] = r.seats), a), {}) };
 }
 
 async function me(request, env) {
@@ -218,15 +219,26 @@ async function createOrg(request, env) {
   return json({ ok: true, id: orgId });
 }
 
+// A logo is stored inline as a data: URL (no R2 needed). Guard the size so a
+// row stays small — the client downscales before upload; this is the backstop.
+const MAX_LOGO_BYTES = 600000; // ~600 KB of base64 (~440 KB image)
+function checkLogo(logo) {
+  if (logo == null || logo === "") return null;               // clearing the logo
+  if (typeof logo !== "string" || !/^data:image\/(png|jpeg|webp|svg\+xml);base64,/.test(logo)) throw httpError(400, "bad_logo");
+  if (logo.length > MAX_LOGO_BYTES) throw httpError(413, "logo_too_large");
+  return logo;
+}
+
 async function updateOrg(request, env, orgId) {
   const ctx = await auth(request, env); requireMaster(ctx);
-  const { name, slug, status, limits } = await body(request);
+  const { name, slug, status, limits, logo } = await body(request);
   const org = await env.DB.prepare("SELECT id FROM organizations WHERE id = ?").bind(orgId).first();
   if (!org) throw httpError(404, "not_found");
   const sets = [], vals = [];
   if (name != null) { sets.push("name = ?"); vals.push(name); }
   if (slug != null) { sets.push("slug = ?"); vals.push(slug); }
   if (status != null) { sets.push("status = ?"); vals.push(status); }
+  if (logo !== undefined) { sets.push("logo = ?"); vals.push(checkLogo(logo)); }
   const stmts = [];
   if (sets.length) stmts.push(env.DB.prepare(`UPDATE organizations SET ${sets.join(", ")} WHERE id = ?`).bind(...vals, orgId));
   if (limits) for (const role of ROLES) if (limits[role] != null)
@@ -319,6 +331,18 @@ async function setOrgRoles(request, env) {
   await writeRoles(env, ctx.orgId, (await body(request)).roles || {}, ORG_EDITABLE_ROLES);
   await audit(env, ctx.accountId, ctx.orgId, "org_roles.update", { roles: "user roles" });
   return json({ ok: true });
+}
+
+/* ---------- Tenant: an org edits its own settings (logo, …) ---------- */
+async function updateOrgSelf(request, env) {
+  const ctx = await auth(request, env); requireCap(ctx, "manage_org_settings");
+  if (!ctx.orgId) throw httpError(400, "no_org");
+  const b = await body(request);
+  if (b.logo !== undefined) {
+    await env.DB.prepare("UPDATE organizations SET logo = ? WHERE id = ?").bind(checkLogo(b.logo), ctx.orgId).run();
+    await audit(env, ctx.accountId, ctx.orgId, "org.settings", { logo: b.logo ? "set" : "cleared" });
+  }
+  return json({ ok: true, org: await orgInfoFor(env, ctx.orgId) });
 }
 
 /* ---------- Tenant: members (User Management) ---------- */
