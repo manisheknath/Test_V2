@@ -104,6 +104,22 @@ async function auth(request, env) {
 }
 function requireRole(ctx, roles) { if (ctx.role !== "master" && !roles.includes(ctx.role)) throw httpError(403, "forbidden"); }
 function requireMaster(ctx) { if (ctx.role !== "master") throw httpError(403, "forbidden"); }
+
+/* ---------- Capabilities (single source of truth) ----------
+   The permission matrix. The frontend maps its UI to caps(role);
+   routes gate with requireCap. Keep this and the architecture doc
+   in sync. */
+const CAPS = {
+  master:      ["manage_platform"],
+  admin:       ["manage_users", "assign_roles", "manage_groups", "manage_content", "edit_assigned_content", "enroll", "grade", "manage_org_settings", "learn"],
+  user_admin:  ["manage_users", "manage_groups", "learn"],
+  coach:       ["manage_content", "edit_assigned_content", "enroll", "grade", "learn"],
+  contributor: ["edit_assigned_content", "learn"],
+  learner:     ["learn"],
+};
+function caps(role) { return CAPS[role] || []; }
+function can(role, cap) { return role === "master" || caps(role).includes(cap); }
+function requireCap(ctx, cap) { if (!can(ctx.role, cap)) throw httpError(403, "forbidden"); }
 function tenantDB(env, account) { return env.DB; } // TODO: silo → env["DB_"+slug]
 
 // Seat-quota guard (before creating a member).
@@ -231,7 +247,7 @@ async function listCourses(request, env) {
 const MEMBER_ROLES = ["learner", "coach", "contributor", "user_admin", "admin"];
 
 async function listMembers(request, env) {
-  const ctx = await auth(request, env); requireRole(ctx, ["admin", "user_admin"]);
+  const ctx = await auth(request, env); requireCap(ctx, "manage_users");
   const members = (await ctx.db.prepare(
     "SELECT id, login_id, name, email, role, (password_hash IS NOT NULL) AS has_password " +
     "FROM accounts WHERE org_id = ? AND role != 'master' ORDER BY created_at DESC").bind(ctx.orgId).all()).results;
@@ -244,7 +260,7 @@ async function listMembers(request, env) {
   })) });
 }
 async function createMember(request, env) {
-  const ctx = await auth(request, env); requireRole(ctx, ["admin", "user_admin"]);
+  const ctx = await auth(request, env); requireCap(ctx, "manage_users");
   const b = await body(request);
   const role = b.role || "learner";
   if (!b.name) throw httpError(400, "name_required");
@@ -258,7 +274,7 @@ async function createMember(request, env) {
   return json({ ok: true, id });
 }
 async function updateMember(request, env, id) {
-  const ctx = await auth(request, env); requireRole(ctx, ["admin", "user_admin"]);
+  const ctx = await auth(request, env); requireCap(ctx, "manage_users");
   const b = await body(request);
   const m = await ctx.db.prepare("SELECT id, role FROM accounts WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first();
   if (!m) throw httpError(404, "not_found");
@@ -275,7 +291,7 @@ async function updateMember(request, env, id) {
   return json({ ok: true });
 }
 async function deleteMember(request, env, id) {
-  const ctx = await auth(request, env); requireRole(ctx, ["admin", "user_admin"]);
+  const ctx = await auth(request, env); requireCap(ctx, "manage_users");
   const m = await ctx.db.prepare("SELECT role FROM accounts WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first();
   if (!m) throw httpError(404, "not_found");
   if (ctx.role === "user_admin" && m.role !== "learner") throw httpError(403, "forbidden");
@@ -329,7 +345,7 @@ async function audit(env, actorId, orgId, action, detail) {
   await env.DB.prepare("INSERT INTO audit_log (id, actor_id, org_id, action, detail) VALUES (?, ?, ?, ?, ?)")
     .bind(crypto.randomUUID(), actorId, orgId, action, JSON.stringify(detail || {})).run();
 }
-function publicAccount(a) { return { id: a.id, name: a.name, role: a.role, orgId: a.org_id, email: a.email, loginId: a.login_id }; }
+function publicAccount(a) { return { id: a.id, name: a.name, role: a.role, orgId: a.org_id, email: a.email, loginId: a.login_id, capabilities: caps(a.role) }; }
 async function body(request) { try { return await request.json(); } catch { return {}; } }
 function bearer(request) { const h = request.headers.get("authorization") || ""; return h.startsWith("Bearer ") ? h.slice(7) : null; }
 function json(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json;charset=utf-8" } }); }
