@@ -64,8 +64,10 @@ CREATE TABLE IF NOT EXISTS courses (
   org_id     TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   title      TEXT NOT NULL,
   summary    TEXT,
+  category   TEXT,                            -- groups courses into shelves
+  file_name  TEXT,                            -- uploaded file's name (bytes -> R2 later)
   cover_key  TEXT,                            -- -> R2 object
-  status     TEXT NOT NULL DEFAULT 'draft',   -- draft | published | archived
+  status     TEXT NOT NULL DEFAULT 'published', -- draft | published | archived
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS courses_org ON courses(org_id);

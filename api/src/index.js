@@ -51,8 +51,11 @@ export default {
       else if (path.match(/^\/api\/members\/[^/]+$/) && m === "PATCH") r = await updateMember(request, env, path.split("/").pop());
       else if (path.match(/^\/api\/members\/[^/]+$/) && m === "DELETE") r = await deleteMember(request, env, path.split("/").pop());
 
-      // ---- tenant (example scoped read) ----
+      // ---- tenant: courses (Trainings) ----
       else if (path === "/api/courses" && m === "GET") r = await listCourses(request, env);
+      else if (path === "/api/courses" && m === "POST") r = await createCourse(request, env);
+      else if (path.match(/^\/api\/courses\/[^/]+$/) && m === "PATCH") r = await updateCourse(request, env, path.split("/").pop());
+      else if (path.match(/^\/api\/courses\/[^/]+$/) && m === "DELETE") r = await deleteCourse(request, env, path.split("/").pop());
 
       else r = json({ ok: false, error: "not_found" }, 404);
       return cors(r);
@@ -288,13 +291,46 @@ async function deleteAdminAcct(request, env, id) {
   return json({ ok: true });
 }
 
-/* ---------- Tenant (example) ---------- */
+/* ---------- Tenant: courses (Trainings) ----------
+   Org-scoped content. Gated by manage_content (admin, coach). Categories are
+   just a text field on each course — the client derives the list from them. */
 async function listCourses(request, env) {
-  const ctx = await auth(request, env);
+  const ctx = await auth(request, env); requireCap(ctx, "manage_content");
   const { results } = await ctx.db
-    .prepare("SELECT id, title, summary, status FROM courses WHERE org_id = ? AND status != 'archived' ORDER BY created_at DESC")
+    .prepare("SELECT id, title, summary, category, file_name, status, created_at FROM courses WHERE org_id = ? AND status != 'archived' ORDER BY created_at DESC")
     .bind(ctx.orgId).all();
-  return json({ ok: true, courses: results });
+  return json({ ok: true, courses: results.map(c => ({
+    id: c.id, title: c.title, summary: c.summary || "", category: c.category || "",
+    fileName: c.file_name || null, status: c.status, updatedAt: (c.created_at || "").slice(0, 10),
+  })) });
+}
+async function createCourse(request, env) {
+  const ctx = await auth(request, env); requireCap(ctx, "manage_content");
+  const b = await body(request);
+  if (!b.title) throw httpError(400, "title_required");
+  const id = crypto.randomUUID();
+  await ctx.db.prepare("INSERT INTO courses (id, org_id, title, summary, category, file_name, status) VALUES (?, ?, ?, ?, ?, ?, 'published')")
+    .bind(id, ctx.orgId, b.title, b.summary || null, b.category || null, b.fileName || null).run();
+  await audit(env, ctx.accountId, ctx.orgId, "course.create", { title: b.title });
+  return json({ ok: true, id });
+}
+async function updateCourse(request, env, id) {
+  const ctx = await auth(request, env); requireCap(ctx, "manage_content");
+  const b = await body(request);
+  if (!(await ctx.db.prepare("SELECT id FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first())) throw httpError(404, "not_found");
+  const sets = [], vals = [];
+  if (b.title != null) { sets.push("title = ?"); vals.push(b.title); }
+  if (b.summary != null) { sets.push("summary = ?"); vals.push(b.summary || null); }
+  if (b.category != null) { sets.push("category = ?"); vals.push(b.category || null); }
+  if (b.fileName !== undefined) { sets.push("file_name = ?"); vals.push(b.fileName || null); }
+  if (sets.length) await ctx.db.prepare(`UPDATE courses SET ${sets.join(", ")} WHERE id = ? AND org_id = ?`).bind(...vals, id, ctx.orgId).run();
+  return json({ ok: true });
+}
+async function deleteCourse(request, env, id) {
+  const ctx = await auth(request, env); requireCap(ctx, "manage_content");
+  if (!(await ctx.db.prepare("SELECT id FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first())) throw httpError(404, "not_found");
+  await ctx.db.prepare("DELETE FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).run();
+  return json({ ok: true });
 }
 
 /* ---------- Master: role permissions per scope ----------

@@ -346,7 +346,7 @@
       </button>
       <button class="nav-item" data-view="trainings" data-cap="manage_content">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 6l8-3 8 3-8 3-8-3Z"/><path d="M7 9v5c0 1.5 2.2 2.5 5 2.5s5-1 5-2.5V9"/><path d="M20 7v6"/></svg>
-        Trainings
+        Courses
       </button>
       <button class="nav-item" data-view="certificates" data-cap="manage_content">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="9" r="5"/><path d="M8.5 13.2 7 22l5-2.8L17 22l-1.5-8.8"/></svg>
@@ -402,10 +402,10 @@
       <!-- ===== TRAININGS VIEW ===== -->
       <section class="view" id="view-trainings" hidden>
         <div class="page-head">
-          <div><h1>Trainings</h1><p class="sub">Courses and learning material for your users.</p></div>
+          <div><h1>Courses</h1><p class="sub">Courses and learning material for your users.</p></div>
           <div class="head-actions">
             <div class="dropdown">
-              <button class="primary" id="btnNewTraining">+ New training ▾</button>
+              <button class="primary" id="btnNewTraining">+ New course ▾</button>
               <div class="dropdown-menu hidden" id="trNewMenu">
                 <button id="btnTrCreateNew">Create new</button>
                 <button id="btnTrUpload">Upload…</button>
@@ -419,7 +419,7 @@
             <div class="list-controls" id="trControls">
               <div class="list-search">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-                <input type="text" id="trSearch" placeholder="Search trainings…">
+                <input type="text" id="trSearch" placeholder="Search courses…">
               </div>
             </div>
             <div id="trBulkBar" class="bulk-bar hidden">
@@ -444,7 +444,7 @@
 
         <!-- Training editor -->
         <div id="trEditor" class="card hidden">
-          <h2 id="trEditorTitle">New training</h2>
+          <h2 id="trEditorTitle">New course</h2>
           <div id="trNotice"></div>
           <div id="tr_fileRow" class="hidden" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:9px 11px;background:var(--surface-3);font-size:12.5px;">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.5 12.5 21a4.5 4.5 0 0 1-6.4-6.4l8.5-8.5a3 3 0 0 1 4.2 4.2l-8.5 8.5a1.5 1.5 0 0 1-2.1-2.1l7.8-7.8"/></svg>
@@ -453,7 +453,7 @@
           <label for="tr_name">Name</label>
           <input type="text" id="tr_name" placeholder="e.g. Workplace Safety Essentials">
           <label for="tr_desc">Short description</label>
-          <textarea id="tr_desc" placeholder="One or two lines shown on the training card"></textarea>
+          <textarea id="tr_desc" placeholder="One or two lines shown on the course card"></textarea>
           <label for="tr_category">Category</label>
           <select id="tr_category"></select>
           <div id="tr_newCatRow" class="hidden" style="margin-top:8px;">
@@ -473,7 +473,7 @@
           <div><h1>Certificates</h1><p class="sub">Certificates issued to users on completion.</p></div>
           <div class="head-actions"><button class="primary" onclick="toast('Certificate templates arrive with the backend migration.')">+ New certificate</button></div>
         </div>
-        <div class="card"><p class="sub" style="margin:0;">No certificates yet. You'll be able to design certificate templates and issue them automatically when a user passes a test or completes a training.</p></div>
+        <div class="card"><p class="sub" style="margin:0;">No certificates yet. You'll be able to design certificate templates and issue them automatically when a user passes a test or completes a course.</p></div>
       </section>
 
       <!-- ===== TESTS VIEW ===== -->
@@ -1005,6 +1005,11 @@ async function mList(){
 async function mCreate(member){ return lmsApi('/api/members', { method:'POST', body: JSON.stringify(member) }); }
 async function mPatch(id, patch){ return lmsApi('/api/members/'+id, { method:'PATCH', body: JSON.stringify(patch) }); }
 async function mDelete(id){ return lmsApi('/api/members/'+id, { method:'DELETE' }); }
+// Course (training) helpers.
+async function cList(){ const r = await lmsApi('/api/courses'); return (r && r.ok) ? r.courses : []; }
+async function cCreate(c){ return lmsApi('/api/courses', { method:'POST', body: JSON.stringify(c) }); }
+async function cUpdate(id, c){ return lmsApi('/api/courses/'+id, { method:'PATCH', body: JSON.stringify(c) }); }
+async function cDelete(id){ return lmsApi('/api/courses/'+id, { method:'DELETE' }); }
 
 /* ---------- Login ---------- */
 async function doAdminLogin(){
@@ -1060,6 +1065,7 @@ async function lmsShowApp(){
   applyCapsToNav();
   paintOrgBrand();                                    // company logo + name in the header
   if (cap('manage_users')) await refreshTakerList();  // members, via the new API
+  if (cap('manage_content')) refreshCourses();        // courses, via the new API
   renderAdminDashboard();
   // NOTE: tests / results / settings / notifications still run on the old
   // Apps Script backend and aren't loaded here — they're migrated next.
@@ -2812,19 +2818,22 @@ const TR_GRADS = [
   'linear-gradient(135deg,#8A5A12,#D9A441)', 'linear-gradient(135deg,#6D3B8F,#A66FD1)',
   'linear-gradient(135deg,#9C3D3D,#D67A6A)', 'linear-gradient(135deg,#256C6C,#4FB0A6)'
 ];
-// Trainings are grouped into categories, each shown as a horizontal shelf.
-let CATEGORIES = ['Onboarding', 'Compliance', 'Leadership', 'Customer Success'];
-let TRAININGS = [
-  { id:'tr1', name:'Workplace Safety Essentials', desc:'Core safety practices every new hire must complete.', category:'Onboarding', updatedAt:'2026-07-20', g:0 },
-  { id:'tr2', name:'Customer Service Fundamentals', desc:'Handling calls, tickets, and difficult conversations with confidence.', category:'Customer Success', updatedAt:'2026-07-14', g:1 },
-  { id:'tr3', name:'Data Privacy & GDPR', desc:'What everyone needs to know about handling personal data.', category:'Compliance', updatedAt:'2026-07-25', g:2 },
-  { id:'tr4', name:'Leadership 101', desc:'Foundations of managing and motivating a team.', category:'Leadership', updatedAt:'2026-06-30', g:3 },
-  { id:'tr5', name:'Financial Compliance', desc:'Anti-fraud, reporting, and the regulatory basics.', category:'Compliance', updatedAt:'2026-05-11', g:4 },
-  { id:'tr6', name:'Effective Communication', desc:'Writing, presenting, and active listening at work.', category:'Onboarding', updatedAt:'2026-07-02', g:5 }
-];
+// Courses are grouped into categories, each shown as a horizontal shelf.
+// Data lives on the backend (GET/POST/PATCH/DELETE /api/courses).
+let CATEGORIES = [];
+let TRAININGS = [];
 const UNCAT = 'Uncategorized';
 const SEL_TR = new Set();
 let TR_SEARCH='', editingTrainingId=null;
+// Stable gradient pick per course id (so colors don't jump between loads).
+function gFor(id){ let h=0; for (let i=0;i<String(id).length;i++) h=(h*31 + String(id).charCodeAt(i))>>>0; return h % TR_GRADS.length; }
+// Load this org's courses from the API into the view.
+async function refreshCourses(){
+  const list = await cList();
+  TRAININGS = list.map(c => ({ id:c.id, name:c.title, desc:c.summary, category:c.category, file:c.fileName, updatedAt:c.updatedAt, g:gFor(c.id) }));
+  CATEGORIES = [...new Set(TRAININGS.map(t => t.category).filter(Boolean))];
+  renderTrainings();
+}
 
 // Category order: the defined list, then any extra categories found on
 // trainings, then an Uncategorized bucket if anything is missing one.
@@ -2858,7 +2867,7 @@ function renderTrainings(){
       '<div class="tr-row">'+items.map(trCardHTML).join('')+'</div></div>';
   });
   document.getElementById('trShelves').innerHTML = any ? html :
-    '<div class="tr-empty">'+(q ? 'No trainings match your search.' : 'No trainings yet. Click “+ New training” to create one.')+'</div>';
+    '<div class="tr-empty">'+(q ? 'No courses match your search.' : 'No courses yet. Click “+ New course” to create one.')+'</div>';
   updateTrBulk();
 }
 function updateTrBulk(){
@@ -2894,12 +2903,13 @@ document.getElementById('trSearch').addEventListener('input', (e) => { TR_SEARCH
 
 // Bulk actions: Assign / Delete
 document.getElementById('trBulkClose').addEventListener('click', () => { SEL_TR.clear(); renderTrainings(); });
-document.getElementById('trAssign').addEventListener('click', () => toast('Assigning '+SEL_TR.size+' training'+(SEL_TR.size===1?'':'s')+' to groups/users (needs backend).'));
+document.getElementById('trAssign').addEventListener('click', () => toast('Assigning '+SEL_TR.size+' course'+(SEL_TR.size===1?'':'s')+' to groups/users (needs enrollment backend).'));
 document.getElementById('trDelete').addEventListener('click', async () => {
   const ids=[...SEL_TR]; if(!ids.length) return;
-  if (!await confirmDialog({ title:'Delete trainings?', message:'Delete '+ids.length+' training'+(ids.length===1?'':'s')+'? This cannot be undone.', confirmText:'Delete', danger:true })) return;
-  TRAININGS = TRAININGS.filter(t=>!ids.includes(t.id)); SEL_TR.clear();
-  toast('Deleted '+ids.length+' training'+(ids.length===1?'':'s'),'success'); renderTrainings();
+  if (!await confirmDialog({ title:'Delete courses?', message:'Delete '+ids.length+' course'+(ids.length===1?'':'s')+'? This cannot be undone.', confirmText:'Delete', danger:true })) return;
+  for (const id of ids) await cDelete(id);
+  SEL_TR.clear();
+  toast('Deleted '+ids.length+' course'+(ids.length===1?'':'s'),'success'); await refreshCourses();
 });
 
 // Editor. `uploaded` is a File chosen via the Upload option; its name seeds
@@ -2923,7 +2933,7 @@ document.getElementById('tr_category').addEventListener('change', toggleNewCatRo
 function openTrainingEditor(t, uploaded){
   editingTrainingId = t ? t.id : null;
   trUploadFile = uploaded ? uploaded.name : (t && t.file ? t.file : null);
-  document.getElementById('trEditorTitle').textContent = t ? 'Edit training' : (uploaded ? 'Upload training' : 'New training');
+  document.getElementById('trEditorTitle').textContent = t ? 'Edit course' : (uploaded ? 'Upload course' : 'New course');
   document.getElementById('trNotice').innerHTML = '';
   const stripExt = n => n.replace(/\.[^.]+$/, '');
   document.getElementById('tr_name').value = t ? t.name : (uploaded ? stripExt(uploaded.name) : '');
@@ -2950,7 +2960,7 @@ document.getElementById('trFileInput').addEventListener('change', (e) => {
   if (f) openTrainingEditor(null, f);
 });
 document.getElementById('btnCancelTraining').addEventListener('click', () => closeSheet(document.getElementById('trEditor')));
-document.getElementById('btnSaveTraining').addEventListener('click', () => {
+document.getElementById('btnSaveTraining').addEventListener('click', async () => {
   const notice = document.getElementById('trNotice');
   const name = document.getElementById('tr_name').value.trim();
   const desc = document.getElementById('tr_desc').value.trim();
@@ -2958,18 +2968,12 @@ document.getElementById('btnSaveTraining').addEventListener('click', () => {
   if (category === '__new__') category = document.getElementById('tr_newCat').value.trim();
   if (!name){ notice.innerHTML = '<div class="notice error">A name is required.</div>'; return; }
   if (!category){ notice.innerHTML = '<div class="notice error">Pick a category or enter a new one.</div>'; return; }
-  if (!CATEGORIES.includes(category)) CATEGORIES.push(category); // register the new category
-  const today = new Date().toISOString().slice(0,10);
-  if (editingTrainingId){
-    const t = TRAININGS.find(x=>x.id===editingTrainingId);
-    if (t){ t.name=name; t.desc=desc; t.category=category; t.updatedAt=today; t.file=trUploadFile||t.file||null; }
-  } else {
-    TRAININGS.unshift({ id:'tr'+Date.now(), name, desc, category, updatedAt:today, file:trUploadFile||null, g:TRAININGS.length%TR_GRADS.length });
-  }
+  const payload = { title:name, summary:desc, category, fileName: trUploadFile || null };
+  const d = editingTrainingId ? await cUpdate(editingTrainingId, payload) : await cCreate(payload);
+  if (!d.ok){ notice.innerHTML = '<div class="notice error">Could not save: '+(d.error||'error')+'</div>'; return; }
   closeSheet(document.getElementById('trEditor'));
-  toast('Saved “'+name+'”','success'); renderTrainings();
+  toast('Saved “'+name+'”','success'); await refreshCourses();
 });
-renderTrainings();
 
 /* ---------- Roles & permissions (this org's user roles) ----------
    Admins configure what their own user roles can do. The Admin role is
@@ -3021,7 +3025,7 @@ document.querySelectorAll('.nav-item[data-view]').forEach(item => {
     window.scrollTo(0, 0);
     if (view === 'results' && typeof refreshResults === 'function') refreshResults();
     if (view === 'dashboard') renderAdminDashboard();
-    if (view === 'trainings') renderTrainings();
+    if (view === 'trainings') refreshCourses();
     if (view === 'roles') renderOrgRolesEditor();
   });
 });
