@@ -56,8 +56,6 @@ export default {
       else if (path === "/api/courses" && m === "POST") r = await createCourse(request, env);
       else if (path.match(/^\/api\/courses\/[^/]+$/) && m === "PATCH") r = await updateCourse(request, env, path.split("/").pop());
       else if (path.match(/^\/api\/courses\/[^/]+$/) && m === "DELETE") r = await deleteCourse(request, env, path.split("/").pop());
-      else if (path.match(/^\/api\/courses\/[^/]+\/file$/) && m === "PUT") r = await uploadCourseFile(request, env, path.split("/")[3]);
-      else if (path.match(/^\/api\/courses\/[^/]+\/file$/) && m === "GET") r = await downloadCourseFile(request, env, path.split("/")[3]);
 
       else r = json({ ok: false, error: "not_found" }, 404);
       return cors(r);
@@ -294,16 +292,17 @@ async function deleteAdminAcct(request, env, id) {
 }
 
 /* ---------- Tenant: courses (Trainings) ----------
-   Org-scoped content. Gated by manage_content (admin, coach). Categories are
-   just a text field on each course — the client derives the list from them. */
+   Org-scoped content. Gated by manage_content (admin, coach). Each course has
+   a rich-text body (content). Uploaded files are parsed to content in the
+   browser and discarded — the server never stores the file itself. */
 async function listCourses(request, env) {
   const ctx = await auth(request, env); requireCap(ctx, "manage_content");
   const { results } = await ctx.db
-    .prepare("SELECT id, title, summary, category, file_name, status, created_at FROM courses WHERE org_id = ? AND status != 'archived' ORDER BY created_at DESC")
+    .prepare("SELECT id, title, summary, category, content, status, created_at FROM courses WHERE org_id = ? AND status != 'archived' ORDER BY created_at DESC")
     .bind(ctx.orgId).all();
   return json({ ok: true, courses: results.map(c => ({
     id: c.id, title: c.title, summary: c.summary || "", category: c.category || "",
-    fileName: c.file_name || null, status: c.status, updatedAt: (c.created_at || "").slice(0, 10),
+    content: c.content || "", status: c.status, updatedAt: (c.created_at || "").slice(0, 10),
   })) });
 }
 async function createCourse(request, env) {
@@ -311,8 +310,8 @@ async function createCourse(request, env) {
   const b = await body(request);
   if (!b.title) throw httpError(400, "title_required");
   const id = crypto.randomUUID();
-  await ctx.db.prepare("INSERT INTO courses (id, org_id, title, summary, category, file_name, status) VALUES (?, ?, ?, ?, ?, ?, 'published')")
-    .bind(id, ctx.orgId, b.title, b.summary || null, b.category || null, b.fileName || null).run();
+  await ctx.db.prepare("INSERT INTO courses (id, org_id, title, summary, category, content, status) VALUES (?, ?, ?, ?, ?, ?, 'published')")
+    .bind(id, ctx.orgId, b.title, b.summary || null, b.category || null, b.content || null).run();
   await audit(env, ctx.accountId, ctx.orgId, "course.create", { title: b.title });
   return json({ ok: true, id });
 }
@@ -324,44 +323,15 @@ async function updateCourse(request, env, id) {
   if (b.title != null) { sets.push("title = ?"); vals.push(b.title); }
   if (b.summary != null) { sets.push("summary = ?"); vals.push(b.summary || null); }
   if (b.category != null) { sets.push("category = ?"); vals.push(b.category || null); }
-  if (b.fileName !== undefined) { sets.push("file_name = ?"); vals.push(b.fileName || null); }
+  if (b.content != null) { sets.push("content = ?"); vals.push(b.content || null); }
   if (sets.length) await ctx.db.prepare(`UPDATE courses SET ${sets.join(", ")} WHERE id = ? AND org_id = ?`).bind(...vals, id, ctx.orgId).run();
   return json({ ok: true });
 }
 async function deleteCourse(request, env, id) {
   const ctx = await auth(request, env); requireCap(ctx, "manage_content");
-  const c = await ctx.db.prepare("SELECT file_key FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first();
-  if (!c) throw httpError(404, "not_found");
-  if (c.file_key && env.MEDIA) await env.MEDIA.delete(c.file_key);
+  if (!(await ctx.db.prepare("SELECT id FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first())) throw httpError(404, "not_found");
   await ctx.db.prepare("DELETE FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).run();
   return json({ ok: true });
-}
-
-/* Course file (R2). Objects are keyed by org id so the Worker is the only way
-   in — a caller can only reach files under their own org. One file per course. */
-async function uploadCourseFile(request, env, id) {
-  const ctx = await auth(request, env); requireCap(ctx, "manage_content");
-  if (!env.MEDIA) throw httpError(503, "storage_unavailable");
-  if (!(await ctx.db.prepare("SELECT id FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first())) throw httpError(404, "not_found");
-  const name = (new URL(request.url).searchParams.get("name") || "file").slice(0, 200);
-  const contentType = request.headers.get("content-type") || "application/octet-stream";
-  const key = "courses/" + ctx.orgId + "/" + id;
-  await env.MEDIA.put(key, request.body, { httpMetadata: { contentType }, customMetadata: { name, org: ctx.orgId } });
-  await ctx.db.prepare("UPDATE courses SET file_key = ?, file_name = ? WHERE id = ? AND org_id = ?").bind(key, name, id, ctx.orgId).run();
-  await audit(env, ctx.accountId, ctx.orgId, "course.file.upload", { id, name });
-  return json({ ok: true, fileName: name });
-}
-async function downloadCourseFile(request, env, id) {
-  const ctx = await auth(request, env); requireCap(ctx, "manage_content");
-  if (!env.MEDIA) throw httpError(503, "storage_unavailable");
-  const c = await ctx.db.prepare("SELECT file_key, file_name FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first();
-  if (!c || !c.file_key) throw httpError(404, "no_file");
-  const obj = await env.MEDIA.get(c.file_key);
-  if (!obj) throw httpError(404, "no_file");
-  const h = new Headers();
-  h.set("content-type", (obj.httpMetadata && obj.httpMetadata.contentType) || "application/octet-stream");
-  h.set("content-disposition", 'attachment; filename="' + String(c.file_name || "file").replace(/["\r\n]/g, "") + '"');
-  return new Response(obj.body, { headers: h });
 }
 
 /* ---------- Master: role permissions per scope ----------

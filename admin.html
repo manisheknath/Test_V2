@@ -230,6 +230,17 @@
   .tr-row::-webkit-scrollbar{height:8px;}
   .tr-row::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:8px;}
   .tr-row > .tr-card{flex:0 0 234px;width:234px;aspect-ratio:16/10;scroll-snap-align:start;}
+  /* Course document editor */
+  .cd-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:3px;padding:8px 10px;border-bottom:1px solid var(--border);background:var(--surface-3);position:sticky;top:0;z-index:2;}
+  .cd-toolbar button{min-width:32px;height:30px;padding:0 9px;border:1px solid transparent;background:transparent;color:var(--text);cursor:pointer;font-size:13px;font-weight:600;border-radius:6px;line-height:1;}
+  .cd-toolbar button:hover{background:var(--surface);}
+  .cd-toolbar .cd-sep{width:1px;height:20px;background:var(--border);margin:0 5px;}
+  .cd-body{min-height:52vh;max-height:66vh;overflow-y:auto;padding:22px 24px;font-size:14.5px;line-height:1.65;outline:none;color:var(--text);}
+  .cd-body:empty:before{content:attr(data-placeholder);color:var(--faint);}
+  .cd-body h1{font-size:22px;font-weight:700;margin:.5em 0 .3em;}
+  .cd-body h2{font-size:18px;font-weight:700;margin:.5em 0 .3em;}
+  .cd-body p{margin:.5em 0;} .cd-body ul,.cd-body ol{margin:.5em 0 .5em 1.5em;}
+  .cd-body a{color:var(--accent);} .cd-body img{max-width:100%;}
 
   /* ---------- Roles + seats ---------- */
   .rtag{font-size:11px;font-weight:600;padding:3px 9px;display:inline-block;background:var(--surface-3);color:var(--muted);white-space:nowrap;}
@@ -401,55 +412,85 @@
 
       <!-- ===== TRAININGS VIEW ===== -->
       <section class="view" id="view-trainings" hidden>
-        <div class="page-head">
-          <div><h1>Courses</h1><p class="sub">Courses and learning material for your users.</p></div>
-          <div class="head-actions">
-            <div class="dropdown">
-              <button class="primary" id="btnNewTraining">+ New course ▾</button>
-              <div class="dropdown-menu hidden" id="trNewMenu">
-                <button id="btnTrCreateNew">Create new</button>
-                <button id="btnTrUpload">Upload…</button>
+        <div id="coursesListView">
+          <div class="page-head">
+            <div><h1>Courses</h1><p class="sub">Courses and learning material for your users.</p></div>
+            <div class="head-actions">
+              <div class="dropdown">
+                <button class="primary" id="btnNewTraining">+ New course ▾</button>
+                <div class="dropdown-menu hidden" id="trNewMenu">
+                  <button id="btnTrCreateNew">Create manually</button>
+                  <button id="btnTrUpload">Upload (PDF, PPT, Word)…</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-        <input type="file" id="trFileInput" accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mov,.m4v,.zip" class="hidden">
-        <div class="card">
-          <div class="list-toolbar" id="trToolbar">
-            <div class="list-controls" id="trControls">
-              <div class="list-search">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-                <input type="text" id="trSearch" placeholder="Search courses…">
+          <input type="file" id="trFileInput" accept=".pdf,.docx,.pptx" class="hidden">
+          <div class="card">
+            <div class="list-toolbar" id="trToolbar">
+              <div class="list-controls" id="trControls">
+                <div class="list-search">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                  <input type="text" id="trSearch" placeholder="Search courses…">
+                </div>
+              </div>
+              <div id="trBulkBar" class="bulk-bar hidden">
+                <span class="bulk-count"><b id="trBulkCount">0</b> selected</span>
+                <span class="util-divider"></span>
+                <div class="util-actions">
+                  <button type="button" class="util-btn" id="trAssign">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Assign
+                  </button>
+                  <button type="button" class="util-btn util-btn-danger" id="trDelete">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>Delete
+                  </button>
+                </div>
+                <button type="button" class="util-close" id="trBulkClose" aria-label="Clear selection">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+                </button>
               </div>
             </div>
-            <div id="trBulkBar" class="bulk-bar hidden">
-              <span class="bulk-count"><b id="trBulkCount">0</b> selected</span>
-              <span class="util-divider"></span>
-              <div class="util-actions">
-                <button type="button" class="util-btn" id="trAssign">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>Assign
-                </button>
-                <button type="button" class="util-btn util-btn-danger" id="trDelete">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg>Delete
-                </button>
-              </div>
-              <button type="button" class="util-close" id="trBulkClose" aria-label="Clear selection">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
-              </button>
-            </div>
+            <div id="trShelves" class="tr-shelves"></div>
           </div>
-
-          <div id="trShelves" class="tr-shelves"></div>
         </div>
 
-        <!-- Training editor -->
+        <!-- Course content editor (full view) -->
+        <div id="courseDocEditor" class="hidden">
+          <div class="page-head">
+            <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+              <button class="ghost" id="cdBack">← Back</button>
+              <div style="min-width:0;"><h1 id="cdTitle" style="margin:0;font-size:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Course</h1><p class="sub" id="cdMeta" style="margin:0;"></p></div>
+            </div>
+            <div class="head-actions"><button class="primary" id="cdSave">Save course</button></div>
+          </div>
+          <div id="cdNotice"></div>
+          <div class="card" style="padding:0;overflow:hidden;">
+            <div class="cd-toolbar" id="cdToolbar">
+              <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+              <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+              <button type="button" data-cmd="underline" title="Underline"><span style="text-decoration:underline;">U</span></button>
+              <span class="cd-sep"></span>
+              <button type="button" data-block="H1" title="Heading">H1</button>
+              <button type="button" data-block="H2" title="Subheading">H2</button>
+              <button type="button" data-block="P" title="Normal text">¶</button>
+              <span class="cd-sep"></span>
+              <button type="button" data-cmd="insertUnorderedList" title="Bulleted list">• List</button>
+              <button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
+              <span class="cd-sep"></span>
+              <button type="button" data-link="1" title="Insert link">Link</button>
+              <button type="button" data-cmd="removeFormat" title="Clear formatting">Clear</button>
+            </div>
+            <div id="cdBody" class="cd-body" contenteditable="true" data-placeholder="Write or paste the course content here…"></div>
+          </div>
+        </div>
+
+        <!-- Course details popup (name / description / category) -->
         <div id="trEditor" class="card hidden">
           <h2 id="trEditorTitle">New course</h2>
           <div id="trNotice"></div>
-          <div id="tr_fileRow" class="hidden" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:9px 11px;background:var(--surface-3);font-size:12.5px;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.5 12.5 21a4.5 4.5 0 0 1-6.4-6.4l8.5-8.5a3 3 0 0 1 4.2 4.2l-8.5 8.5a1.5 1.5 0 0 1-2.1-2.1l7.8-7.8"/></svg>
-            <span>File: <b id="tr_fileName"></b></span>
-            <button type="button" class="ghost small" id="tr_fileDownload" style="margin-left:auto;" hidden>Download</button>
+          <div id="tr_importRow" class="hidden" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:9px 11px;background:var(--surface-3);font-size:12.5px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3v5h5M8 13h8M8 17h5M9 8h1"/><path d="M6 3h9l5 5v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/></svg>
+            <span>Imported from <b id="tr_fileName"></b> — the file itself isn't stored.</span>
           </div>
           <label for="tr_name">Name</label>
           <input type="text" id="tr_name" placeholder="e.g. Workplace Safety Essentials">
@@ -463,7 +504,7 @@
           </div>
           <div class="head-actions" style="justify-content:flex-end;margin-top:14px;">
             <button class="ghost" id="btnCancelTraining">Cancel</button>
-            <button class="primary" id="btnSaveTraining">Save training</button>
+            <button class="primary" id="btnSaveTraining">Continue →</button>
           </div>
         </div>
       </section>
@@ -1011,21 +1052,6 @@ async function cList(){ const r = await lmsApi('/api/courses'); return (r && r.o
 async function cCreate(c){ return lmsApi('/api/courses', { method:'POST', body: JSON.stringify(c) }); }
 async function cUpdate(id, c){ return lmsApi('/api/courses/'+id, { method:'PATCH', body: JSON.stringify(c) }); }
 async function cDelete(id){ return lmsApi('/api/courses/'+id, { method:'DELETE' }); }
-// File bytes go straight to R2 through the Worker (raw body, not JSON).
-async function cUploadFile(id, file){
-  try{
-    const res = await fetch(LMS_API + '/api/courses/'+id+'/file?name='+encodeURIComponent(file.name), {
-      method:'PUT', headers:{ 'authorization':'Bearer '+LMS_TOKEN, 'content-type': file.type || 'application/octet-stream' }, body: file });
-    return await res.json();
-  }catch(e){ return { ok:false, error:'network' }; }
-}
-async function cDownloadFile(id, name){
-  const res = await fetch(LMS_API + '/api/courses/'+id+'/file', { headers:{ 'authorization':'Bearer '+LMS_TOKEN } });
-  if (!res.ok){ toast('Could not download the file','error'); return; }
-  const blob = await res.blob();
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name || 'file';
-  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-}
 
 /* ---------- Login ---------- */
 async function doAdminLogin(){
@@ -2846,7 +2872,7 @@ function gFor(id){ let h=0; for (let i=0;i<String(id).length;i++) h=(h*31 + Stri
 // Load this org's courses from the API into the view.
 async function refreshCourses(){
   const list = await cList();
-  TRAININGS = list.map(c => ({ id:c.id, name:c.title, desc:c.summary, category:c.category, file:c.fileName, updatedAt:c.updatedAt, g:gFor(c.id) }));
+  TRAININGS = list.map(c => ({ id:c.id, name:c.title, desc:c.summary, category:c.category, content:c.content||'', updatedAt:c.updatedAt, g:gFor(c.id) }));
   CATEGORIES = [...new Set(TRAININGS.map(t => t.category).filter(Boolean))];
   renderTrainings();
 }
@@ -2862,7 +2888,7 @@ function trCategoryOrder(){
 function trCardHTML(t){
   return '<div class="tr-card'+(SEL_TR.has(t.id)?' sel':'')+'" data-id="'+t.id+'" style="--tr-bg:'+(t.image?("url('"+t.image+"')"):TR_GRADS[t.g%TR_GRADS.length])+';">'+
     '<input type="checkbox" class="tr-check" data-id="'+t.id+'"'+(SEL_TR.has(t.id)?' checked':'')+' aria-label="Select">'+
-    (t.file ? '<span class="tr-badge file">file</span>' : '')+
+    (t.content ? '<span class="tr-badge file">doc</span>' : '')+
     '<div class="tr-body"><div class="tr-name">'+pEsc(t.name)+'</div><div class="tr-desc">'+pEsc(t.desc)+'</div></div></div>';
 }
 function renderTrainings(){
@@ -2928,10 +2954,12 @@ document.getElementById('trDelete').addEventListener('click', async () => {
   toast('Deleted '+ids.length+' course'+(ids.length===1?'':'s'),'success'); await refreshCourses();
 });
 
-// Editor. `uploaded` is a File chosen via the Upload option; its name seeds
-// the training and is shown in the popup so the user just fills in details.
-let trUploadFile = null;    // filename to save on the course
-let trUploadFileObj = null; // the actual File to upload (only when newly picked)
+// Course flow state. The popup collects name/description/category; then the
+// full document editor opens for the content. Uploads are parsed (below) into
+// `pendingContent` and the file is discarded — never stored.
+let pendingImportName = null; // filename shown in the popup as "Imported from …"
+let pendingContent = null;    // parsed HTML to seed a new course's content
+let courseDraft = null;       // { id, name, desc, category, content } being edited
 // Fill the category dropdown from CATEGORIES + a "Create new" option.
 function fillCategorySelect(selected){
   const sel = document.getElementById('tr_category');
@@ -2947,27 +2975,26 @@ function toggleNewCatRow(){
 }
 document.getElementById('tr_category').addEventListener('change', toggleNewCatRow);
 
-function openTrainingEditor(t, uploaded){
+// STEP 1 — the details popup. `t` = existing course (edit); `importName` /
+// `importHtml` come from a parsed upload (create).
+function openTrainingEditor(t, importName, importHtml){
   editingTrainingId = t ? t.id : null;
-  trUploadFileObj = uploaded || null;
-  trUploadFile = uploaded ? uploaded.name : (t && t.file ? t.file : null);
-  document.getElementById('trEditorTitle').textContent = t ? 'Edit course' : (uploaded ? 'Upload course' : 'New course');
-  document.getElementById('trNotice').innerHTML = '';
+  pendingImportName = importName || null;
+  pendingContent = importHtml || null;
   const stripExt = n => n.replace(/\.[^.]+$/, '');
-  document.getElementById('tr_name').value = t ? t.name : (uploaded ? stripExt(uploaded.name) : '');
+  document.getElementById('trEditorTitle').textContent = t ? 'Edit course details' : 'New course';
+  document.getElementById('trNotice').innerHTML = '';
+  document.getElementById('tr_name').value = t ? t.name : (importName ? stripExt(importName) : '');
   document.getElementById('tr_desc').value = t ? t.desc : '';
   document.getElementById('tr_newCat').value = '';
   fillCategorySelect(t ? t.category : (CATEGORIES[0] || '__new__'));
-  const fileRow = document.getElementById('tr_fileRow'), dl = document.getElementById('tr_fileDownload');
-  if (trUploadFile){ document.getElementById('tr_fileName').textContent = trUploadFile; fileRow.classList.remove('hidden'); }
-  else fileRow.classList.add('hidden');
-  // Download is only for a file already stored on an existing course (not a freshly picked one).
-  const canDownload = !!(t && t.file && !uploaded);
-  dl.hidden = !canDownload;
-  dl.onclick = canDownload ? (() => cDownloadFile(t.id, t.file)) : null;
+  const importRow = document.getElementById('tr_importRow');
+  if (pendingImportName){ document.getElementById('tr_fileName').textContent = pendingImportName; importRow.classList.remove('hidden'); }
+  else importRow.classList.add('hidden');
+  document.getElementById('btnSaveTraining').textContent = 'Continue →';
   openSheet(document.getElementById('trEditor'));
 }
-/* ---------- New-training dropdown (Create new / Upload) ---------- */
+/* ---------- New-course dropdown (Create manually / Upload) ---------- */
 (function(){
   const menu = document.getElementById('trNewMenu');
   document.getElementById('btnNewTraining').addEventListener('click', (e) => { e.stopPropagation(); menu.classList.toggle('hidden'); });
@@ -2976,13 +3003,19 @@ function openTrainingEditor(t, uploaded){
 })();
 document.getElementById('btnTrCreateNew').addEventListener('click', () => openTrainingEditor(null));
 document.getElementById('btnTrUpload').addEventListener('click', () => document.getElementById('trFileInput').click());
-document.getElementById('trFileInput').addEventListener('change', (e) => {
+document.getElementById('trFileInput').addEventListener('change', async (e) => {
   const f = e.target.files && e.target.files[0];
   e.target.value = ''; // allow re-picking the same file later
-  if (f) openTrainingEditor(null, f);
+  if (!f) return;
+  toast('Reading “'+f.name+'”…');
+  try {
+    const html = await parseCourseFile(f);   // parse in the browser…
+    openTrainingEditor(null, f.name, html);  // …then the file is discarded (never uploaded)
+  } catch(err){ toast(err.message || 'Could not read that file.', 'error'); }
 });
 document.getElementById('btnCancelTraining').addEventListener('click', () => closeSheet(document.getElementById('trEditor')));
-document.getElementById('btnSaveTraining').addEventListener('click', async () => {
+// STEP 1 → STEP 2: validate details, then open the document editor.
+document.getElementById('btnSaveTraining').addEventListener('click', () => {
   const notice = document.getElementById('trNotice');
   const name = document.getElementById('tr_name').value.trim();
   const desc = document.getElementById('tr_desc').value.trim();
@@ -2990,18 +3023,96 @@ document.getElementById('btnSaveTraining').addEventListener('click', async () =>
   if (category === '__new__') category = document.getElementById('tr_newCat').value.trim();
   if (!name){ notice.innerHTML = '<div class="notice error">A name is required.</div>'; return; }
   if (!category){ notice.innerHTML = '<div class="notice error">Pick a category or enter a new one.</div>'; return; }
-  const payload = { title:name, summary:desc, category, fileName: trUploadFile || null };
-  const d = editingTrainingId ? await cUpdate(editingTrainingId, payload) : await cCreate(payload);
-  if (!d.ok){ notice.innerHTML = '<div class="notice error">Could not save: '+(d.error||'error')+'</div>'; return; }
-  const courseId = editingTrainingId || d.id;
-  if (trUploadFileObj && courseId){
-    notice.innerHTML = '<div class="notice">Uploading file…</div>';
-    const up = await cUploadFile(courseId, trUploadFileObj);
-    if (!up.ok){ notice.innerHTML = '<div class="notice error">Course saved, but the file upload failed: '+(up.error||'error')+'</div>'; await refreshCourses(); return; }
-  }
+  const existing = editingTrainingId ? TRAININGS.find(x => x.id === editingTrainingId) : null;
+  courseDraft = { id: editingTrainingId, name, desc, category, content: existing ? (existing.content || '') : (pendingContent || '') };
   closeSheet(document.getElementById('trEditor'));
-  toast('Saved “'+name+'”','success'); await refreshCourses();
+  openCourseDoc();
 });
+
+/* ---------- STEP 2 — the course document editor ---------- */
+function openCourseDoc(){
+  document.getElementById('coursesListView').classList.add('hidden');
+  document.getElementById('courseDocEditor').classList.remove('hidden');
+  document.getElementById('cdNotice').innerHTML = '';
+  document.getElementById('cdTitle').textContent = courseDraft.name;
+  document.getElementById('cdMeta').textContent = courseDraft.category + (courseDraft.desc ? ' · ' + courseDraft.desc : '');
+  document.getElementById('cdBody').innerHTML = courseDraft.content || '';
+  window.scrollTo(0, 0);
+  setTimeout(() => document.getElementById('cdBody').focus(), 20);
+}
+function closeCourseDoc(){
+  document.getElementById('courseDocEditor').classList.add('hidden');
+  document.getElementById('coursesListView').classList.remove('hidden');
+}
+document.getElementById('cdBack').addEventListener('click', closeCourseDoc);
+// Toolbar: keep the selection (mousedown preventDefault), then run the command.
+document.getElementById('cdToolbar').addEventListener('mousedown', (e) => { if (e.target.closest('button')) e.preventDefault(); });
+document.getElementById('cdToolbar').addEventListener('click', (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.getElementById('cdBody').focus();
+  if (b.dataset.cmd) document.execCommand(b.dataset.cmd, false, null);
+  else if (b.dataset.block) document.execCommand('formatBlock', false, b.dataset.block);
+  else if (b.dataset.link){ const url = prompt('Link URL:'); if (url) document.execCommand('createLink', false, url); }
+});
+document.getElementById('cdSave').addEventListener('click', async () => {
+  const notice = document.getElementById('cdNotice');
+  const content = document.getElementById('cdBody').innerHTML;
+  const payload = { title: courseDraft.name, summary: courseDraft.desc, category: courseDraft.category, content };
+  const d = courseDraft.id ? await cUpdate(courseDraft.id, payload) : await cCreate(payload);
+  if (!d.ok){ notice.innerHTML = '<div class="notice error">Could not save: '+(d.error||'error')+'</div>'; return; }
+  toast('Saved “'+courseDraft.name+'”','success');
+  closeCourseDoc(); await refreshCourses();
+});
+
+/* ---------- File parsing (PDF / PPT / Word) — libraries loaded on demand ----
+   The file is read in the browser only to extract text/HTML; it is never
+   uploaded or stored. */
+function loadScript(src){
+  return new Promise((resolve, reject) => {
+    if ([...document.scripts].some(s => s.src === src)) return resolve();
+    const s = document.createElement('script'); s.src = src;
+    s.onload = () => resolve(); s.onerror = () => reject(new Error('Could not load the file reader. Check your connection.'));
+    document.head.appendChild(s);
+  });
+}
+async function parseCourseFile(file){
+  const n = file.name.toLowerCase();
+  if (n.endsWith('.docx')) return parseDocx(file);
+  if (n.endsWith('.pdf'))  return parsePdf(file);
+  if (n.endsWith('.pptx')) return parsePptx(file);
+  if (n.endsWith('.doc') || n.endsWith('.ppt')) throw new Error('Old .doc/.ppt isn’t supported — please save as .docx / .pptx or PDF.');
+  throw new Error('Unsupported file — use PDF, Word (.docx) or PowerPoint (.pptx).');
+}
+async function parseDocx(file){
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js');
+  const r = await window.mammoth.convertToHtml({ arrayBuffer: await file.arrayBuffer() });
+  return r.value || '<p></p>';
+}
+async function parsePdf(file){
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const pdf = await window.pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+  let html = '';
+  for (let i = 1; i <= pdf.numPages; i++){
+    const page = await pdf.getPage(i);
+    const text = (await page.getTextContent()).items.map(it => it.str).join(' ').trim();
+    if (text) html += '<p>' + pEsc(text) + '</p>';
+  }
+  return html || '<p></p>';
+}
+async function parsePptx(file){
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+  const zip = await window.JSZip.loadAsync(await file.arrayBuffer());
+  const slides = Object.keys(zip.files).filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n))
+    .sort((a,b) => (parseInt(a.match(/\d+/)) - parseInt(b.match(/\d+/))));
+  let html = '';
+  for (let i = 0; i < slides.length; i++){
+    const xml = await zip.files[slides[i]].async('string');
+    const texts = [...xml.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(m => m[1]).filter(Boolean);
+    html += '<h2>Slide ' + (i+1) + '</h2>' + (texts.length ? texts.map(t => '<p>' + pEsc(t) + '</p>').join('') : '<p></p>');
+  }
+  return html || '<p></p>';
+}
 
 /* ---------- Roles & permissions (this org's user roles) ----------
    Admins configure what their own user roles can do. The Admin role is
@@ -3053,7 +3164,7 @@ document.querySelectorAll('.nav-item[data-view]').forEach(item => {
     window.scrollTo(0, 0);
     if (view === 'results' && typeof refreshResults === 'function') refreshResults();
     if (view === 'dashboard') renderAdminDashboard();
-    if (view === 'trainings') refreshCourses();
+    if (view === 'trainings'){ closeCourseDoc(); refreshCourses(); }
     if (view === 'roles') renderOrgRolesEditor();
   });
 });
