@@ -65,7 +65,8 @@ CREATE TABLE IF NOT EXISTS courses (
   title      TEXT NOT NULL,
   summary    TEXT,
   category   TEXT,                            -- groups courses into shelves
-  file_name  TEXT,                            -- uploaded file's name (bytes -> R2 later)
+  file_name  TEXT,                            -- uploaded file's display name
+  file_key   TEXT,                            -- uploaded file's R2 object key
   cover_key  TEXT,                            -- -> R2 object
   status     TEXT NOT NULL DEFAULT 'published', -- draft | published | archived
   created_at TEXT NOT NULL DEFAULT (datetime('now'))

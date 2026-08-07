@@ -12,14 +12,13 @@ compatibility_date = "2025-01-01"
 [[d1_databases]]
 binding = "DB"
 database_name = "lms-pooled"
-database_id = "PASTE_D1_DATABASE_ID_HERE"
+database_id = "8f131cd2-c11c-4430-8f09-b70d063807a5"
 
 # ---- R2: media + certificates (keyed by org_id) -------------------------
-# Not used yet — uncomment (and create the bucket) when we add course media:
-#   npx wrangler r2 bucket create lms-media
-# [[r2_buckets]]
-# binding = "MEDIA"
-# bucket_name = "lms-media"
+# Create the bucket once:  npx wrangler r2 bucket create lms-media
+[[r2_buckets]]
+binding = "MEDIA"
+bucket_name = "lms-media"
 
 # ---- Secrets (never in this file) ---------------------------------------
 # Set with:

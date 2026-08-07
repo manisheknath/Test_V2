@@ -56,6 +56,8 @@ export default {
       else if (path === "/api/courses" && m === "POST") r = await createCourse(request, env);
       else if (path.match(/^\/api\/courses\/[^/]+$/) && m === "PATCH") r = await updateCourse(request, env, path.split("/").pop());
       else if (path.match(/^\/api\/courses\/[^/]+$/) && m === "DELETE") r = await deleteCourse(request, env, path.split("/").pop());
+      else if (path.match(/^\/api\/courses\/[^/]+\/file$/) && m === "PUT") r = await uploadCourseFile(request, env, path.split("/")[3]);
+      else if (path.match(/^\/api\/courses\/[^/]+\/file$/) && m === "GET") r = await downloadCourseFile(request, env, path.split("/")[3]);
 
       else r = json({ ok: false, error: "not_found" }, 404);
       return cors(r);
@@ -328,9 +330,38 @@ async function updateCourse(request, env, id) {
 }
 async function deleteCourse(request, env, id) {
   const ctx = await auth(request, env); requireCap(ctx, "manage_content");
-  if (!(await ctx.db.prepare("SELECT id FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first())) throw httpError(404, "not_found");
+  const c = await ctx.db.prepare("SELECT file_key FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first();
+  if (!c) throw httpError(404, "not_found");
+  if (c.file_key && env.MEDIA) await env.MEDIA.delete(c.file_key);
   await ctx.db.prepare("DELETE FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).run();
   return json({ ok: true });
+}
+
+/* Course file (R2). Objects are keyed by org id so the Worker is the only way
+   in — a caller can only reach files under their own org. One file per course. */
+async function uploadCourseFile(request, env, id) {
+  const ctx = await auth(request, env); requireCap(ctx, "manage_content");
+  if (!env.MEDIA) throw httpError(503, "storage_unavailable");
+  if (!(await ctx.db.prepare("SELECT id FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first())) throw httpError(404, "not_found");
+  const name = (new URL(request.url).searchParams.get("name") || "file").slice(0, 200);
+  const contentType = request.headers.get("content-type") || "application/octet-stream";
+  const key = "courses/" + ctx.orgId + "/" + id;
+  await env.MEDIA.put(key, request.body, { httpMetadata: { contentType }, customMetadata: { name, org: ctx.orgId } });
+  await ctx.db.prepare("UPDATE courses SET file_key = ?, file_name = ? WHERE id = ? AND org_id = ?").bind(key, name, id, ctx.orgId).run();
+  await audit(env, ctx.accountId, ctx.orgId, "course.file.upload", { id, name });
+  return json({ ok: true, fileName: name });
+}
+async function downloadCourseFile(request, env, id) {
+  const ctx = await auth(request, env); requireCap(ctx, "manage_content");
+  if (!env.MEDIA) throw httpError(503, "storage_unavailable");
+  const c = await ctx.db.prepare("SELECT file_key, file_name FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first();
+  if (!c || !c.file_key) throw httpError(404, "no_file");
+  const obj = await env.MEDIA.get(c.file_key);
+  if (!obj) throw httpError(404, "no_file");
+  const h = new Headers();
+  h.set("content-type", (obj.httpMetadata && obj.httpMetadata.contentType) || "application/octet-stream");
+  h.set("content-disposition", 'attachment; filename="' + String(c.file_name || "file").replace(/["\r\n]/g, "") + '"');
+  return new Response(obj.body, { headers: h });
 }
 
 /* ---------- Master: role permissions per scope ----------
