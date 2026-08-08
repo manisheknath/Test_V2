@@ -48,32 +48,35 @@
 
   /* ---------- App shell ---------- */
   .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;height:56px;
-    padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border);}
-  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:-.01em;}
+    padding:0 20px;background:#116ACC;border-bottom:1px solid rgba(255,255,255,.14);color:#fff;}
+  .topbar svg{color:#fff;}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:-.01em;color:#fff;}
   .brand .logo{width:27px;height:27px;border-radius:8px;font-size:14px;}
-  .tag-pill{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);
-    background:var(--surface-3);border:1px solid var(--border);padding:2px 8px;border-radius:5px;}
+  .tag-pill{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#fff;
+    background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.30);padding:2px 8px;border-radius:5px;}
   .spacer{flex:1;}
   .who{display:flex;align-items:center;gap:9px;}
   .avatar{width:32px;height:32px;border-radius:50%;background:var(--accent-soft);color:var(--accent);
     display:grid;place-items:center;font-weight:700;font-size:12px;}
-  .who .nm{font-size:13px;font-weight:600;line-height:1.1;}
-  .who .role{font-size:11px;color:var(--faint);}
-  .link-btn{background:none;border:1px solid var(--border);color:var(--muted);font-size:13px;font-weight:600;padding:7px 12px;border-radius:8px;}
-  .link-btn:hover{color:var(--text);border-color:var(--border-strong);background:var(--surface-3);}
+  .topbar .avatar{background:rgba(255,255,255,.22);color:#fff;}
+  .who .nm{font-size:13px;font-weight:600;line-height:1.1;color:#fff;}
+  .who .role{font-size:11px;color:rgba(255,255,255,.72);}
+  .link-btn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.42);color:#fff;font-size:13px;font-weight:600;padding:7px 12px;border-radius:8px;}
+  .link-btn:hover{color:#116ACC;border-color:#fff;background:#fff;}
 
   .shell{display:flex;min-height:calc(100vh - 56px);}
-  .sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);
-    display:flex;flex-direction:column;padding:16px 12px;position:sticky;top:56px;height:calc(100vh - 56px);}
-  .nav-label{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding:8px 10px 6px;}
-  .nav-item{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:8px;color:var(--muted);
+  .sidebar{width:220px;flex-shrink:0;background:#116ACC;border-right:1px solid rgba(255,255,255,.14);
+    display:flex;flex-direction:column;padding:16px 12px;position:sticky;top:56px;height:calc(100vh - 56px);color:#fff;}
+  .nav-label{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);padding:8px 10px 6px;}
+  .nav-item{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:8px;color:rgba(255,255,255,.85);
     font-weight:500;font-size:13.5px;margin-bottom:2px;width:100%;text-align:left;background:none;border:none;}
   .nav-item svg{width:18px;height:18px;flex-shrink:0;stroke-width:1.8;}
-  .nav-item:hover{background:var(--surface-3);color:var(--text);}
-  .nav-item.active{background:var(--accent-soft);color:var(--accent);font-weight:600;}
-  .nav-item .cnt{margin-left:auto;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;}
-  .nav-item.active .cnt{color:var(--accent);}
-  .sidebar .foot{margin-top:auto;border-top:1px solid var(--border);padding-top:12px;display:flex;align-items:center;gap:9px;}
+  .nav-item:hover{background:rgba(255,255,255,.14);color:#fff;}
+  .nav-item.active{background:#fff;color:#116ACC;font-weight:600;}
+  .nav-item .cnt{margin-left:auto;font-size:11px;color:rgba(255,255,255,.7);font-variant-numeric:tabular-nums;}
+  .nav-item.active .cnt{color:#116ACC;}
+  .sidebar .foot{margin-top:auto;border-top:1px solid rgba(255,255,255,.16);padding-top:12px;display:flex;align-items:center;gap:9px;}
+  .sidebar .foot .avatar{background:rgba(255,255,255,.22);color:#fff;}
 
   .main{flex:1;min-width:0;padding:26px 30px 70px;}
   .view[hidden]{display:none;}
