@@ -538,6 +538,41 @@
             <div id="cdBody" class="cd-body" contenteditable="true" data-placeholder="Write or paste the course content here…"></div>
           </div>
         </div>
+
+        <!-- Step 1 of creating a course: details popup -->
+        <div id="newCoursePopup" class="card hidden">
+          <h2 id="ncTitle" style="margin-top:0;">New course</h2>
+          <div id="ncNotice"></div>
+          <div id="nc_importRow" class="hidden" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:9px 11px;background:var(--surface-3);font-size:12.5px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3v5h5M8 13h8M8 17h5M9 8h1"/><path d="M6 3h9l5 5v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/></svg>
+            <span>Imported from <b id="nc_fileName"></b> — the file itself isn't stored.</span>
+          </div>
+          <label for="nc_name">Name</label>
+          <input type="text" id="nc_name" placeholder="e.g. Workplace Safety Essentials">
+          <label for="nc_desc">Short description</label>
+          <textarea id="nc_desc" placeholder="One or two lines shown on the course card"></textarea>
+          <label for="nc_category">Category</label>
+          <select id="nc_category"></select>
+          <div id="nc_newCatRow" class="hidden" style="margin-top:8px;">
+            <label for="nc_newCat">New category name</label>
+            <input type="text" id="nc_newCat" placeholder="e.g. Sales Enablement">
+          </div>
+          <label style="margin-top:14px;">Presentation type</label>
+          <div class="pres-options">
+            <label class="pres-opt">
+              <input type="radio" name="nc_pres" value="slideshow" checked>
+              <span class="pres-body"><span class="pres-title">Slideshow</span><span class="pres-desc">Activities are presented sequentially. Learners play every activity individually before moving to the next.</span></span>
+            </label>
+            <label class="pres-opt">
+              <input type="radio" name="nc_pres" value="single_page">
+              <span class="pres-body"><span class="pres-title">Single Page</span><span class="pres-desc">Activities are presented as a group. Learners play every activity in a single, scrolling view.</span></span>
+            </label>
+          </div>
+          <div class="head-actions" style="justify-content:flex-end;margin-top:16px;">
+            <button class="ghost" id="ncCancel">Cancel</button>
+            <button class="primary" id="ncContinue">Continue →</button>
+          </div>
+        </div>
       </section>
 
       <!-- ===== CERTIFICATES VIEW ===== -->
@@ -2988,20 +3023,26 @@ document.getElementById('trDelete').addEventListener('click', async () => {
 let courseDraft = null;   // { id, name, desc, category, content }
 let pendingImport = null; // filename of a parsed upload (shown as a note), or null
 
-// Category dropdown (existing categories + a "create new" option) in the editor.
-function fillCategorySelect(selected){
-  const sel = document.getElementById('ce_category');
+// Category dropdown (existing categories + a "create new" option). `prefix` is
+// 'ce' (the editor) or 'nc' (the new-course popup) — both share the markup.
+function fillCat(prefix, selected){
+  const sel = document.getElementById(prefix+'_category');
   sel.innerHTML = CATEGORIES.map(c => '<option value="'+pEsc(c)+'"'+(c===selected?' selected':'')+'>'+pEsc(c)+'</option>').join('')
     + '<option value="__new__">+ Create new category…</option>';
   if (selected && !CATEGORIES.includes(selected)) sel.value = CATEGORIES[0] || '__new__';
-  toggleNewCatRow();
+  toggleNewCat(prefix);
 }
-function toggleNewCatRow(){
-  const isNew = document.getElementById('ce_category').value === '__new__';
-  document.getElementById('ce_newCatRow').classList.toggle('hidden', !isNew);
-  if (isNew) setTimeout(() => document.getElementById('ce_newCat').focus(), 20);
+function toggleNewCat(prefix){
+  const isNew = document.getElementById(prefix+'_category').value === '__new__';
+  document.getElementById(prefix+'_newCatRow').classList.toggle('hidden', !isNew);
+  if (isNew) setTimeout(() => document.getElementById(prefix+'_newCat').focus(), 20);
 }
-document.getElementById('ce_category').addEventListener('change', toggleNewCatRow);
+document.getElementById('ce_category').addEventListener('change', () => toggleNewCat('ce'));
+document.getElementById('nc_category').addEventListener('change', () => toggleNewCat('nc'));
+function readCat(prefix){
+  let c = document.getElementById(prefix+'_category').value;
+  return c === '__new__' ? document.getElementById(prefix+'_newCat').value.trim() : c;
+}
 
 /* ---------- List / preview / edit view switching ---------- */
 function showCourseList(){
@@ -3028,7 +3069,7 @@ function showCourseEdit(){
   document.getElementById('ce_name').value = courseDraft.name || '';
   document.getElementById('ce_desc').value = courseDraft.desc || '';
   document.getElementById('ce_newCat').value = '';
-  fillCategorySelect(courseDraft.category || (CATEGORIES[0] || '__new__'));
+  fillCat('ce', courseDraft.category || (CATEGORIES[0] || '__new__'));
   const importRow = document.getElementById('ce_importRow');
   if (pendingImport){ document.getElementById('ce_fileName').textContent = pendingImport; importRow.classList.remove('hidden'); }
   else importRow.classList.add('hidden');
@@ -3041,12 +3082,23 @@ function showCourseEdit(){
   window.scrollTo(0, 0);
   setTimeout(() => document.getElementById('ce_name').focus(), 20);
 }
-// Begin a brand-new course (optionally seeded from a parsed upload).
-function newCourseEdit(importName, importHtml){
+// STEP 1 of creating a course: the details popup (optionally seeded from a
+// parsed upload). Continue then opens the full editor for the content.
+let pendingContent = null; // parsed HTML waiting to become the new course's content
+function openNewCoursePopup(importName, importHtml){
   const stripExt = n => n.replace(/\.[^.]+$/, '');
   pendingImport = importName || null;
-  courseDraft = { id:null, name: importName ? stripExt(importName) : '', desc:'', category: CATEGORIES[0] || '', content: importHtml || '', presentation:'slideshow' };
-  showCourseEdit();
+  pendingContent = importHtml || null;
+  document.getElementById('ncNotice').innerHTML = '';
+  document.getElementById('nc_name').value = importName ? stripExt(importName) : '';
+  document.getElementById('nc_desc').value = '';
+  document.getElementById('nc_newCat').value = '';
+  fillCat('nc', CATEGORIES[0] || '__new__');
+  const ss = document.querySelector('input[name="nc_pres"][value="slideshow"]'); if (ss) ss.checked = true;
+  const importRow = document.getElementById('nc_importRow');
+  if (pendingImport){ document.getElementById('nc_fileName').textContent = pendingImport; importRow.classList.remove('hidden'); }
+  else importRow.classList.add('hidden');
+  openSheet(document.getElementById('newCoursePopup'));
 }
 
 /* ---------- New-course dropdown (Create manually / Upload) ---------- */
@@ -3056,7 +3108,7 @@ function newCourseEdit(importName, importHtml){
   menu.addEventListener('click', () => menu.classList.add('hidden'));
   document.addEventListener('click', (e) => { if (!e.target.closest('.dropdown')) menu.classList.add('hidden'); });
 })();
-document.getElementById('btnTrCreateNew').addEventListener('click', () => newCourseEdit());
+document.getElementById('btnTrCreateNew').addEventListener('click', () => openNewCoursePopup());
 document.getElementById('btnTrUpload').addEventListener('click', () => document.getElementById('trFileInput').click());
 document.getElementById('trFileInput').addEventListener('change', async (e) => {
   const f = e.target.files && e.target.files[0];
@@ -3064,9 +3116,23 @@ document.getElementById('trFileInput').addEventListener('change', async (e) => {
   if (!f) return;
   toast('Reading “'+f.name+'”…');
   try {
-    const html = await parseCourseFile(f);  // parse in the browser…
-    newCourseEdit(f.name, html);            // …the file is discarded (never uploaded)
+    const html = await parseCourseFile(f);   // parse in the browser…
+    openNewCoursePopup(f.name, html);         // …the file is discarded (never uploaded)
   } catch(err){ toast(err.message || 'Could not read that file.', 'error'); }
+});
+// Popup: cancel, or Continue → build the draft and open the full editor.
+document.getElementById('ncCancel').addEventListener('click', () => closeSheet(document.getElementById('newCoursePopup')));
+document.getElementById('ncContinue').addEventListener('click', () => {
+  const notice = document.getElementById('ncNotice');
+  const name = document.getElementById('nc_name').value.trim();
+  const desc = document.getElementById('nc_desc').value.trim();
+  const category = readCat('nc');
+  if (!name){ notice.innerHTML = '<div class="notice error">A name is required.</div>'; return; }
+  if (!category){ notice.innerHTML = '<div class="notice error">Pick a category or enter a new one.</div>'; return; }
+  const presEl = document.querySelector('input[name="nc_pres"]:checked');
+  courseDraft = { id:null, name, desc, category, content: pendingContent || '', presentation: presEl ? presEl.value : 'slideshow' };
+  closeSheet(document.getElementById('newCoursePopup'));
+  showCourseEdit();
 });
 
 /* ---------- Preview ⇄ edit + toolbar + save ---------- */
