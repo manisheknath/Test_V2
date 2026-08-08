@@ -249,6 +249,32 @@
   .pres-title{font-weight:600;font-size:13.5px;}
   .pres-desc{font-size:12px;color:var(--muted);line-height:1.45;}
   @media (max-width:620px){ .pres-options{grid-template-columns:1fr;} }
+  /* Course block builder */
+  .ce-build{display:grid;grid-template-columns:1fr 54px;gap:14px;align-items:start;}
+  .ce-blocks-wrap{min-width:0;}
+  .ce-blocks-wrap .cd-toolbar{border:1px solid var(--border);border-bottom:none;border-radius:8px 8px 0 0;}
+  .ce-blocks{display:flex;flex-direction:column;gap:12px;border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;padding:14px;background:var(--surface);}
+  .ce-blocks:empty{display:none;}
+  .ce-empty{color:var(--muted);font-size:13px;padding:22px 16px;text-align:center;border:1px solid var(--border);border-top:none;background:var(--surface);}
+  .ce-addbar{position:sticky;top:12px;display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--border);padding:7px;border-radius:10px;box-shadow:var(--shadow-sm,0 1px 3px rgba(0,0,0,.06));}
+  .ce-addbar button{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer;border-radius:8px;}
+  .ce-addbar button:hover{background:var(--accent-soft);color:var(--accent);}
+  .ce-addbar .ce-ic{width:19px;height:19px;}
+  .ce-block{border:1px solid var(--border-strong);background:var(--surface);border-radius:6px;}
+  .ce-block.dragging{opacity:.45;}
+  .ce-block.drop-before{box-shadow:0 -2px 0 var(--accent);}
+  .ce-block-head{display:flex;align-items:center;gap:8px;padding:7px 10px;border-bottom:1px solid var(--border);background:var(--surface-3);font-size:12px;border-radius:6px 6px 0 0;}
+  .ce-drag{cursor:grab;color:var(--faint);font-size:14px;user-select:none;}
+  .ce-block-type{display:flex;align-items:center;gap:6px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-size:11px;}
+  .ce-block-type .ce-ic{width:15px;height:15px;}
+  .ce-block-del{margin-left:auto;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:17px;line-height:1;padding:0 4px;}
+  .ce-block-del:hover{color:var(--rose-tx,#c4453a);}
+  .ce-block-body{padding:11px 13px;}
+  .ce-block-title{width:100%;font-weight:600;margin-bottom:9px;}
+  .ce-block-content{min-height:64px;outline:none;font-size:14px;line-height:1.6;padding:2px;}
+  .ce-block-content:empty:before,.ce-block-url:placeholder-shown{color:var(--faint);}
+  .ce-block-content:empty:before{content:attr(data-placeholder);color:var(--faint);}
+  @media (max-width:620px){ .ce-build{grid-template-columns:1fr;} .ce-addbar{flex-direction:row;flex-wrap:wrap;position:static;} }
   .cd-body h1{font-size:22px;font-weight:700;margin:.5em 0 .3em;}
   .cd-body h2{font-size:18px;font-weight:700;margin:.5em 0 .3em;}
   .cd-body p{margin:.5em 0;} .cd-body ul,.cd-body ol{margin:.5em 0 .5em 1.5em;}
@@ -519,24 +545,29 @@
               </label>
             </div>
           </div>
-          <div class="card" style="padding:0;overflow:hidden;">
-            <div class="cd-toolbar" id="cdToolbar">
-              <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
-              <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
-              <button type="button" data-cmd="underline" title="Underline"><span style="text-decoration:underline;">U</span></button>
-              <span class="cd-sep"></span>
-              <button type="button" data-block="H1" title="Heading">H1</button>
-              <button type="button" data-block="H2" title="Subheading">H2</button>
-              <button type="button" data-block="P" title="Normal text">¶</button>
-              <span class="cd-sep"></span>
-              <button type="button" data-cmd="insertUnorderedList" title="Bulleted list">• List</button>
-              <button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
-              <span class="cd-sep"></span>
-              <button type="button" data-link="1" title="Insert link">Link</button>
-              <button type="button" data-cmd="removeFormat" title="Clear formatting">Clear</button>
+          <div class="ce-build">
+            <div class="ce-blocks-wrap">
+              <div class="cd-toolbar" id="cdToolbar">
+                <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
+                <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
+                <button type="button" data-cmd="underline" title="Underline"><span style="text-decoration:underline;">U</span></button>
+                <span class="cd-sep"></span>
+                <button type="button" data-block="H1" title="Heading">H1</button>
+                <button type="button" data-block="H2" title="Subheading">H2</button>
+                <button type="button" data-block="P" title="Normal text">¶</button>
+                <span class="cd-sep"></span>
+                <button type="button" data-cmd="insertUnorderedList" title="Bulleted list">• List</button>
+                <button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
+                <span class="cd-sep"></span>
+                <button type="button" data-link="1" title="Insert link">Link</button>
+                <button type="button" data-cmd="removeFormat" title="Clear formatting">Clear</button>
+              </div>
+              <div id="ceBlocks" class="ce-blocks"></div>
+              <div id="ceEmpty" class="ce-empty">This course is empty. Add a section or activity using the toolbar on the right →</div>
             </div>
-            <div id="cdBody" class="cd-body" contenteditable="true" data-placeholder="Write or paste the course content here…"></div>
+            <div class="ce-addbar" id="ceAddBar"></div>
           </div>
+          <input type="file" id="ceDocInput" accept=".pdf,.docx,.pptx" class="hidden">
         </div>
 
         <!-- Step 1 of creating a course: details popup -->
@@ -3044,6 +3075,143 @@ function readCat(prefix){
   return c === '__new__' ? document.getElementById(prefix+'_newCat').value.trim() : c;
 }
 
+/* ---------- Course blocks (sections & activities) ----------
+   A course body is an ordered list of blocks, stored as JSON in `content`.
+   Legacy courses (a single HTML string) load as one Section. */
+const BLOCK_ICONS = {
+  section:'<path d="M4 6h16M4 12h16M4 18h10"/>',
+  document:'<path d="M14 3v5h5"/><path d="M6 3h9l5 5v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/>',
+  audio:'<path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="2.6"/><circle cx="16" cy="16" r="2.6"/>',
+  video:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5l5 2.5-5 2.5z"/>',
+  quiz:'<circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.4 2.4 0 1 1 3.3 2.2c-.7.4-1 .9-1 1.6M12 16.5h.01"/>',
+  webinar:'<rect x="2.5" y="6.5" width="13" height="11" rx="2"/><path d="M15.5 10l6-3v10l-6-3z"/>',
+};
+const BLOCK_META = {
+  section:  { label:'Section',  rich:true },
+  document: { label:'Document', rich:true },
+  audio:    { label:'Audio link',   url:true, ph:'https://… (link to an audio file)' },
+  video:    { label:'Video link',   url:true, ph:'https://… (YouTube, Vimeo, or MP4)' },
+  quiz:     { label:'Quiz',         url:true, ph:'Link to a quiz or test' },
+  webinar:  { label:'Webinar link', url:true, ph:'https://… (Zoom, Meet, Teams)' },
+};
+const ADDBAR = [
+  ['section','Add section'], ['document','Add document (PDF, PPT, Word)'],
+  ['audio','Add audio link'], ['video','Add video link'], ['quiz','Add quiz'], ['webinar','Add webinar link'],
+];
+let ceBlocks = [];
+function blockIcon(type){ return '<svg class="ce-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+(BLOCK_ICONS[type]||BLOCK_ICONS.section)+'</svg>'; }
+function blockId(){ return 'b'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function parseBlocks(content){
+  if (!content) return [];
+  try { const j = JSON.parse(content); if (Array.isArray(j)) return j.map(b => ({ id:b.id||blockId(), type:BLOCK_META[b.type]?b.type:'section', title:b.title||'', html:b.html||'', url:b.url||'' })); } catch(_){}
+  return [{ id:blockId(), type:'section', title:'', html:String(content), url:'' }];
+}
+function renderAddBar(){
+  document.getElementById('ceAddBar').innerHTML = ADDBAR.map(([t,label]) =>
+    '<button type="button" data-add="'+t+'" title="'+label+'" aria-label="'+label+'">'+blockIcon(t)+'</button>').join('');
+}
+function renderBlocks(){
+  document.getElementById('ceBlocks').innerHTML = ceBlocks.map(b => {
+    const m = BLOCK_META[b.type] || BLOCK_META.section;
+    const body = m.rich
+      ? '<div class="ce-block-content" contenteditable="true" data-placeholder="Type the content here…">'+(b.html||'')+'</div>'
+      : '<input class="ce-block-url" type="url" placeholder="'+pEsc(m.ph)+'" value="'+pEsc(b.url||'')+'">';
+    return '<div class="ce-block" data-id="'+b.id+'" data-type="'+b.type+'">'+
+      '<div class="ce-block-head"><span class="ce-drag" draggable="true" title="Drag to reorder">⠿</span>'+
+      '<span class="ce-block-type">'+blockIcon(b.type)+pEsc(m.label)+'</span>'+
+      '<button type="button" class="ce-block-del" title="Remove" data-del="'+b.id+'">×</button></div>'+
+      '<div class="ce-block-body"><input class="ce-block-title" placeholder="'+pEsc(m.label)+' title" value="'+pEsc(b.title||'')+'">'+body+'</div></div>';
+  }).join('');
+  document.getElementById('ceEmpty').classList.toggle('hidden', ceBlocks.length>0);
+}
+function syncBlocksFromDOM(){
+  document.querySelectorAll('#ceBlocks .ce-block').forEach(el => {
+    const b = ceBlocks.find(x => x.id === el.dataset.id); if (!b) return;
+    const t = el.querySelector('.ce-block-title'); if (t) b.title = t.value;
+    const c = el.querySelector('.ce-block-content'); if (c) b.html = c.innerHTML;
+    const u = el.querySelector('.ce-block-url'); if (u) b.url = u.value.trim();
+  });
+}
+function addBlock(type, seed){
+  syncBlocksFromDOM();
+  ceBlocks.push({ id:blockId(), type, title:(seed&&seed.title)||'', html:(seed&&seed.html)||'', url:(seed&&seed.url)||'' });
+  const newId = ceBlocks[ceBlocks.length-1].id;
+  renderBlocks();
+  const el = document.querySelector('.ce-block[data-id="'+newId+'"]');
+  if (el){ el.scrollIntoView({behavior:'smooth',block:'center'}); const f=el.querySelector('.ce-block-title'); if(f) setTimeout(()=>f.focus(),30); }
+}
+document.getElementById('ceAddBar').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-add]'); if(!btn) return;
+  if (btn.dataset.add === 'document'){ document.getElementById('ceDocInput').click(); return; }
+  addBlock(btn.dataset.add);
+});
+// Document block: pick a file, parse it, add as a document block (file discarded).
+document.getElementById('ceDocInput').addEventListener('change', async (e) => {
+  const f = e.target.files && e.target.files[0]; e.target.value=''; if(!f) return;
+  toast('Reading “'+f.name+'”…');
+  try { const html = await parseCourseFile(f); addBlock('document', { title: f.name.replace(/\.[^.]+$/,''), html }); }
+  catch(err){ toast(err.message || 'Could not read that file.', 'error'); }
+});
+document.getElementById('ceBlocks').addEventListener('click', (e) => {
+  const del = e.target.closest('[data-del]'); if(!del) return;
+  syncBlocksFromDOM();
+  ceBlocks = ceBlocks.filter(b => b.id !== del.dataset.del);
+  renderBlocks();
+});
+// Drag to reorder (grab the ⠿ handle)
+let dragId = null;
+document.getElementById('ceBlocks').addEventListener('dragstart', (e) => {
+  const h = e.target.closest('.ce-drag'); if(!h){ e.preventDefault(); return; }
+  const blk = h.closest('.ce-block'); dragId = blk.dataset.id; blk.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move'; try{ e.dataTransfer.setData('text/plain', dragId); }catch(_){}
+});
+document.getElementById('ceBlocks').addEventListener('dragend', () => {
+  dragId=null; document.querySelectorAll('#ceBlocks .ce-block').forEach(x=>x.classList.remove('dragging','drop-before'));
+});
+document.getElementById('ceBlocks').addEventListener('dragover', (e) => {
+  e.preventDefault();
+  document.querySelectorAll('#ceBlocks .ce-block').forEach(x=>x.classList.remove('drop-before'));
+  const over = e.target.closest('.ce-block');
+  if (over && over.dataset.id !== dragId) over.classList.add('drop-before');
+});
+document.getElementById('ceBlocks').addEventListener('drop', (e) => {
+  e.preventDefault(); if(!dragId) return;
+  syncBlocksFromDOM();
+  const over = e.target.closest('.ce-block');
+  const from = ceBlocks.findIndex(b => b.id === dragId); if(from<0) return;
+  const [moved] = ceBlocks.splice(from,1);
+  if (over && over.dataset.id !== dragId){ const to = ceBlocks.findIndex(b => b.id === over.dataset.id); ceBlocks.splice(to<0?ceBlocks.length:to, 0, moved); }
+  else ceBlocks.push(moved);
+  renderBlocks();
+});
+renderAddBar();
+
+// Read-only rendering of blocks for the preview / learner view.
+function videoEmbed(url){
+  if(!url) return '';
+  let m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/);
+  if(m) return '<div style="position:relative;padding-top:56.25%;"><iframe src="https://www.youtube.com/embed/'+m[1]+'" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allowfullscreen loading="lazy"></iframe></div>';
+  m = url.match(/vimeo\.com\/(\d+)/);
+  if(m) return '<div style="position:relative;padding-top:56.25%;"><iframe src="https://player.vimeo.com/video/'+m[1]+'" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allowfullscreen loading="lazy"></iframe></div>';
+  if(/\.(mp4|webm|ogg)(\?|$)/i.test(url)) return '<video controls src="'+pEsc(url)+'" style="max-width:100%;"></video>';
+  return '';
+}
+function linkHtml(url,label){ return url ? '<a href="'+pEsc(url)+'" target="_blank" rel="noopener">'+pEsc(label||url)+'</a>' : '<span style="color:var(--faint);">(no link yet)</span>'; }
+function renderBlocksReadonly(content){
+  const blocks = parseBlocks(content);
+  if(!blocks.length) return '<p style="color:var(--faint);">No content yet.</p>';
+  return blocks.map(b => {
+    const m = BLOCK_META[b.type]||BLOCK_META.section;
+    let inner;
+    if (m.rich) inner = b.html || '<p style="color:var(--faint);">(empty)</p>';
+    else if (b.type==='video') inner = videoEmbed(b.url) || linkHtml(b.url,'Open video');
+    else if (b.type==='audio') inner = b.url ? '<audio controls src="'+pEsc(b.url)+'" style="width:100%;"></audio>' : linkHtml('');
+    else inner = linkHtml(b.url, b.type==='quiz'?'Open quiz':b.type==='webinar'?'Join webinar':'Open');
+    const heading = b.title || (b.type!=='section' ? m.label : '');
+    return '<section style="margin:0 0 26px;">'+(heading?'<h3 style="font-size:15.5px;margin:0 0 9px;display:flex;align-items:center;gap:7px;">'+blockIcon(b.type)+pEsc(heading)+'</h3>':'')+inner+'</section>';
+  }).join('');
+}
+
 /* ---------- List / preview / edit view switching ---------- */
 function showCourseList(){
   document.getElementById('courseEdit').classList.add('hidden');
@@ -3057,7 +3225,7 @@ function showCoursePreview(t){
   document.getElementById('cpCat').textContent = (courseDraft.category || '') + (courseDraft.presentation==='single_page' ? ' · Single page' : ' · Slideshow');
   document.getElementById('cpTitle').textContent = courseDraft.name;
   document.getElementById('cpDesc').textContent = courseDraft.desc || '';
-  document.getElementById('cpBody').innerHTML = courseDraft.content || '';
+  document.getElementById('cpBody').innerHTML = renderBlocksReadonly(courseDraft.content);
   document.getElementById('coursesListView').classList.add('hidden');
   document.getElementById('courseEdit').classList.add('hidden');
   document.getElementById('coursePreview').classList.remove('hidden');
@@ -3075,7 +3243,9 @@ function showCourseEdit(){
   else importRow.classList.add('hidden');
   const pres = courseDraft.presentation || 'slideshow';
   const presInput = document.querySelector('input[name="ce_pres"][value="'+pres+'"]'); if (presInput) presInput.checked = true;
-  document.getElementById('cdBody').innerHTML = courseDraft.content || '';
+  ceBlocks = parseBlocks(courseDraft.content);
+  if (!ceBlocks.length) ceBlocks = [{ id:blockId(), type:'section', title:'', html:'', url:'' }];
+  renderBlocks();
   document.getElementById('coursesListView').classList.add('hidden');
   document.getElementById('coursePreview').classList.add('hidden');
   document.getElementById('courseEdit').classList.remove('hidden');
@@ -3139,11 +3309,11 @@ document.getElementById('ncContinue').addEventListener('click', () => {
 document.getElementById('cpEdit').addEventListener('click', () => { pendingImport = null; showCourseEdit(); });
 document.getElementById('cpBack').addEventListener('click', showCourseList);
 document.getElementById('ceBack').addEventListener('click', () => { if (courseDraft && courseDraft.id) showCoursePreview(courseDraft); else showCourseList(); });
-// Toolbar: keep the selection (mousedown preventDefault), then run the command.
+// Toolbar: keep the selection (mousedown preventDefault); commands apply to the
+// section/document block that currently has focus.
 document.getElementById('cdToolbar').addEventListener('mousedown', (e) => { if (e.target.closest('button')) e.preventDefault(); });
 document.getElementById('cdToolbar').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
-  document.getElementById('cdBody').focus();
   if (b.dataset.cmd) document.execCommand(b.dataset.cmd, false, null);
   else if (b.dataset.block) document.execCommand('formatBlock', false, b.dataset.block);
   else if (b.dataset.link){ const url = prompt('Link URL:'); if (url) document.execCommand('createLink', false, url); }
@@ -3157,7 +3327,8 @@ document.getElementById('cdSave').addEventListener('click', async () => {
   if (category === '__new__') category = document.getElementById('ce_newCat').value.trim();
   if (!name){ notice.innerHTML = '<div class="notice error">A course name is required.</div>'; return; }
   if (!category){ notice.innerHTML = '<div class="notice error">Pick a category or enter a new one.</div>'; return; }
-  const content = document.getElementById('cdBody').innerHTML;
+  syncBlocksFromDOM();
+  const content = JSON.stringify(ceBlocks);
   const presEl = document.querySelector('input[name="ce_pres"]:checked');
   const presentation = presEl ? presEl.value : 'slideshow';
   const payload = { title:name, summary:desc, category, content, presentation };
