@@ -231,10 +231,14 @@
   .tr-row::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:8px;}
   .tr-row > .tr-card{flex:0 0 234px;width:234px;aspect-ratio:16/10;scroll-snap-align:start;}
   /* Course document editor */
-  .cd-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:3px;padding:8px 10px;border-bottom:1px solid var(--border);background:var(--surface-3);position:sticky;top:0;z-index:2;}
-  .cd-toolbar button{min-width:32px;height:30px;padding:0 9px;border:1px solid transparent;background:transparent;color:var(--text);cursor:pointer;font-size:13px;font-weight:600;border-radius:6px;line-height:1;}
-  .cd-toolbar button:hover{background:var(--surface);}
-  .cd-toolbar .cd-sep{width:1px;height:20px;background:var(--border);margin:0 5px;}
+  .cd-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:4px;padding:8px 10px;border-bottom:1px solid var(--border);background:var(--surface-3);position:sticky;top:0;z-index:2;}
+  .cd-toolbar button{min-width:32px;height:30px;padding:0 9px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);cursor:pointer;font-size:13px;font-weight:600;border-radius:6px;line-height:1;}
+  .cd-toolbar button:hover{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);}
+  .cd-toolbar button:active{transform:translateY(1px);}
+  .cd-toolbar .cd-sep{width:1px;height:22px;background:var(--border-strong);margin:0 4px;}
+  .cd-select{height:30px;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-size:12.5px;font-weight:600;border-radius:6px;padding:0 6px;cursor:pointer;}
+  .cd-color{display:inline-flex;align-items:center;justify-content:center;width:32px;height:30px;border:1px solid var(--border-strong);border-radius:6px;background:var(--surface);cursor:pointer;position:relative;font-weight:800;color:var(--accent);}
+  .cd-color input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
   .cd-body{min-height:52vh;max-height:66vh;overflow-y:auto;padding:22px 24px;font-size:14.5px;line-height:1.65;outline:none;color:var(--text);}
   .cd-body:empty:before{content:attr(data-placeholder);color:var(--faint);}
   .cd-body.cd-read{min-height:auto;max-height:none;overflow:visible;padding:0;}
@@ -257,8 +261,8 @@
   .ce-blocks:empty{display:none;}
   .ce-empty{color:var(--muted);font-size:13px;padding:22px 16px;text-align:center;border:1px solid var(--border);border-top:none;background:var(--surface);}
   .ce-addbar{position:sticky;top:12px;display:flex;flex-direction:column;gap:6px;background:var(--surface);border:1px solid var(--border);padding:7px;border-radius:10px;box-shadow:var(--shadow-sm,0 1px 3px rgba(0,0,0,.06));}
-  .ce-addbar button{width:38px;height:38px;display:flex;align-items:center;justify-content:center;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer;border-radius:8px;}
-  .ce-addbar button:hover{background:var(--accent-soft);color:var(--accent);}
+  .ce-addbar button{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);cursor:pointer;border-radius:8px;}
+  .ce-addbar button:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
   .ce-addbar .ce-ic{width:19px;height:19px;}
   .ce-block{border:1px solid var(--border-strong);background:var(--surface);border-radius:6px;}
   .ce-block.dragging{opacity:.45;}
@@ -511,53 +515,56 @@
           </div>
         </div>
 
-        <!-- Course editor: full course, header included, on the same page -->
+        <!-- Course editor: a compact title bar, then the content blocks.
+             Name / description / category / presentation are edited in the popup. -->
         <div id="courseEdit" class="hidden">
           <div class="page-head">
-            <div><button class="ghost" id="ceBack">← Back</button></div>
-            <div class="head-actions"><button class="primary" id="cdSave">Save course</button></div>
+            <div style="display:flex;align-items:center;gap:12px;min-width:0;">
+              <button class="ghost" id="ceBack" title="Back to courses">←</button>
+              <div style="min-width:0;">
+                <h1 id="ceHeading" style="margin:0;font-size:19px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Course</h1>
+                <p class="sub" id="ceSub" style="margin:0;font-size:12.5px;"></p>
+              </div>
+            </div>
+            <div class="head-actions">
+              <button class="ghost" id="ceEditDetails">Edit details</button>
+              <button class="primary" id="cdSave">Save course</button>
+            </div>
           </div>
           <div id="cdNotice"></div>
-          <div id="ce_importRow" class="hidden" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:9px 11px;background:var(--surface-3);font-size:12.5px;">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3v5h5M8 13h8M8 17h5M9 8h1"/><path d="M6 3h9l5 5v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/></svg>
-            <span>Imported from <b id="ce_fileName"></b> — the file itself isn't stored.</span>
-          </div>
-          <div class="card" style="margin-bottom:14px;">
-            <label for="ce_name">Course name</label>
-            <input type="text" id="ce_name" placeholder="e.g. Workplace Safety Essentials">
-            <label for="ce_desc">Short description</label>
-            <textarea id="ce_desc" placeholder="One or two lines shown on the course card"></textarea>
-            <label for="ce_category">Category</label>
-            <select id="ce_category"></select>
-            <div id="ce_newCatRow" class="hidden" style="margin-top:8px;">
-              <label for="ce_newCat">New category name</label>
-              <input type="text" id="ce_newCat" placeholder="e.g. Sales Enablement">
-            </div>
-            <label style="margin-top:14px;">Presentation type</label>
-            <div class="pres-options">
-              <label class="pres-opt">
-                <input type="radio" name="ce_pres" value="slideshow" checked>
-                <span class="pres-body"><span class="pres-title">Slideshow</span><span class="pres-desc">Activities are presented sequentially. Learners play every activity individually before moving to the next.</span></span>
-              </label>
-              <label class="pres-opt">
-                <input type="radio" name="ce_pres" value="single_page">
-                <span class="pres-body"><span class="pres-title">Single Page</span><span class="pres-desc">Activities are presented as a group. Learners play every activity in a single, scrolling view.</span></span>
-              </label>
-            </div>
-          </div>
           <div class="ce-build">
             <div class="ce-blocks-wrap">
               <div class="cd-toolbar" id="cdToolbar">
+                <select id="cdFont" class="cd-select" title="Font">
+                  <option value="">Font</option>
+                  <option value="Inter, system-ui, sans-serif">Sans</option>
+                  <option value="Georgia, 'Times New Roman', serif">Serif</option>
+                  <option value="Consolas, monospace">Mono</option>
+                </select>
+                <select id="cdSize" class="cd-select" title="Text size">
+                  <option value="">Size</option>
+                  <option value="2">Small</option>
+                  <option value="3">Normal</option>
+                  <option value="5">Large</option>
+                  <option value="6">X-Large</option>
+                  <option value="7">Huge</option>
+                </select>
+                <span class="cd-sep"></span>
                 <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
                 <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
                 <button type="button" data-cmd="underline" title="Underline"><span style="text-decoration:underline;">U</span></button>
+                <button type="button" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
+                <label class="cd-color" title="Text colour"><span>A</span><input type="color" id="cdColor" value="#0f6146"></label>
                 <span class="cd-sep"></span>
                 <button type="button" data-block="H1" title="Heading">H1</button>
                 <button type="button" data-block="H2" title="Subheading">H2</button>
                 <button type="button" data-block="P" title="Normal text">¶</button>
                 <span class="cd-sep"></span>
-                <button type="button" data-cmd="insertUnorderedList" title="Bulleted list">• List</button>
-                <button type="button" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
+                <button type="button" data-cmd="insertUnorderedList" title="Bulleted list">•&nbsp;List</button>
+                <button type="button" data-cmd="insertOrderedList" title="Numbered list">1.&nbsp;List</button>
+                <button type="button" data-align="justifyLeft" title="Align left">⯇</button>
+                <button type="button" data-align="justifyCenter" title="Align centre">≡</button>
+                <button type="button" data-align="justifyRight" title="Align right">⯈</button>
                 <span class="cd-sep"></span>
                 <button type="button" data-link="1" title="Insert link">Link</button>
                 <button type="button" data-cmd="removeFormat" title="Clear formatting">Clear</button>
@@ -3068,7 +3075,6 @@ function toggleNewCat(prefix){
   document.getElementById(prefix+'_newCatRow').classList.toggle('hidden', !isNew);
   if (isNew) setTimeout(() => document.getElementById(prefix+'_newCat').focus(), 20);
 }
-document.getElementById('ce_category').addEventListener('change', () => toggleNewCat('ce'));
 document.getElementById('nc_category').addEventListener('change', () => toggleNewCat('nc'));
 function readCat(prefix){
   let c = document.getElementById(prefix+'_category').value;
@@ -3231,18 +3237,15 @@ function showCoursePreview(t){
   document.getElementById('coursePreview').classList.remove('hidden');
   window.scrollTo(0, 0);
 }
-// Full editor: header fields + content, all on one page.
+// Full editor: a compact title bar (details edited via the popup) + blocks.
+function updateEditorHeader(){
+  document.getElementById('ceHeading').textContent = courseDraft.name || 'Untitled course';
+  const presLabel = courseDraft.presentation === 'single_page' ? 'Single page' : 'Slideshow';
+  document.getElementById('ceSub').textContent = [courseDraft.category, presLabel].filter(Boolean).join('  ·  ');
+}
 function showCourseEdit(){
   document.getElementById('cdNotice').innerHTML = '';
-  document.getElementById('ce_name').value = courseDraft.name || '';
-  document.getElementById('ce_desc').value = courseDraft.desc || '';
-  document.getElementById('ce_newCat').value = '';
-  fillCat('ce', courseDraft.category || (CATEGORIES[0] || '__new__'));
-  const importRow = document.getElementById('ce_importRow');
-  if (pendingImport){ document.getElementById('ce_fileName').textContent = pendingImport; importRow.classList.remove('hidden'); }
-  else importRow.classList.add('hidden');
-  const pres = courseDraft.presentation || 'slideshow';
-  const presInput = document.querySelector('input[name="ce_pres"][value="'+pres+'"]'); if (presInput) presInput.checked = true;
+  updateEditorHeader();
   ceBlocks = parseBlocks(courseDraft.content);
   if (!ceBlocks.length) ceBlocks = [{ id:blockId(), type:'section', title:'', html:'', url:'' }];
   renderBlocks();
@@ -3250,25 +3253,38 @@ function showCourseEdit(){
   document.getElementById('coursePreview').classList.add('hidden');
   document.getElementById('courseEdit').classList.remove('hidden');
   window.scrollTo(0, 0);
-  setTimeout(() => document.getElementById('ce_name').focus(), 20);
 }
-// STEP 1 of creating a course: the details popup (optionally seeded from a
-// parsed upload). Continue then opens the full editor for the content.
-let pendingContent = null; // parsed HTML waiting to become the new course's content
-function openNewCoursePopup(importName, importHtml){
-  const stripExt = n => n.replace(/\.[^.]+$/, '');
-  pendingImport = importName || null;
-  pendingContent = importHtml || null;
+
+// The details popup (name / description / category / presentation). Two modes:
+// 'create' → Continue opens the editor; 'edit' → Save updates the open course.
+let pendingContent = null; // parsed HTML waiting to become a new course's content
+let popupMode = 'create';
+function fillDetailsPopup(name, desc, category, presentation, importName){
   document.getElementById('ncNotice').innerHTML = '';
-  document.getElementById('nc_name').value = importName ? stripExt(importName) : '';
-  document.getElementById('nc_desc').value = '';
+  document.getElementById('nc_name').value = name || '';
+  document.getElementById('nc_desc').value = desc || '';
   document.getElementById('nc_newCat').value = '';
-  fillCat('nc', CATEGORIES[0] || '__new__');
-  const ss = document.querySelector('input[name="nc_pres"][value="slideshow"]'); if (ss) ss.checked = true;
+  fillCat('nc', category || (CATEGORIES[0] || '__new__'));
+  const p = document.querySelector('input[name="nc_pres"][value="'+(presentation||'slideshow')+'"]'); if (p) p.checked = true;
   const importRow = document.getElementById('nc_importRow');
-  if (pendingImport){ document.getElementById('nc_fileName').textContent = pendingImport; importRow.classList.remove('hidden'); }
+  if (importName){ document.getElementById('nc_fileName').textContent = importName; importRow.classList.remove('hidden'); }
   else importRow.classList.add('hidden');
   openSheet(document.getElementById('newCoursePopup'));
+}
+function openNewCoursePopup(importName, importHtml){
+  const stripExt = n => n.replace(/\.[^.]+$/, '');
+  popupMode = 'create';
+  pendingImport = importName || null;
+  pendingContent = importHtml || null;
+  document.getElementById('ncTitle').textContent = importName ? 'New course from file' : 'New course';
+  document.getElementById('ncContinue').textContent = 'Continue →';
+  fillDetailsPopup(importName ? stripExt(importName) : '', '', '', 'slideshow', pendingImport);
+}
+function openEditDetailsPopup(){
+  popupMode = 'edit';
+  document.getElementById('ncTitle').textContent = 'Course details';
+  document.getElementById('ncContinue').textContent = 'Save details';
+  fillDetailsPopup(courseDraft.name, courseDraft.desc, courseDraft.category, courseDraft.presentation, null);
 }
 
 /* ---------- New-course dropdown (Create manually / Upload) ---------- */
@@ -3290,7 +3306,7 @@ document.getElementById('trFileInput').addEventListener('change', async (e) => {
     openNewCoursePopup(f.name, html);         // …the file is discarded (never uploaded)
   } catch(err){ toast(err.message || 'Could not read that file.', 'error'); }
 });
-// Popup: cancel, or Continue → build the draft and open the full editor.
+document.getElementById('ceEditDetails').addEventListener('click', openEditDetailsPopup);
 document.getElementById('ncCancel').addEventListener('click', () => closeSheet(document.getElementById('newCoursePopup')));
 document.getElementById('ncContinue').addEventListener('click', () => {
   const notice = document.getElementById('ncNotice');
@@ -3300,43 +3316,58 @@ document.getElementById('ncContinue').addEventListener('click', () => {
   if (!name){ notice.innerHTML = '<div class="notice error">A name is required.</div>'; return; }
   if (!category){ notice.innerHTML = '<div class="notice error">Pick a category or enter a new one.</div>'; return; }
   const presEl = document.querySelector('input[name="nc_pres"]:checked');
-  courseDraft = { id:null, name, desc, category, content: pendingContent || '', presentation: presEl ? presEl.value : 'slideshow' };
+  const presentation = presEl ? presEl.value : 'slideshow';
   closeSheet(document.getElementById('newCoursePopup'));
-  showCourseEdit();
+  if (popupMode === 'edit' && courseDraft){
+    courseDraft.name = name; courseDraft.desc = desc; courseDraft.category = category; courseDraft.presentation = presentation;
+    updateEditorHeader();
+  } else {
+    courseDraft = { id:null, name, desc, category, content: pendingContent || '', presentation };
+    showCourseEdit();
+  }
 });
 
 /* ---------- Preview ⇄ edit + toolbar + save ---------- */
 document.getElementById('cpEdit').addEventListener('click', () => { pendingImport = null; showCourseEdit(); });
 document.getElementById('cpBack').addEventListener('click', showCourseList);
 document.getElementById('ceBack').addEventListener('click', () => { if (courseDraft && courseDraft.id) showCoursePreview(courseDraft); else showCourseList(); });
-// Toolbar: keep the selection (mousedown preventDefault); commands apply to the
-// section/document block that currently has focus.
+// Track the last selection inside a block, so font/size/colour (which steal
+// focus) can be applied back to it.
+let savedRange = null;
+document.addEventListener('selectionchange', () => {
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return;
+  const n = sel.anchorNode, el = n && (n.nodeType === 1 ? n : n.parentElement);
+  if (el && el.closest && el.closest('.ce-block-content')) savedRange = sel.getRangeAt(0).cloneRange();
+});
+function restoreRange(){ if (savedRange){ const s = window.getSelection(); s.removeAllRanges(); s.addRange(savedRange); } }
+// Toolbar buttons: mousedown-preventDefault keeps the selection; commands apply
+// to the section/document block that currently has focus.
 document.getElementById('cdToolbar').addEventListener('mousedown', (e) => { if (e.target.closest('button')) e.preventDefault(); });
 document.getElementById('cdToolbar').addEventListener('click', (e) => {
   const b = e.target.closest('button'); if (!b) return;
   if (b.dataset.cmd) document.execCommand(b.dataset.cmd, false, null);
   else if (b.dataset.block) document.execCommand('formatBlock', false, b.dataset.block);
+  else if (b.dataset.align) document.execCommand(b.dataset.align, false, null);
   else if (b.dataset.link){ const url = prompt('Link URL:'); if (url) document.execCommand('createLink', false, url); }
 });
-// Save the whole course (header + content), then land on its preview.
+// Selects & colour restore the saved selection first (they take focus on click).
+document.getElementById('cdFont').addEventListener('change', (e) => { if (e.target.value){ restoreRange(); document.execCommand('fontName', false, e.target.value); } e.target.selectedIndex = 0; });
+document.getElementById('cdSize').addEventListener('change', (e) => { if (e.target.value){ restoreRange(); document.execCommand('fontSize', false, e.target.value); } e.target.selectedIndex = 0; });
+document.getElementById('cdColor').addEventListener('input', (e) => { restoreRange(); document.execCommand('foreColor', false, e.target.value); });
+// Save the whole course (details from the draft + block content), land on preview.
 document.getElementById('cdSave').addEventListener('click', async () => {
   const notice = document.getElementById('cdNotice');
-  const name = document.getElementById('ce_name').value.trim();
-  const desc = document.getElementById('ce_desc').value.trim();
-  let category = document.getElementById('ce_category').value;
-  if (category === '__new__') category = document.getElementById('ce_newCat').value.trim();
-  if (!name){ notice.innerHTML = '<div class="notice error">A course name is required.</div>'; return; }
-  if (!category){ notice.innerHTML = '<div class="notice error">Pick a category or enter a new one.</div>'; return; }
+  if (!courseDraft.name){ notice.innerHTML = '<div class="notice error">Add a course name via “Edit details” first.</div>'; return; }
+  if (!courseDraft.category){ notice.innerHTML = '<div class="notice error">Pick a category via “Edit details” first.</div>'; return; }
   syncBlocksFromDOM();
   const content = JSON.stringify(ceBlocks);
-  const presEl = document.querySelector('input[name="ce_pres"]:checked');
-  const presentation = presEl ? presEl.value : 'slideshow';
-  const payload = { title:name, summary:desc, category, content, presentation };
+  const payload = { title:courseDraft.name, summary:courseDraft.desc, category:courseDraft.category, content, presentation:courseDraft.presentation };
   const d = courseDraft.id ? await cUpdate(courseDraft.id, payload) : await cCreate(payload);
   if (!d.ok){ notice.innerHTML = '<div class="notice error">Could not save: '+(d.error||'error')+'</div>'; return; }
-  courseDraft = { id: courseDraft.id || d.id, name, desc, category, content, presentation };
+  courseDraft = { ...courseDraft, id: courseDraft.id || d.id, content };
   pendingImport = null;
-  toast('Saved “'+name+'”','success');
+  toast('Saved “'+courseDraft.name+'”','success');
   await refreshCourses();
   showCoursePreview(courseDraft);
 });
