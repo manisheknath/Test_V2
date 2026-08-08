@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design System — Components</title>
+<link rel="stylesheet" href="design-system.css">
+<style>
+  body{margin:0; background:var(--ds-surface-2); color:var(--ds-text); font-family:var(--ds-font); -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1040px; margin:0 auto; padding:40px 24px 80px;}
+  header.top{margin-bottom:8px;}
+  header.top p{color:var(--ds-text-muted); margin:6px 0 0;}
+  section{margin-top:40px;}
+  section > h2{font:500 20px/24px var(--ds-font); margin:0 0 4px; padding-bottom:10px; border-bottom:1px solid var(--ds-border);}
+  section > .hint{color:var(--ds-text-faint); font-size:12.5px; margin:0 0 18px;}
+  .demo{background:var(--ds-surface); border:1px solid var(--ds-border); border-radius:var(--ds-radius-lg); padding:22px; margin-top:14px;}
+  .demo + .demo{margin-top:14px;}
+  .lbl{font:500 11px/1 var(--ds-font); letter-spacing:.05em; text-transform:uppercase; color:var(--ds-text-faint); margin:0 0 14px;}
+  .swatches{display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr)); gap:12px;}
+  .sw{border:1px solid var(--ds-border); border-radius:var(--ds-radius); overflow:hidden;}
+  .sw .chip{height:56px;}
+  .sw .meta{padding:8px 10px; font-size:12px;}
+  .sw .meta b{display:block; font-weight:500;}
+  .sw .meta code{color:var(--ds-text-faint); font-size:11px;}
+  .type-row{display:flex; align-items:baseline; gap:16px; padding:10px 0; border-bottom:1px dashed var(--ds-border);}
+  .type-row:last-child{border-bottom:0;}
+  .type-row code{margin-left:auto; color:var(--ds-text-faint); font-size:12px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:22px;}
+  @media(max-width:640px){ .grid2{grid-template-columns:1fr;} }
+</style>
+</head>
+<body class="ds-scope">
+<div class="wrap">
+  <header class="top">
+    <h1 class="ds-h1">Design System</h1>
+    <p>Reusable components from the UI Style Guidelines. Font: <b>Ubuntu</b> · Primary <b>#116ACC</b>. Class prefix: <code>ds-</code>.</p>
+  </header>
+
+  <!-- TYPOGRAPHY -->
+  <section>
+    <h2>Typography</h2>
+    <p class="hint">Ubuntu — Light / Regular / Medium / Bold.</p>
+    <div class="demo">
+      <div class="type-row"><span class="ds-h1">Heading 1</span><code>.ds-h1 · 32/36 Bold</code></div>
+      <div class="type-row"><span class="ds-h2">Heading 2</span><code>.ds-h2 · 24/28 Medium</code></div>
+      <div class="type-row"><span class="ds-h3">Heading 3</span><code>.ds-h3 · 20/24 Medium</code></div>
+      <div class="type-row"><span class="ds-h4">Heading 4</span><code>.ds-h4 · 16/20 Medium</code></div>
+      <div class="type-row"><span class="ds-body">Body text — the quick brown fox.</span><code>.ds-body · 14/20</code></div>
+      <div class="type-row"><span class="ds-caption">Caption / helper text.</span><code>.ds-caption · 13/18</code></div>
+      <div class="type-row"><span class="ds-overline">Overline label</span><code>.ds-overline · 11 caps</code></div>
+    </div>
+  </section>
+
+  <!-- COLORS -->
+  <section>
+    <h2>Colours</h2>
+    <div class="demo">
+      <p class="lbl">Brand &amp; state</p>
+      <div class="swatches">
+        <div class="sw"><div class="chip" style="background:var(--ds-primary)"></div><div class="meta"><b>Primary</b><code>#116ACC</code></div></div>
+        <div class="sw"><div class="chip" style="background:var(--ds-navy)"></div><div class="meta"><b>Navy</b><code>#182233</code></div></div>
+        <div class="sw"><div class="chip" style="background:var(--ds-coral)"></div><div class="meta"><b>Coral</b><code>#FD4E5D</code></div></div>
+        <div class="sw"><div class="chip" style="background:var(--ds-success)"></div><div class="meta"><b>Success</b><code>#27AE60</code></div></div>
+        <div class="sw"><div class="chip" style="background:var(--ds-warning)"></div><div class="meta"><b>Warning</b><code>#E2B93B</code></div></div>
+        <div class="sw"><div class="chip" style="background:var(--ds-error)"></div><div class="meta"><b>Error</b><code>#EB5757</code></div></div>
+        <div class="sw"><div class="chip" style="background:var(--ds-info)"></div><div class="meta"><b>Info</b><code>#2F80ED</code></div></div>
+      </div>
+      <p class="lbl" style="margin-top:20px;">Neutrals</p>
+      <div class="swatches">
+        <div class="sw"><div class="chip" style="background:var(--ds-gray-1)"></div><div class="meta"><b>Gray 1</b><code>#333333</code></div></div>
+        <div class="sw"><div class="chip" style="background:var(--ds-gray-2)"></div><div class="meta"><b>Gray 2</b><code>#4F4F4F</code></div></div>
+        <div class="sw"><div class="chip" style="background:var(--ds-gray-3)"></div><div class="meta"><b>Gray 3</b><code>#828282</code></div></div>
+        <div class="sw"><div class="chip" style="background:var(--ds-gray-4)"></div><div class="meta"><b>Gray 4</b><code>#BDBDBD</code></div></div>
+        <div class="sw"><div class="chip" style="background:var(--ds-gray-5)"></div><div class="meta"><b>Gray 5</b><code>#E0E0E0</code></div></div>
+        <div class="sw"><div class="chip" style="background:var(--ds-gray-6)"></div><div class="meta"><b>Gray 6</b><code>#F2F2F2</code></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BUTTONS -->
+  <section>
+    <h2>Buttons</h2>
+    <p class="hint">Padding rule from the kit: 1× font-size top/bottom, 1.5× left/right.</p>
+    <div class="demo">
+      <p class="lbl">Variants</p>
+      <div class="ds-row">
+        <button class="ds-btn">Primary</button>
+        <button class="ds-btn ds-btn--secondary">Secondary</button>
+        <button class="ds-btn ds-btn--outline">Outline</button>
+        <button class="ds-btn ds-btn--ghost">Ghost</button>
+        <button class="ds-btn ds-btn--text">Text</button>
+        <button class="ds-btn ds-btn--danger">Danger</button>
+        <button class="ds-btn" disabled>Disabled</button>
+      </div>
+      <p class="lbl" style="margin-top:20px;">Sizes &amp; icon</p>
+      <div class="ds-row">
+        <button class="ds-btn ds-btn--sm">Small</button>
+        <button class="ds-btn ds-btn--md">Normal</button>
+        <button class="ds-btn ds-btn--lg">Medium</button>
+        <button class="ds-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>With icon</button>
+        <button class="ds-icon-btn" title="Settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.3l2-1.5-2-3.4-2.3 1a7 7 0 0 0-2.2-1.3L14 2h-4l-.3 2.2a7 7 0 0 0-2.2 1.3l-2.3-1-2 3.4 2 1.5A7 7 0 0 0 5 12a7 7 0 0 0 .1 1.3l-2 1.5 2 3.4 2.3-1a7 7 0 0 0 2.2 1.3L10 22h4l.3-2.2a7 7 0 0 0 2.2-1.3l2.3 1 2-3.4-2-1.5c.1-.4.1-.9.1-1.3Z"/></svg></button>
+      </div>
+      <p class="lbl" style="margin-top:20px;">Full width</p>
+      <button class="ds-btn ds-btn--block">Full-width button</button>
+    </div>
+  </section>
+
+  <!-- FIELDS -->
+  <section>
+    <h2>Text fields</h2>
+    <div class="demo grid2">
+      <label class="ds-field"><span class="ds-label">Default</span><input class="ds-input" placeholder="Placeholder"></label>
+      <label class="ds-field"><span class="ds-label">With icon</span>
+        <span class="ds-input-group"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input class="ds-input" placeholder="Search…"></span>
+      </label>
+      <label class="ds-field"><span class="ds-label">Error</span><input class="ds-input ds-input--error" value="john"><span class="ds-help ds-help--error">Error message</span></label>
+      <label class="ds-field"><span class="ds-label">Success</span><input class="ds-input ds-input--success" value="John"><span class="ds-help ds-help--success">Success message</span></label>
+      <label class="ds-field"><span class="ds-label">Disabled</span><input class="ds-input" placeholder="Placeholder" disabled></label>
+      <label class="ds-field"><span class="ds-label">Select</span>
+        <select class="ds-select"><option>Placeholder something</option><option>Option two</option></select>
+      </label>
+      <label class="ds-field" style="grid-column:1/-1;"><span class="ds-label">Textarea</span><textarea class="ds-textarea" placeholder="Type here…"></textarea></label>
+    </div>
+  </section>
+
+  <!-- SELECTORS -->
+  <section>
+    <h2>Selectors</h2>
+    <div class="demo">
+      <div class="ds-row" style="gap:28px;">
+        <label class="ds-check"><input type="checkbox" checked><span class="ds-box"></span> Checkbox</label>
+        <label class="ds-check"><input type="checkbox"><span class="ds-box"></span> Unchecked</label>
+        <label class="ds-radio"><input type="radio" name="r" checked><span class="ds-dot"></span> Radio</label>
+        <label class="ds-radio"><input type="radio" name="r"><span class="ds-dot"></span> Radio</label>
+        <label class="ds-toggle"><input type="checkbox" checked><span class="ds-track"></span> Toggle</label>
+      </div>
+    </div>
+  </section>
+
+  <!-- BADGES / TAGS -->
+  <section>
+    <h2>Badges &amp; tags</h2>
+    <div class="demo">
+      <div class="ds-row">
+        <span class="ds-badge">Default</span>
+        <span class="ds-badge ds-badge--primary">Primary</span>
+        <span class="ds-badge ds-badge--success">Success</span>
+        <span class="ds-badge ds-badge--warning">Warning</span>
+        <span class="ds-badge ds-badge--error">Error</span>
+        <span class="ds-badge ds-badge--info">Info</span>
+      </div>
+      <div class="ds-row" style="margin-top:16px;">
+        <span class="ds-tag">Design <button aria-label="Remove">✕</button></span>
+        <span class="ds-tag">Marketing <button aria-label="Remove">✕</button></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ALERTS -->
+  <section>
+    <h2>Alerts &amp; snackbars</h2>
+    <div class="demo ds-stack">
+      <div class="ds-alert ds-alert--success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6 9 17l-5-5"/></svg> This is a success message.</div>
+      <div class="ds-alert ds-alert--info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg> This is an information message.</div>
+      <div class="ds-alert ds-alert--warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4M12 17h.01"/></svg> This is a warning message.</div>
+      <div class="ds-alert ds-alert--error"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M15 9l-6 6M9 9l6 6"/></svg> This is an error message.</div>
+      <div class="ds-row" style="margin-top:4px;">
+        <span class="ds-snackbar"><span class="ds-dot-ic" style="background:var(--ds-success)"></span> Saved successfully</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- TABS / BREADCRUMBS / PAGINATION -->
+  <section>
+    <h2>Navigation</h2>
+    <div class="demo ds-stack" style="gap:20px;">
+      <div class="ds-tabs">
+        <button class="ds-tab is-active">Section 1</button>
+        <button class="ds-tab">Section 2</button>
+        <button class="ds-tab">Section 3</button>
+      </div>
+      <nav class="ds-breadcrumbs"><a href="#">Home</a><span class="ds-sep">/</span><a href="#">Detail</a><span class="ds-sep">/</span><b>Pricing</b></nav>
+      <div class="ds-pagination">
+        <button>‹</button><button class="is-active">1</button><button>2</button><button>3</button><button>4</button><button>›</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CARDS / AVATAR / MISC -->
+  <section>
+    <h2>Cards, avatars &amp; feedback</h2>
+    <div class="demo grid2">
+      <div class="ds-card">
+        <div class="ds-row" style="gap:12px; margin-bottom:12px;">
+          <span class="ds-avatar">JC</span>
+          <div><div class="ds-card__title">James Camry</div><div class="ds-card__sub">Just now</div></div>
+        </div>
+        <p class="ds-body ds-muted" style="margin:0;">Created a new task: Create level design.</p>
+        <div class="ds-row" style="margin-top:16px;"><button class="ds-btn ds-btn--sm">Open</button><button class="ds-btn ds-btn--ghost ds-btn--sm">Dismiss</button></div>
+      </div>
+      <div class="ds-card">
+        <div class="ds-card__title" style="margin-bottom:12px;">Feedback</div>
+        <div class="ds-stack" style="gap:14px;">
+          <div class="ds-row"><span class="ds-spinner"></span><span class="ds-caption">Loading…</span></div>
+          <div><div class="ds-caption" style="margin-bottom:6px;">Progress 60%</div><div class="ds-progress"><span style="width:60%"></span></div></div>
+          <div class="ds-tooltip"><button class="ds-btn ds-btn--ghost ds-btn--sm">Hover me</button><span class="ds-tooltip__bubble">Tooltip content here.</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MODAL -->
+  <section>
+    <h2>Modal</h2>
+    <div class="demo" style="background:var(--ds-surface-3);">
+      <div class="ds-modal" style="margin:0 auto;">
+        <div class="ds-modal__title">Title</div>
+        <p class="ds-modal__body">Description text explaining what this dialog is asking the user to confirm.</p>
+        <div class="ds-modal__actions"><button class="ds-btn ds-btn--ghost">Cancel</button><button class="ds-btn">Confirm</button></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
