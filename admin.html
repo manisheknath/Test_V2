@@ -278,6 +278,12 @@
   .ce-block-content{min-height:64px;outline:none;font-size:14px;line-height:1.6;padding:2px;}
   .ce-block-content:empty:before,.ce-block-url:placeholder-shown{color:var(--faint);}
   .ce-block-content:empty:before{content:attr(data-placeholder);color:var(--faint);}
+  .ce-block-url{width:100%;}
+  .ce-embed{margin-top:11px;}
+  .ce-embed:empty{display:none;}
+  .media-frame{border-radius:6px;overflow:hidden;}
+  .ce-doc-import{margin-top:8px;}
+  .ce-doc-text{border:1px solid var(--border);padding:12px 14px;margin-top:10px;max-height:360px;overflow:auto;}
   @media (max-width:620px){ .ce-build{grid-template-columns:1fr;} .ce-addbar{flex-direction:row;flex-wrap:wrap;position:static;} }
   .cd-body h1{font-size:22px;font-weight:700;margin:.5em 0 .3em;}
   .cd-body h2{font-size:18px;font-weight:700;margin:.5em 0 .3em;}
@@ -3094,14 +3100,14 @@ const BLOCK_ICONS = {
 };
 const BLOCK_META = {
   section:  { label:'Section',  rich:true },
-  document: { label:'Document', rich:true },
-  audio:    { label:'Audio link',   url:true, ph:'https://… (link to an audio file)' },
-  video:    { label:'Video link',   url:true, ph:'https://… (YouTube, Vimeo, or MP4)' },
+  document: { label:'Document' }, // link (viewer) + optional uploaded/extracted text
+  audio:    { label:'Audio link',   media:'audio', ph:'https://… (MP3/WAV link, SoundCloud, Spotify)' },
+  video:    { label:'Video link',   media:'video', ph:'https://… (YouTube, Vimeo, Loom, Drive, MP4)' },
   quiz:     { label:'Quiz',         url:true, ph:'Link to a quiz or test' },
   webinar:  { label:'Webinar link', url:true, ph:'https://… (Zoom, Meet, Teams)' },
 };
 const ADDBAR = [
-  ['section','Add section'], ['document','Add document (PDF, PPT, Word)'],
+  ['section','Add section'], ['document','Add document (link or upload)'],
   ['audio','Add audio link'], ['video','Add video link'], ['quiz','Add quiz'], ['webinar','Add webinar link'],
 ];
 let ceBlocks = [];
@@ -3116,17 +3122,29 @@ function renderAddBar(){
   document.getElementById('ceAddBar').innerHTML = ADDBAR.map(([t,label]) =>
     '<button type="button" data-add="'+t+'" title="'+label+'" aria-label="'+label+'">'+blockIcon(t)+'</button>').join('');
 }
+// The body of one block in the editor (varies by type).
+function blockBodyHtml(b){
+  const m = BLOCK_META[b.type] || BLOCK_META.section;
+  if (m.rich) return '<div class="ce-block-content" contenteditable="true" data-placeholder="Type the content here…">'+(b.html||'')+'</div>';
+  if (b.type === 'document'){
+    const preview = b.url ? docEmbed(b.url) : (b.html ? '<div class="cd-body cd-read ce-doc-text">'+b.html+'</div>' : '');
+    return '<input class="ce-block-url" type="url" placeholder="Paste a document link (PDF, Google Doc/Drive, Office)…" value="'+pEsc(b.url||'')+'">'+
+      '<div class="ce-doc-import"><button type="button" class="ghost small" data-docup="'+b.id+'">Upload a file to extract its text</button></div>'+
+      '<div class="ce-embed">'+preview+'</div>';
+  }
+  // audio / video (live player) and quiz / webinar (link)
+  const embed = (m.media && b.url) ? mediaEmbed(b.type, b.url) : '';
+  return '<input class="ce-block-url" type="url" placeholder="'+pEsc(m.ph)+'" value="'+pEsc(b.url||'')+'">'+
+    (m.media ? '<div class="ce-embed">'+embed+'</div>' : '');
+}
 function renderBlocks(){
   document.getElementById('ceBlocks').innerHTML = ceBlocks.map(b => {
     const m = BLOCK_META[b.type] || BLOCK_META.section;
-    const body = m.rich
-      ? '<div class="ce-block-content" contenteditable="true" data-placeholder="Type the content here…">'+(b.html||'')+'</div>'
-      : '<input class="ce-block-url" type="url" placeholder="'+pEsc(m.ph)+'" value="'+pEsc(b.url||'')+'">';
     return '<div class="ce-block" data-id="'+b.id+'" data-type="'+b.type+'">'+
       '<div class="ce-block-head"><span class="ce-drag" draggable="true" title="Drag to reorder">⠿</span>'+
       '<span class="ce-block-type">'+blockIcon(b.type)+pEsc(m.label)+'</span>'+
       '<button type="button" class="ce-block-del" title="Remove" data-del="'+b.id+'">×</button></div>'+
-      '<div class="ce-block-body"><input class="ce-block-title" placeholder="'+pEsc(m.label)+' title" value="'+pEsc(b.title||'')+'">'+body+'</div></div>';
+      '<div class="ce-block-body"><input class="ce-block-title" placeholder="'+pEsc(m.label)+' title" value="'+pEsc(b.title||'')+'">'+blockBodyHtml(b)+'</div></div>';
   }).join('');
   document.getElementById('ceEmpty').classList.toggle('hidden', ceBlocks.length>0);
 }
@@ -3148,15 +3166,32 @@ function addBlock(type, seed){
 }
 document.getElementById('ceAddBar').addEventListener('click', (e) => {
   const btn = e.target.closest('button[data-add]'); if(!btn) return;
-  if (btn.dataset.add === 'document'){ document.getElementById('ceDocInput').click(); return; }
   addBlock(btn.dataset.add);
 });
-// Document block: pick a file, parse it, add as a document block (file discarded).
+// Live media player/viewer as a URL is entered (fires on blur / Enter).
+document.getElementById('ceBlocks').addEventListener('change', (e) => {
+  const inp = e.target.closest('.ce-block-url'); if(!inp) return;
+  const blk = inp.closest('.ce-block'), embed = blk.querySelector('.ce-embed'); if(!embed) return;
+  const url = inp.value.trim();
+  embed.innerHTML = url ? mediaEmbed(blk.dataset.type, url) : '';
+});
+// Document block: "extract text" upload — parse a file into that block (file discarded).
+let docTargetId = null;
+document.getElementById('ceBlocks').addEventListener('click', (e) => {
+  const up = e.target.closest('[data-docup]'); if(!up) return;
+  docTargetId = up.dataset.docup; document.getElementById('ceDocInput').click();
+});
 document.getElementById('ceDocInput').addEventListener('change', async (e) => {
-  const f = e.target.files && e.target.files[0]; e.target.value=''; if(!f) return;
+  const f = e.target.files && e.target.files[0]; e.target.value=''; if(!f || !docTargetId) return;
   toast('Reading “'+f.name+'”…');
-  try { const html = await parseCourseFile(f); addBlock('document', { title: f.name.replace(/\.[^.]+$/,''), html }); }
-  catch(err){ toast(err.message || 'Could not read that file.', 'error'); }
+  try {
+    const html = await parseCourseFile(f);
+    syncBlocksFromDOM();
+    const b = ceBlocks.find(x => x.id === docTargetId);
+    if (b){ b.html = html; b.url = ''; if(!b.title) b.title = f.name.replace(/\.[^.]+$/,''); }
+    renderBlocks();
+  } catch(err){ toast(err.message || 'Could not read that file.', 'error'); }
+  finally { docTargetId = null; }
 });
 document.getElementById('ceBlocks').addEventListener('click', (e) => {
   const del = e.target.closest('[data-del]'); if(!del) return;
@@ -3192,16 +3227,39 @@ document.getElementById('ceBlocks').addEventListener('drop', (e) => {
 });
 renderAddBar();
 
-// Read-only rendering of blocks for the preview / learner view.
+// ---- Media embeds (players & viewers) — shared by editor + preview ----
+function iframeEmbed(src, ratio){
+  return '<div class="media-frame" style="position:relative;padding-top:'+(ratio||56.25)+'%;background:#000;">'+
+    '<iframe src="'+pEsc(src)+'" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen loading="lazy"></iframe></div>';
+}
 function videoEmbed(url){
   if(!url) return '';
-  let m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/);
-  if(m) return '<div style="position:relative;padding-top:56.25%;"><iframe src="https://www.youtube.com/embed/'+m[1]+'" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allowfullscreen loading="lazy"></iframe></div>';
-  m = url.match(/vimeo\.com\/(\d+)/);
-  if(m) return '<div style="position:relative;padding-top:56.25%;"><iframe src="https://player.vimeo.com/video/'+m[1]+'" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allowfullscreen loading="lazy"></iframe></div>';
-  if(/\.(mp4|webm|ogg)(\?|$)/i.test(url)) return '<video controls src="'+pEsc(url)+'" style="max-width:100%;"></video>';
-  return '';
+  let m = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/)|youtu\.be\/)([\w-]{11})/);
+  if(m) return iframeEmbed('https://www.youtube.com/embed/'+m[1]);
+  m = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if(m) return iframeEmbed('https://player.vimeo.com/video/'+m[1]);
+  m = url.match(/loom\.com\/(?:share|embed)\/([\w-]+)/);
+  if(m) return iframeEmbed('https://www.loom.com/embed/'+m[1]);
+  m = url.match(/drive\.google\.com\/file\/d\/([\w-]+)/);
+  if(m) return iframeEmbed('https://drive.google.com/file/d/'+m[1]+'/preview');
+  if(/\.(mp4|webm|ogg|mov|m4v)(\?|#|$)/i.test(url)) return '<video controls src="'+pEsc(url)+'" style="width:100%;max-height:70vh;background:#000;border-radius:6px;"></video>';
+  return linkHtml(url,'Open video ↗');
 }
+function audioEmbed(url){
+  if(!url) return '';
+  if(/soundcloud\.com\//.test(url)) return '<iframe width="100%" height="120" scrolling="no" frameborder="no" loading="lazy" src="https://w.soundcloud.com/player/?url='+encodeURIComponent(url)+'&color=%230f6146"></iframe>';
+  if(/open\.spotify\.com\/(track|episode|show|playlist|album)\//.test(url)) return '<iframe src="'+pEsc(url.replace('open.spotify.com','open.spotify.com/embed'))+'" width="100%" height="152" frameborder="0" allow="encrypted-media" loading="lazy" style="border-radius:8px;"></iframe>';
+  return '<audio controls src="'+pEsc(url)+'" style="width:100%;"></audio>';
+}
+function docEmbed(url){
+  if(!url) return '';
+  let m = url.match(/drive\.google\.com\/file\/d\/([\w-]+)/);
+  if(m) return iframeEmbed('https://drive.google.com/file/d/'+m[1]+'/preview', 75);
+  if(/docs\.google\.com\/(document|presentation|spreadsheets)\//.test(url)) return iframeEmbed(url.replace(/\/(edit|view).*$/, '/preview'), 75);
+  if(/\.pdf(\?|#|$)/i.test(url)) return '<iframe src="'+pEsc(url)+'" style="width:100%;height:76vh;border:1px solid var(--border);border-radius:6px;"></iframe>';
+  return iframeEmbed('https://docs.google.com/viewer?embedded=true&url='+encodeURIComponent(url), 75); // Office & other docs
+}
+function mediaEmbed(type, url){ return type==='video'?videoEmbed(url):type==='audio'?audioEmbed(url):type==='document'?docEmbed(url):''; }
 function linkHtml(url,label){ return url ? '<a href="'+pEsc(url)+'" target="_blank" rel="noopener">'+pEsc(label||url)+'</a>' : '<span style="color:var(--faint);">(no link yet)</span>'; }
 function renderBlocksReadonly(content){
   const blocks = parseBlocks(content);
@@ -3210,9 +3268,10 @@ function renderBlocksReadonly(content){
     const m = BLOCK_META[b.type]||BLOCK_META.section;
     let inner;
     if (m.rich) inner = b.html || '<p style="color:var(--faint);">(empty)</p>';
-    else if (b.type==='video') inner = videoEmbed(b.url) || linkHtml(b.url,'Open video');
-    else if (b.type==='audio') inner = b.url ? '<audio controls src="'+pEsc(b.url)+'" style="width:100%;"></audio>' : linkHtml('');
-    else inner = linkHtml(b.url, b.type==='quiz'?'Open quiz':b.type==='webinar'?'Join webinar':'Open');
+    else if (b.type==='video') inner = b.url ? videoEmbed(b.url) : linkHtml('');
+    else if (b.type==='audio') inner = b.url ? audioEmbed(b.url) : linkHtml('');
+    else if (b.type==='document') inner = b.url ? docEmbed(b.url) : (b.html || linkHtml(''));
+    else inner = linkHtml(b.url, b.type==='quiz'?'Open quiz ↗':b.type==='webinar'?'Join webinar ↗':'Open ↗');
     const heading = b.title || (b.type!=='section' ? m.label : '');
     return '<section style="margin:0 0 26px;">'+(heading?'<h3 style="font-size:15.5px;margin:0 0 9px;display:flex;align-items:center;gap:7px;">'+blockIcon(b.type)+pEsc(heading)+'</h3>':'')+inner+'</section>';
   }).join('');
