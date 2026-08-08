@@ -239,6 +239,16 @@
   .cd-body:empty:before{content:attr(data-placeholder);color:var(--faint);}
   .cd-body.cd-read{min-height:auto;max-height:none;overflow:visible;padding:0;}
   .cd-body.cd-read:empty:before{content:'No content yet.';color:var(--faint);}
+  /* Presentation-type option cards */
+  .pres-options{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:6px;}
+  .pres-opt{display:flex;gap:10px;padding:13px 14px;border:1px solid var(--border-strong);cursor:pointer;align-items:flex-start;background:var(--surface);}
+  .pres-opt:hover{background:var(--surface-3);}
+  .pres-opt input{width:auto;margin:2px 0 0;flex-shrink:0;cursor:pointer;}
+  .pres-opt:has(input:checked){border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent);}
+  .pres-body{display:flex;flex-direction:column;gap:3px;}
+  .pres-title{font-weight:600;font-size:13.5px;}
+  .pres-desc{font-size:12px;color:var(--muted);line-height:1.45;}
+  @media (max-width:620px){ .pres-options{grid-template-columns:1fr;} }
   .cd-body h1{font-size:22px;font-weight:700;margin:.5em 0 .3em;}
   .cd-body h2{font-size:18px;font-weight:700;margin:.5em 0 .3em;}
   .cd-body p{margin:.5em 0;} .cd-body ul,.cd-body ol{margin:.5em 0 .5em 1.5em;}
@@ -419,7 +429,7 @@
             <div><h1>Courses</h1><p class="sub">Courses and learning material for your users.</p></div>
             <div class="head-actions">
               <div class="dropdown">
-                <button class="primary" id="btnNewTraining">+ New course ▾</button>
+                <button class="primary" id="btnNewTraining">+ Create ▾</button>
                 <div class="dropdown-menu hidden" id="trNewMenu">
                   <button id="btnTrCreateNew">Create manually</button>
                   <button id="btnTrUpload">Upload (PDF, PPT, Word)…</button>
@@ -496,6 +506,17 @@
             <div id="ce_newCatRow" class="hidden" style="margin-top:8px;">
               <label for="ce_newCat">New category name</label>
               <input type="text" id="ce_newCat" placeholder="e.g. Sales Enablement">
+            </div>
+            <label style="margin-top:14px;">Presentation type</label>
+            <div class="pres-options">
+              <label class="pres-opt">
+                <input type="radio" name="ce_pres" value="slideshow" checked>
+                <span class="pres-body"><span class="pres-title">Slideshow</span><span class="pres-desc">Activities are presented sequentially. Learners play every activity individually before moving to the next.</span></span>
+              </label>
+              <label class="pres-opt">
+                <input type="radio" name="ce_pres" value="single_page">
+                <span class="pres-body"><span class="pres-title">Single Page</span><span class="pres-desc">Activities are presented as a group. Learners play every activity in a single, scrolling view.</span></span>
+              </label>
             </div>
           </div>
           <div class="card" style="padding:0;overflow:hidden;">
@@ -2882,7 +2903,7 @@ function gFor(id){ let h=0; for (let i=0;i<String(id).length;i++) h=(h*31 + Stri
 // Load this org's courses from the API into the view.
 async function refreshCourses(){
   const list = await cList();
-  TRAININGS = list.map(c => ({ id:c.id, name:c.title, desc:c.summary, category:c.category, content:c.content||'', updatedAt:c.updatedAt, g:gFor(c.id) }));
+  TRAININGS = list.map(c => ({ id:c.id, name:c.title, desc:c.summary, category:c.category, content:c.content||'', presentation:c.presentation||'slideshow', updatedAt:c.updatedAt, g:gFor(c.id) }));
   CATEGORIES = [...new Set(TRAININGS.map(t => t.category).filter(Boolean))];
   renderTrainings();
 }
@@ -2991,8 +3012,8 @@ function showCourseList(){
 function closeCourseDoc(){ showCourseList(); } // used by the sidebar nav handler
 // Read-only preview of a course; the pencil switches to editing.
 function showCoursePreview(t){
-  courseDraft = { id:t.id, name:t.name, desc:t.desc||'', category:t.category||'', content:t.content||'' };
-  document.getElementById('cpCat').textContent = courseDraft.category || '';
+  courseDraft = { id:t.id, name:t.name, desc:t.desc||'', category:t.category||'', content:t.content||'', presentation:t.presentation||'slideshow' };
+  document.getElementById('cpCat').textContent = (courseDraft.category || '') + (courseDraft.presentation==='single_page' ? ' · Single page' : ' · Slideshow');
   document.getElementById('cpTitle').textContent = courseDraft.name;
   document.getElementById('cpDesc').textContent = courseDraft.desc || '';
   document.getElementById('cpBody').innerHTML = courseDraft.content || '';
@@ -3011,6 +3032,8 @@ function showCourseEdit(){
   const importRow = document.getElementById('ce_importRow');
   if (pendingImport){ document.getElementById('ce_fileName').textContent = pendingImport; importRow.classList.remove('hidden'); }
   else importRow.classList.add('hidden');
+  const pres = courseDraft.presentation || 'slideshow';
+  const presInput = document.querySelector('input[name="ce_pres"][value="'+pres+'"]'); if (presInput) presInput.checked = true;
   document.getElementById('cdBody').innerHTML = courseDraft.content || '';
   document.getElementById('coursesListView').classList.add('hidden');
   document.getElementById('coursePreview').classList.add('hidden');
@@ -3022,7 +3045,7 @@ function showCourseEdit(){
 function newCourseEdit(importName, importHtml){
   const stripExt = n => n.replace(/\.[^.]+$/, '');
   pendingImport = importName || null;
-  courseDraft = { id:null, name: importName ? stripExt(importName) : '', desc:'', category: CATEGORIES[0] || '', content: importHtml || '' };
+  courseDraft = { id:null, name: importName ? stripExt(importName) : '', desc:'', category: CATEGORIES[0] || '', content: importHtml || '', presentation:'slideshow' };
   showCourseEdit();
 }
 
@@ -3069,10 +3092,12 @@ document.getElementById('cdSave').addEventListener('click', async () => {
   if (!name){ notice.innerHTML = '<div class="notice error">A course name is required.</div>'; return; }
   if (!category){ notice.innerHTML = '<div class="notice error">Pick a category or enter a new one.</div>'; return; }
   const content = document.getElementById('cdBody').innerHTML;
-  const payload = { title:name, summary:desc, category, content };
+  const presEl = document.querySelector('input[name="ce_pres"]:checked');
+  const presentation = presEl ? presEl.value : 'slideshow';
+  const payload = { title:name, summary:desc, category, content, presentation };
   const d = courseDraft.id ? await cUpdate(courseDraft.id, payload) : await cCreate(payload);
   if (!d.ok){ notice.innerHTML = '<div class="notice error">Could not save: '+(d.error||'error')+'</div>'; return; }
-  courseDraft = { id: courseDraft.id || d.id, name, desc, category, content };
+  courseDraft = { id: courseDraft.id || d.id, name, desc, category, content, presentation };
   pendingImport = null;
   toast('Saved “'+name+'”','success');
   await refreshCourses();

@@ -64,9 +64,10 @@ CREATE TABLE IF NOT EXISTS courses (
   org_id     TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   title      TEXT NOT NULL,
   summary    TEXT,
-  category   TEXT,                            -- groups courses into shelves
-  content    TEXT,                            -- rich-text body (HTML)
-  cover_key  TEXT,                            -- -> R2 object
+  category     TEXT,                          -- groups courses into shelves
+  content      TEXT,                          -- rich-text body (HTML)
+  presentation TEXT NOT NULL DEFAULT 'slideshow', -- slideshow | single_page
+  cover_key    TEXT,                          -- -> R2 object
   status     TEXT NOT NULL DEFAULT 'published', -- draft | published | archived
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

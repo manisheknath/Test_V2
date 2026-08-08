@@ -298,20 +298,23 @@ async function deleteAdminAcct(request, env, id) {
 async function listCourses(request, env) {
   const ctx = await auth(request, env); requireCap(ctx, "manage_content");
   const { results } = await ctx.db
-    .prepare("SELECT id, title, summary, category, content, status, created_at FROM courses WHERE org_id = ? AND status != 'archived' ORDER BY created_at DESC")
+    .prepare("SELECT id, title, summary, category, content, presentation, status, created_at FROM courses WHERE org_id = ? AND status != 'archived' ORDER BY created_at DESC")
     .bind(ctx.orgId).all();
   return json({ ok: true, courses: results.map(c => ({
     id: c.id, title: c.title, summary: c.summary || "", category: c.category || "",
-    content: c.content || "", status: c.status, updatedAt: (c.created_at || "").slice(0, 10),
+    content: c.content || "", presentation: c.presentation || "slideshow",
+    status: c.status, updatedAt: (c.created_at || "").slice(0, 10),
   })) });
 }
+const PRESENTATIONS = ["slideshow", "single_page"];
+function cleanPresentation(p) { return PRESENTATIONS.includes(p) ? p : "slideshow"; }
 async function createCourse(request, env) {
   const ctx = await auth(request, env); requireCap(ctx, "manage_content");
   const b = await body(request);
   if (!b.title) throw httpError(400, "title_required");
   const id = crypto.randomUUID();
-  await ctx.db.prepare("INSERT INTO courses (id, org_id, title, summary, category, content, status) VALUES (?, ?, ?, ?, ?, ?, 'published')")
-    .bind(id, ctx.orgId, b.title, b.summary || null, b.category || null, b.content || null).run();
+  await ctx.db.prepare("INSERT INTO courses (id, org_id, title, summary, category, content, presentation, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'published')")
+    .bind(id, ctx.orgId, b.title, b.summary || null, b.category || null, b.content || null, cleanPresentation(b.presentation)).run();
   await audit(env, ctx.accountId, ctx.orgId, "course.create", { title: b.title });
   return json({ ok: true, id });
 }
@@ -324,6 +327,7 @@ async function updateCourse(request, env, id) {
   if (b.summary != null) { sets.push("summary = ?"); vals.push(b.summary || null); }
   if (b.category != null) { sets.push("category = ?"); vals.push(b.category || null); }
   if (b.content != null) { sets.push("content = ?"); vals.push(b.content || null); }
+  if (b.presentation != null) { sets.push("presentation = ?"); vals.push(cleanPresentation(b.presentation)); }
   if (sets.length) await ctx.db.prepare(`UPDATE courses SET ${sets.join(", ")} WHERE id = ? AND org_id = ?`).bind(...vals, id, ctx.orgId).run();
   return json({ ok: true });
 }
