@@ -196,12 +196,16 @@
   <div class="login-card">
     <div class="login-brand"><span class="logo">T</span><span class="nm">TestPortal</span></div>
     <h1>Sign in</h1>
-    <p class="lede">Enter your test-taker ID and password to see the tests assigned to you.</p>
+    <p class="lede">Enter your organisation and account details to see what's assigned to you.</p>
     <div class="err" id="loginError" hidden></div>
     <form id="loginForm">
       <div class="field">
-        <label for="loginId">Test-taker ID</label>
-        <input type="text" id="loginId" autocomplete="username" placeholder="e.g. T-4821" required>
+        <label for="loginOrg">Company short-name</label>
+        <input type="text" id="loginOrg" autocomplete="organization" placeholder="e.g. acme" required>
+      </div>
+      <div class="field">
+        <label for="loginId">Your ID or email</label>
+        <input type="text" id="loginId" autocomplete="username" placeholder="e.g. T-4821 or you@company.com" required>
       </div>
       <div class="field">
         <label for="loginPassword">Password</label>
@@ -314,14 +318,16 @@
    quiz-engine.html and admin.html.
    ============================================================ */
 const CONFIG = {
-  appsScriptUrl: "https://script.google.com/macros/s/AKfycbx8_AAZkrvQGIvmORUN1wya8kcyzeOL-GTb3lzaFHnladKfpg4iaZ-ttpo9YfBJ8Z0x/exec"
+  appsScriptUrl: "https://script.google.com/macros/s/AKfycbx8_AAZkrvQGIvmORUN1wya8kcyzeOL-GTb3lzaFHnladKfpg4iaZ-ttpo9YfBJ8Z0x/exec",
+  lmsApi: "https://lms-api.manish-eknath.workers.dev"
 };
 const TOKEN_KEY = 'takerToken';
+let ACCOUNT = null; // the signed-in LMS account
 
 const $ = id => document.getElementById(id);
 const els = {
   screenLogin:$('screenLogin'), screenApp:$('screenApp'),
-  loginForm:$('loginForm'), loginId:$('loginId'), loginPassword:$('loginPassword'),
+  loginForm:$('loginForm'), loginOrg:$('loginOrg'), loginId:$('loginId'), loginPassword:$('loginPassword'),
   loginBtn:$('loginBtn'), loginError:$('loginError'),
   avatar:$('avatar'), whoName:$('whoName'), whoId:$('whoId'), logoutBtn:$('logoutBtn'),
   btnNotif:$('btnNotif'), notifBadge:$('notifBadge'),
@@ -363,33 +369,42 @@ async function apiGet(params){
   const res=await fetch(url); return res.json();
 }
 
-/* ---------- Login ---------- */
+/* ---------- Login (LMS backend) ---------- */
 els.loginForm.addEventListener('submit', async (e)=>{
   e.preventDefault();
   els.loginError.hidden=true; els.loginBtn.disabled=true; els.loginBtn.textContent='Signing in…';
   try{
-    const data=await apiPost({action:'takerLogin',id:els.loginId.value.trim(),password:els.loginPassword.value});
-    if(!data.ok){ els.loginError.textContent=data.error||'Sign-in failed. Please try again.'; els.loginError.hidden=false; }
-    else{ setToken(data.token); els.loginPassword.value=''; await showApp(); }
+    const orgSlug=els.loginOrg.value.trim().toLowerCase();
+    const identifier=els.loginId.value.trim();
+    const password=els.loginPassword.value;
+    const res=await fetch(CONFIG.lmsApi+'/api/auth/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({orgSlug:orgSlug,identifier:identifier,password:password})});
+    const data=await res.json();
+    if(!data.ok||!data.token){
+      els.loginError.textContent = data.error==='org_not_found' ? 'No company with that short-name.' :
+        data.error==='invalid_login' ? 'Wrong ID/email or password.' : ('Sign-in failed: '+(data.error||'error'));
+      els.loginError.hidden=false;
+    } else {
+      setToken(data.token); ACCOUNT=data.account||null; els.loginPassword.value=''; await showApp();
+    }
   }catch(err){
     els.loginError.textContent='Could not reach the server. Check your connection and try again.'; els.loginError.hidden=false;
   }finally{ els.loginBtn.disabled=false; els.loginBtn.textContent='Sign in'; }
 });
-els.logoutBtn.addEventListener('click', ()=>{ clearToken(); els.screenApp.hidden=true; els.screenLogin.hidden=false; });
+els.logoutBtn.addEventListener('click', ()=>{ clearToken(); ACCOUNT=null; els.screenApp.hidden=true; els.screenLogin.hidden=false; });
 
 /* ---------- Dashboard ---------- */
 async function showApp(){
   els.screenLogin.hidden=true; els.screenApp.hidden=false;
-  els.grid.innerHTML='<div class="spinner">Loading your tests…</div>';
   els.tabs.innerHTML=''; els.emptyState.hidden=true;
 
-  let data;
-  try{ data=await apiGet({action:'listTestsForMe',token:getToken()}); }
-  catch(err){ els.grid.innerHTML='<div class="empty">Could not load your tests. Please try again.</div>'; return; }
-  if(!data.ok){
-    if(data.error==='unauthorized'){ clearToken(); els.screenApp.hidden=true; els.screenLogin.hidden=false; return; }
-    els.grid.innerHTML='<div class="empty">Could not load your tests: '+esc(data.error||'unknown error')+'</div>'; return;
-  }
+  // The learner's tests/courses aren't served by the LMS yet, so start empty
+  // and populate the profile from the signed-in account.
+  const data = {
+    ok:true,
+    name:(ACCOUNT && ACCOUNT.name) || '',
+    takerId:(ACCOUNT && (ACCOUNT.loginId || ACCOUNT.email || ACCOUNT.id)) || '',
+    tests:[]
+  };
   els.whoName.textContent=data.name||'(unnamed)';
   els.whoId.textContent=data.takerId||'';
   els.avatar.textContent=initials(data.name).toUpperCase();
@@ -727,7 +742,16 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
 (async function init(){
   const preId=new URLSearchParams(window.location.search).get('id');
   if(preId) els.loginId.value=preId;
-  if(getToken()) await showApp(); else els.screenLogin.hidden=false;
+  const t=getToken();
+  if(t){
+    try{
+      const res=await fetch(CONFIG.lmsApi+'/api/auth/me',{headers:{authorization:'Bearer '+t}});
+      const d=await res.json();
+      if(d && d.ok && d.account){ ACCOUNT=d.account; await showApp(); return; }
+    }catch(e){}
+    clearToken();
+  }
+  els.screenLogin.hidden=false;
 })();
 </script>
 </body>
