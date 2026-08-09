@@ -12,38 +12,42 @@
   .lp-app{display:flex; min-height:100vh;}
 
   /* Sidebar */
-  .lp-side{width:242px; flex-shrink:0; background:var(--ds-surface); border-right:1px solid var(--ds-border);
-    position:sticky; top:0; height:100vh; display:flex; flex-direction:column; padding:18px 14px;}
-  .lp-logo{display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px; padding:4px 8px 18px;}
-  .lp-logo .mark{width:30px; height:30px; border-radius:8px; background:var(--ds-primary); color:#fff; display:grid; place-items:center;}
+  .lp-side{width:242px; flex-shrink:0; background:var(--ds-primary); border-right:1px solid rgba(255,255,255,.14);
+    position:sticky; top:0; height:100vh; display:flex; flex-direction:column; padding:18px 14px; color:#fff;}
+  .lp-logo{display:flex; align-items:center; gap:10px; font-weight:700; font-size:18px; padding:4px 8px 18px; color:#fff;}
+  .lp-logo .mark{width:30px; height:30px; border-radius:8px; background:#fff; color:var(--ds-primary); display:grid; place-items:center;}
   .lp-nav{display:flex; flex-direction:column; gap:2px;}
-  .lp-nav a{display:flex; align-items:center; gap:12px; padding:9px 11px; border-radius:8px; color:var(--ds-text-muted); font-weight:500; font-size:14px;}
+  .lp-nav a{display:flex; align-items:center; gap:12px; padding:9px 11px; border-radius:8px; color:rgba(255,255,255,.85); font-weight:500; font-size:14px;}
   .lp-nav a svg{width:19px; height:19px; flex-shrink:0;}
-  .lp-nav a:hover{background:var(--ds-surface-3); color:var(--ds-text);}
-  .lp-nav a.active{background:var(--ds-primary-soft); color:var(--ds-primary); font-weight:600;}
+  .lp-nav a:hover{background:rgba(255,255,255,.14); color:#fff;}
+  .lp-nav a.active{background:#fff; color:var(--ds-primary); font-weight:600;}
   .lp-nav a .pill{margin-left:auto; background:var(--ds-error); color:#fff; font-size:11px; font-weight:600; border-radius:999px; padding:1px 7px;}
-  .lp-side .sep{height:1px; background:var(--ds-border); margin:14px 8px;}
+  .lp-side .sep{height:1px; background:rgba(255,255,255,.16); margin:14px 8px;}
   .lp-side .grow{flex:1;}
-  .lp-assist{background:linear-gradient(160deg,#EAF1FC,#F3F0FC); border:1px solid var(--ds-border); border-radius:12px; padding:14px; text-align:center; margin-top:14px;}
-  .lp-assist .ic{width:34px; height:34px; border-radius:9px; background:var(--ds-primary); color:#fff; display:grid; place-items:center; margin:0 auto 8px;}
-  .lp-assist h4{margin:0 0 4px; font-size:13.5px; font-weight:600;}
-  .lp-assist p{margin:0 0 12px; font-size:12px; color:var(--ds-text-muted); line-height:1.45;}
+  .lp-assist{background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.2); border-radius:12px; padding:14px; text-align:center; margin-top:14px;}
+  .lp-assist .ic{width:34px; height:34px; border-radius:9px; background:#fff; color:var(--ds-primary); display:grid; place-items:center; margin:0 auto 8px;}
+  .lp-assist h4{margin:0 0 4px; font-size:13.5px; font-weight:600; color:#fff;}
+  .lp-assist p{margin:0 0 12px; font-size:12px; color:rgba(255,255,255,.8); line-height:1.45;}
+  .lp-assist .ds-btn{background:#fff; color:var(--ds-primary);}
 
   /* Main column */
   .lp-main{flex:1; min-width:0; display:flex; flex-direction:column;}
-  .lp-top{display:flex; align-items:center; gap:20px; padding:16px 26px; background:var(--ds-surface); border-bottom:1px solid var(--ds-border); position:sticky; top:0; z-index:10;}
-  .lp-hi h1{margin:0; font-size:21px; font-weight:700; letter-spacing:-.01em;}
-  .lp-hi p{margin:2px 0 0; font-size:13px; color:var(--ds-text-muted);}
+  .lp-top{display:flex; align-items:center; gap:20px; padding:16px 26px; background:var(--ds-primary); border-bottom:1px solid rgba(255,255,255,.14); position:sticky; top:0; z-index:10; color:#fff;}
+  .lp-hi h1{margin:0; font-size:21px; font-weight:700; letter-spacing:-.01em; color:#fff;}
+  .lp-hi p{margin:2px 0 0; font-size:13px; color:rgba(255,255,255,.8);}
   .lp-search{margin-left:auto; position:relative; width:min(340px, 34vw);}
-  .lp-search svg{position:absolute; left:12px; top:50%; transform:translateY(-50%); width:17px; height:17px; color:var(--ds-text-faint);}
-  .lp-search input{width:100%; padding:10px 12px 10px 36px; border:1px solid var(--ds-border-strong); border-radius:10px; font:400 13.5px var(--ds-font); background:var(--ds-surface-2);}
-  .lp-search .kbd{position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:11px; color:var(--ds-text-faint); border:1px solid var(--ds-border); border-radius:5px; padding:1px 6px; background:#fff;}
-  .lp-ic{position:relative; width:38px; height:38px; border-radius:9px; display:grid; place-items:center; color:var(--ds-text-muted); cursor:pointer;}
-  .lp-ic:hover{background:var(--ds-surface-3); color:var(--ds-text);}
-  .lp-ic .dot{position:absolute; top:7px; right:8px; width:15px; height:15px; background:var(--ds-error); color:#fff; font-size:9px; font-weight:700; border-radius:50%; display:grid; place-items:center; border:2px solid #fff;}
+  .lp-search svg{position:absolute; left:12px; top:50%; transform:translateY(-50%); width:17px; height:17px; color:rgba(255,255,255,.8);}
+  .lp-search input{width:100%; padding:10px 12px 10px 36px; border:1px solid rgba(255,255,255,.3); border-radius:10px; font:400 13.5px var(--ds-font); background:rgba(255,255,255,.14); color:#fff;}
+  .lp-search input::placeholder{color:rgba(255,255,255,.72);}
+  .lp-search .kbd{position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:11px; color:#fff; border:1px solid rgba(255,255,255,.3); border-radius:5px; padding:1px 6px; background:rgba(255,255,255,.18);}
+  .lp-ic{position:relative; width:38px; height:38px; border-radius:9px; display:grid; place-items:center; color:rgba(255,255,255,.9); cursor:pointer;}
+  .lp-ic:hover{background:rgba(255,255,255,.14); color:#fff;}
+  .lp-ic .dot{position:absolute; top:7px; right:8px; width:15px; height:15px; background:var(--ds-error); color:#fff; font-size:9px; font-weight:700; border-radius:50%; display:grid; place-items:center; border:2px solid var(--ds-primary);}
   .lp-user{display:flex; align-items:center; gap:9px; cursor:pointer; padding-left:6px;}
-  .lp-user .nm{font-size:13.5px; font-weight:600; line-height:1.1;}
-  .lp-user .rl{font-size:11.5px; color:var(--ds-text-faint);}
+  .lp-user .ds-avatar{background:rgba(255,255,255,.22); color:#fff;}
+  .lp-user svg{color:#fff;}
+  .lp-user .nm{font-size:13.5px; font-weight:600; line-height:1.1; color:#fff;}
+  .lp-user .rl{font-size:11.5px; color:rgba(255,255,255,.72);}
 
   .lp-body{padding:24px 26px; display:grid; grid-template-columns:minmax(0,1fr) 328px; gap:22px; align-items:start;}
   .lp-col{display:flex; flex-direction:column; gap:22px; min-width:0;}
@@ -145,7 +149,7 @@
   <div class="lp-main">
     <header class="lp-top">
       <div class="lp-hi">
-        <h1>Welcome back, Olivia! 👋</h1>
+        <h1 id="lpWelcome">Welcome back! 👋</h1>
         <p>Continue your learning journey. You've got this!</p>
       </div>
       <div class="lp-search">
@@ -156,8 +160,8 @@
       <div class="lp-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg><span class="dot">3</span></div>
       <div class="lp-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M21 15a2 2 0 0 1-2 2H8l-4 4V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2Z"/></svg></div>
       <div class="lp-user">
-        <span class="ds-avatar">OR</span>
-        <div><div class="nm">Olivia Rhye</div><div class="rl">Learner</div></div>
+        <span class="ds-avatar" id="lpAvatar">·</span>
+        <div><div class="nm" id="lpName">Learner</div><div class="rl" id="lpRole">Learner</div></div>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
       </div>
     </header>
@@ -283,5 +287,30 @@
     </div>
   </div>
 </div>
+<script>
+/* Show the signed-in learner's real name. Reads the LMS session token (same
+   key the consoles use) and asks the API who they are. Falls back silently
+   when there's no session yet (until the learner login is wired in). */
+(function(){
+  var API = 'https://lms-api.manish-eknath.workers.dev';
+  var token = sessionStorage.getItem('lmsToken') || localStorage.getItem('lmsToken') || '';
+  if (!token) return;
+  fetch(API + '/api/auth/me', { headers:{ authorization:'Bearer ' + token } })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      if (!d || !d.ok || !d.account) return;
+      var name = (d.account.name || '').trim(); if (!name) return;
+      var first = name.split(/\s+/)[0];
+      var initials = name.split(/\s+/).filter(Boolean).slice(0,2).map(function(s){ return s[0]; }).join('').toUpperCase();
+      var role = (d.account.role || 'learner'); role = role.charAt(0).toUpperCase() + role.slice(1);
+      var set = function(id, txt){ var el = document.getElementById(id); if (el) el.textContent = txt; };
+      set('lpWelcome', 'Welcome back, ' + first + '! 👋');
+      set('lpName', name);
+      set('lpRole', role);
+      set('lpAvatar', initials || '·');
+    })
+    .catch(function(){});
+})();
+</script>
 </body>
 </html>
