@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Platform setup</title>
+<style>
+  :root{ --bg:#F1F5F2; --surface:#fff; --border:#E1E8E3; --text:#16211C; --muted:#5C6862;
+    --accent:#147A57; --accent-soft:#E2F0EA; --rose:#B0463B; --rose-soft:#FBE8E6;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,Menlo,Consolas,monospace; }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.5;padding:28px 16px 80px;}
+  .wrap{max-width:640px;margin:0 auto;}
+  h1{font-size:26px;letter-spacing:-.02em;margin:0 0 4px;}
+  .sub{color:var(--muted);margin:0 0 22px;font-size:14px;}
+  .card{background:var(--surface);border:1px solid var(--border);padding:20px 22px;margin-bottom:18px;box-shadow:0 1px 2px rgba(20,40,30,.05);}
+  .card h2{font-size:16px;margin:0 0 3px;}
+  .card .hint{color:var(--muted);font-size:13px;margin:0 0 14px;}
+  .step{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);background:var(--accent-soft);padding:2px 9px;margin-bottom:10px;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:12px 0 5px;}
+  input{width:100%;border:1px solid var(--border);background:#FAFBFA;padding:9px 11px;font-size:14px;color:var(--text);font-family:var(--sans);}
+  input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft);}
+  .row{display:flex;gap:12px;flex-wrap:wrap;}
+  .row > div{flex:1;min-width:130px;}
+  .lims{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+  button{background:var(--accent);color:#fff;border:none;font-weight:600;font-size:14px;padding:11px 18px;cursor:pointer;margin-top:16px;font-family:var(--sans);}
+  button:hover{background:#0F6146;}
+  button:disabled{opacity:.5;cursor:not-allowed;}
+  .out{margin-top:14px;font-family:var(--mono);font-size:12.5px;white-space:pre-wrap;word-break:break-word;padding:11px 13px;border-left:3px solid var(--border);background:#FAFBFA;color:var(--muted);}
+  .out.ok{border-left-color:var(--accent);background:var(--accent-soft);color:var(--text);}
+  .out.err{border-left-color:var(--rose);background:var(--rose-soft);color:var(--rose);}
+  table{width:100%;border-collapse:collapse;font-size:13px;margin-top:14px;}
+  th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--border);}
+  th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);}
+  code{font-family:var(--mono);font-size:12px;background:#EEF3F0;padding:1px 5px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Platform setup 🗄️</h1>
+  <p class="sub">A one-time helper to create your Master account and your first company. Open this file, fill the boxes, click the buttons. Watch the green ✓ appear.</p>
+
+  <div class="card">
+    <label for="api">Your server address (already filled in)</label>
+    <input id="api" value="https://lms-api.manish-eknath.workers.dev">
+  </div>
+
+  <div class="card">
+    <span class="step">Step 1</span>
+    <h2>Create your Master account</h2>
+    <p class="hint">This is you — the platform owner. The Master Key is the secret you typed for <code>MASTER_KEY</code> in the terminal.</p>
+    <label for="mk">Master Key (your secret)</label>
+    <input id="mk" type="password" placeholder="the MASTER_KEY you set">
+    <div class="row">
+      <div><label for="mname">Your name</label><input id="mname" value="Manish"></div>
+      <div><label for="memail">Your email</label><input id="memail" value="manish.eknath@gmail.com"></div>
+    </div>
+    <label for="mpass">Choose a password (remember it!)</label>
+    <input id="mpass" type="text" placeholder="pick a password">
+    <button onclick="createMaster()">Create master</button>
+    <div id="out1" class="out" hidden></div>
+  </div>
+
+  <div class="card">
+    <span class="step">Step 2</span>
+    <h2>Log in</h2>
+    <p class="hint">Use the same email + password you just chose.</p>
+    <div class="row">
+      <div><label for="lemail">Email</label><input id="lemail" value="manish.eknath@gmail.com"></div>
+      <div><label for="lpass">Password</label><input id="lpass" type="text" placeholder="your password"></div>
+    </div>
+    <button onclick="doLogin()">Log in</button>
+    <div id="out2" class="out" hidden></div>
+  </div>
+
+  <div class="card">
+    <span class="step">Step 3</span>
+    <h2>Create your first company</h2>
+    <p class="hint">A company (organization) with its seat limits and a first admin. These are examples — change them freely.</p>
+    <div class="row">
+      <div><label for="oname">Company name</label><input id="oname" value="Acme Corp"></div>
+      <div><label for="oslug">Short name / URL slug</label><input id="oslug" value="acme"></div>
+    </div>
+    <label>Seat limits (how many of each role this company may have)</label>
+    <div class="lims">
+      <div><label for="l_admin">Admins</label><input id="l_admin" type="number" value="2"></div>
+      <div><label for="l_user_admin">User Admins</label><input id="l_user_admin" type="number" value="2"></div>
+      <div><label for="l_coach">Coaches</label><input id="l_coach" type="number" value="10"></div>
+      <div><label for="l_contributor">Contributors</label><input id="l_contributor" type="number" value="20"></div>
+      <div><label for="l_learner">Learners</label><input id="l_learner" type="number" value="200"></div>
+    </div>
+    <label style="margin-top:16px;">The company's first admin</label>
+    <div class="row">
+      <div><input id="aname" placeholder="Admin name" value="Dana Reeves"></div>
+      <div><input id="aemail" placeholder="Admin email" value="dana@acme.com"></div>
+      <div><input id="apass" placeholder="Admin password" value="welcome1"></div>
+    </div>
+    <button onclick="createOrg()">Create company</button>
+    <div id="out3" class="out" hidden></div>
+  </div>
+
+  <div class="card">
+    <span class="step">Step 4</span>
+    <h2>Your companies</h2>
+    <p class="hint">See what's really in your database. (You must be logged in — Step 2.)</p>
+    <button onclick="listOrgs()">Refresh list</button>
+    <div id="orgList"></div>
+    <div id="out4" class="out" hidden></div>
+  </div>
+
+  <div class="card">
+    <span class="step">Check</span>
+    <h2>Test a company admin login</h2>
+    <p class="hint">Type the admin's <b>exact</b> email + password to confirm they can get in. This is what your admin will use on their login screen.</p>
+    <div class="row">
+      <div><label for="t_slug">Company slug</label><input id="t_slug" value="verdisko"></div>
+      <div><label for="t_email">Admin email</label><input id="t_email" placeholder="e.g. manish@verdisko.com"></div>
+    </div>
+    <label for="t_pass">Admin password</label>
+    <input id="t_pass" type="text" placeholder="the admin's password">
+    <button onclick="testLogin()">Test login</button>
+    <div id="outT" class="out" hidden></div>
+  </div>
+</div>
+
+<script>
+  let TOKEN = null;
+  const $ = id => document.getElementById(id);
+  const api = () => $('api').value.replace(/\/+$/, '');
+  function show(id, ok, msg){ const el=$(id); el.hidden=false; el.className='out '+(ok?'ok':'err'); el.textContent=msg; }
+
+  async function call(path, opts){
+    const res = await fetch(api()+path, opts);
+    const data = await res.json().catch(()=>({ ok:false, error:'bad_response' }));
+    return { res, data };
+  }
+
+  async function createMaster(){
+    try{
+      const { data } = await call('/api/master/bootstrap', {
+        method:'POST', headers:{ 'content-type':'application/json', 'x-master-key': $('mk').value },
+        body: JSON.stringify({ name:$('mname').value, email:$('memail').value, password:$('mpass').value })
+      });
+      if (data.ok) show('out1', true, '✓ Master created! Now do Step 2 (log in).');
+      else if (data.error==='master_exists') show('out1', true, '✓ A master already exists — skip to Step 2 (log in).');
+      else if (data.error==='forbidden') show('out1', false, '✗ The Master Key doesn\'t match. Re-type your MASTER_KEY.');
+      else show('out1', false, '✗ '+(data.error||'error')+'\n'+JSON.stringify(data));
+    }catch(e){ show('out1', false, 'Could not reach the server. Check the address at the top.\n'+e.message); }
+  }
+
+  async function doLogin(){
+    try{
+      const { data } = await call('/api/auth/login', {
+        method:'POST', headers:{ 'content-type':'application/json' },
+        body: JSON.stringify({ identifier:$('lemail').value, password:$('lpass').value })
+      });
+      if (data.ok && data.token){ TOKEN = data.token; show('out2', true, '✓ Logged in as '+data.account.name+' ('+data.account.role+'). You can now do Steps 3 & 4.'); }
+      else show('out2', false, '✗ '+(data.error||'login failed')+'. Check your email/password.');
+    }catch(e){ show('out2', false, 'Could not reach the server.\n'+e.message); }
+  }
+
+  async function createOrg(){
+    if (!TOKEN) return show('out3', false, 'Please log in first (Step 2).');
+    const limits = {};
+    ['admin','user_admin','coach','contributor','learner'].forEach(r => limits[r] = parseInt($('l_'+r).value,10)||0);
+    try{
+      const { data } = await call('/api/master/orgs', {
+        method:'POST', headers:{ 'content-type':'application/json', 'authorization':'Bearer '+TOKEN },
+        body: JSON.stringify({ name:$('oname').value, slug:$('oslug').value, limits,
+          admin:{ name:$('aname').value, email:$('aemail').value, password:$('apass').value } })
+      });
+      if (data.ok) { show('out3', true, '✓ Company "'+$('oname').value+'" created! Click Refresh in Step 4 to see it.'); listOrgs(); }
+      else show('out3', false, '✗ '+(data.error||'error')+'\n'+JSON.stringify(data));
+    }catch(e){ show('out3', false, 'Could not reach the server.\n'+e.message); }
+  }
+
+  async function listOrgs(){
+    if (!TOKEN) return show('out4', false, 'Please log in first (Step 2).');
+    try{
+      const { data } = await call('/api/master/orgs', { headers:{ 'authorization':'Bearer '+TOKEN } });
+      if (!data.ok) return show('out4', false, '✗ '+(data.error||'error'));
+      $('out4').hidden = true;
+      const rows = (data.orgs||[]).map(o =>
+        '<tr><td><b>'+o.name+'</b></td><td><code>'+o.slug+'</code></td><td>'+o.status+'</td>'+
+        '<td>'+(o.counts&&o.counts.learner||0)+' / '+(o.limits&&o.limits.learner||0)+' learners</td>'+
+        '<td><button style="background:#B0463B;padding:5px 10px;margin:0;font-size:12px;" onclick="deleteOrg(\''+o.id+'\')">Delete</button></td></tr>').join('');
+      $('orgList').innerHTML = rows
+        ? '<table><thead><tr><th>Company</th><th>Slug</th><th>Status</th><th>Learners</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>'
+        : '<p class="hint" style="margin-top:12px;">No companies yet.</p>';
+    }catch(e){ show('out4', false, 'Could not reach the server.\n'+e.message); }
+  }
+
+  async function deleteOrg(id){
+    if (!TOKEN) return;
+    if (!confirm('Delete this company and everything in it? This cannot be undone.')) return;
+    try{
+      const { data } = await call('/api/master/orgs/'+id, { method:'DELETE', headers:{ 'authorization':'Bearer '+TOKEN } });
+      if (data.ok) listOrgs(); else alert('Delete failed: '+(data.error||'error'));
+    }catch(e){ alert('Could not reach the server.'); }
+  }
+
+  async function testLogin(){
+    try{
+      const { data } = await call('/api/auth/login', {
+        method:'POST', headers:{ 'content-type':'application/json' },
+        body: JSON.stringify({ orgSlug:$('t_slug').value, identifier:$('t_email').value, password:$('t_pass').value })
+      });
+      if (data.ok && data.token) show('outT', true, '✓ Works! '+data.account.name+' can log in as '+data.account.role+' at "'+$('t_slug').value+'". This is exactly what your admin uses.');
+      else if (data.error==='org_not_found') show('outT', false, '✗ No company with slug "'+$('t_slug').value+'". Check the slug (it\'s lowercase).');
+      else show('outT', false, '✗ That email + password don\'t match what\'s stored for this company. Re-type carefully, or delete the company in Step 4 and re-create it (Step 3) with a password you\'re sure of.');
+    }catch(e){ show('outT', false, 'Could not reach the server.\n'+e.message); }
+  }
+</script>
+</body>
+</html>
