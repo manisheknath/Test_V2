@@ -186,6 +186,40 @@
 
   @media (max-width:820px){ .sidebar{display:none;} .main{padding:22px 16px 60px;} }
   @media (max-width:560px){ .who .nm,.who .sub{display:none;} }
+
+  /* ---- Trainings dashboard (learner "My Courses") ---- */
+  #tview-trainings .td-grid{display:grid;grid-template-columns:minmax(0,1fr) 316px;gap:20px;align-items:start;}
+  .td-col{min-width:0;}
+  .td-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:20px;}
+  .td-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .td-head h2{margin:0;font-size:16px;font-weight:600;}
+  .td-head .link{font-size:13px;color:#116ACC;font-weight:500;cursor:pointer;}
+  .td-cover{position:relative;border-radius:12px;overflow:hidden;aspect-ratio:16/9;display:grid;place-items:center;background:var(--cv,linear-gradient(140deg,#0b2c4d,#123a63));color:rgba(255,255,255,.9);}
+  .td-cover svg{width:38%;max-width:64px;opacity:.9;}
+  .td-cover .pct{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.92);color:#182233;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;}
+  .td-cl{display:grid;grid-template-columns:230px 1fr;gap:20px;align-items:center;}
+  .td-cl h3{margin:0 0 5px;font-size:18px;font-weight:700;letter-spacing:-.01em;}
+  .td-cl .cat{font-size:12.5px;color:var(--muted);margin-bottom:14px;}
+  .td-progress{height:6px;background:var(--surface-3);border-radius:999px;overflow:hidden;margin:8px 0;}
+  .td-progress>span{display:block;height:100%;background:#116ACC;border-radius:inherit;}
+  .td-metaline{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);}
+  .td-btns{display:flex;gap:10px;margin-top:16px;}
+  .td-btn{font-weight:600;font-size:13px;padding:10px 16px;border-radius:8px;border:1px solid #116ACC;background:#116ACC;color:#fff;cursor:pointer;}
+  .td-btn.ghost{background:transparent;color:#116ACC;}
+  .td-tabs{display:flex;gap:2px;border-bottom:1px solid var(--border);margin-bottom:16px;}
+  .td-tabs button{border:none;background:none;font-weight:500;font-size:13.5px;color:var(--muted);padding:9px 12px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;}
+  .td-tabs button.active{color:#116ACC;border-bottom-color:#116ACC;}
+  .td-cgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  .td-ccard{cursor:pointer;}
+  .td-ccard h3{margin:9px 0 3px;font-size:14px;font-weight:600;line-height:1.25;}
+  .td-ccard .lvl{font-size:12px;color:var(--faint);}
+  .td-empty{color:var(--muted);font-size:13.5px;padding:34px 8px;text-align:center;grid-column:1/-1;}
+  .td-rail .td-card{padding:16px 18px;}
+  .td-evt{display:flex;gap:11px;padding:10px 0;border-top:1px solid var(--border);}
+  .td-evt:first-of-type{border-top:0;}
+  .td-evt .ic{width:32px;height:32px;border-radius:8px;background:var(--accent-soft);color:#116ACC;display:grid;place-items:center;flex-shrink:0;}
+  .td-evt .k{font-size:11.5px;color:var(--faint);} .td-evt .v{font-size:13px;font-weight:600;}
+  @media(max-width:1000px){ #tview-trainings .td-grid{grid-template-columns:1fr;} .td-cl{grid-template-columns:1fr;} .td-cgrid{grid-template-columns:repeat(2,1fr);} }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -268,10 +302,44 @@
         <div id="dashBody"></div>
       </section>
 
-      <!-- Trainings -->
+      <!-- Trainings (learner course dashboard) -->
       <section class="view" id="tview-trainings" hidden>
-        <div class="hello"><h1>Trainings</h1><p>Courses and learning material assigned to you.</p></div>
-        <div class="empty">No trainings have been assigned to you yet.</div>
+        <div class="hello"><h1>My Courses</h1><p>Courses and learning material assigned to you.</p></div>
+        <div class="td-grid">
+          <div class="td-col">
+            <!-- Continue learning (top assigned course) -->
+            <div class="td-card" id="tdContinueCard" hidden>
+              <div class="td-head"><h2>Continue Learning</h2></div>
+              <div class="td-cl" id="tdContinue"></div>
+            </div>
+            <!-- My courses grid -->
+            <div class="td-card">
+              <div class="td-head"><h2>All courses</h2><span class="link" id="tdRefresh">Refresh</span></div>
+              <div class="td-tabs" id="tdTabs">
+                <button class="active" data-f="all">All</button>
+                <button data-f="in">In progress</button>
+                <button data-f="not">Not started</button>
+              </div>
+              <div class="td-cgrid" id="tdCourses"><div class="td-empty">Loading your courses…</div></div>
+            </div>
+          </div>
+          <!-- Right rail -->
+          <div class="td-col td-rail">
+            <div class="td-card">
+              <div class="td-head"><h2>Calendar</h2></div>
+              <div class="td-evt"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5v14l11-7z"/></svg></span><div><div class="k">Live session</div><div class="v">Secure Coding Practices</div></div></div>
+              <div class="td-evt"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 9h16"/></svg></span><div><div class="k">Assignment due</div><div class="v">Module 2 Quiz</div></div></div>
+            </div>
+            <div class="td-card">
+              <div class="td-head"><h2>My Tasks</h2></div>
+              <div class="td-evt"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg></span><div><div class="v">Complete assigned courses</div><div class="k">Keep your streak going</div></div></div>
+            </div>
+            <div class="td-card">
+              <div class="td-head"><h2>Announcements</h2></div>
+              <div class="td-evt"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11v2l14 5V6L3 11Z"/><path d="M17 8a4 4 0 0 1 0 8"/></svg></span><div><div class="v">Welcome to the portal</div><div class="k">Your courses appear here as they're assigned.</div></div></div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- Tests -->
@@ -433,6 +501,7 @@ function switchTakerView(view){
   });
   if(view==='results') renderResults();
   if(view==='dashboard') renderDashboard();
+  if(view==='trainings') loadMyCourses();
 }
 document.querySelectorAll('#screenApp .nav-item').forEach(b=>b.addEventListener('click',()=>switchTakerView(b.dataset.tview)));
 function renderDashboard(){
@@ -739,6 +808,68 @@ els.modal.addEventListener('click',e=>{ if(e.target===els.modal) closeModal(); }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
 
 /* ---------- Boot ---------- */
+/* ---------- Trainings dashboard: my assigned courses ---------- */
+let MY_COURSES = [];
+const TD_GRADS = ['linear-gradient(140deg,#06263f,#0c3a63)','linear-gradient(140deg,#0d2a4a,#1a4f7a)','linear-gradient(140deg,#241a4d,#3b2b7a)','linear-gradient(140deg,#062b3a,#0d4a55)','linear-gradient(140deg,#3a1350,#6a2a8f)','linear-gradient(140deg,#0d3a2a,#177a4d)'];
+function tdGrad(id){ let h=0; const s=String(id); for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0; return TD_GRADS[h%TD_GRADS.length]; }
+function tdIcon(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="#88c6ff" stroke-width="1.4"><path d="M4 5h11a2 2 0 0 1 2 2v13H6a2 2 0 0 1-2-2Z"/><path d="M17 7h3v13H6"/></svg>'; }
+async function lmsGet(path){ try{ const res=await fetch(CONFIG.lmsApi+path,{headers:{authorization:'Bearer '+getToken()}}); return await res.json(); }catch(e){ return {ok:false,error:'network'}; } }
+async function loadMyCourses(){
+  const grid=document.getElementById('tdCourses'); if(grid) grid.innerHTML='<div class="td-empty">Loading your courses…</div>';
+  const d=await lmsGet('/api/my/courses');
+  MY_COURSES=(d&&d.ok)?(d.courses||[]):[];
+  renderMyCourses();
+}
+function renderMyCourses(){
+  const grid=document.getElementById('tdCourses'), contCard=document.getElementById('tdContinueCard');
+  if(!MY_COURSES.length){ grid.innerHTML='<div class="td-empty">No courses assigned to you yet. Your admin assigns courses from the console.</div>'; contCard.hidden=true; return; }
+  grid.innerHTML=MY_COURSES.map(c=>
+    '<div class="td-ccard" data-cid="'+esc(c.id)+'">'+
+      '<div class="td-cover" style="--cv:'+tdGrad(c.id)+';">'+tdIcon()+'</div>'+
+      '<h3>'+esc(c.title)+'</h3><div class="lvl">'+esc(c.category||'Course')+' · '+(c.presentation==='single_page'?'Single page':'Slideshow')+'</div>'+
+    '</div>').join('');
+  const c=MY_COURSES[0];
+  document.getElementById('tdContinue').innerHTML=
+    '<div class="td-cover" style="--cv:'+tdGrad(c.id)+';">'+tdIcon()+'</div>'+
+    '<div><h3>'+esc(c.title)+'</h3><div class="cat">'+esc(c.category||'Course')+'</div>'+
+    (c.summary?'<p style="margin:0 0 8px;color:var(--muted);font-size:13px;">'+esc(c.summary)+'</p>':'')+
+    '<div class="td-progress"><span style="width:0"></span></div>'+
+    '<div class="td-metaline"><span>Not started</span><span>'+MY_COURSES.length+' assigned</span></div>'+
+    '<div class="td-btns"><button class="td-btn" data-cid="'+esc(c.id)+'">Start course</button></div></div>';
+  contCard.hidden=false;
+}
+document.getElementById('tdRefresh').addEventListener('click', loadMyCourses);
+// Open an assigned course → render its content in the modal.
+document.getElementById('tview-trainings').addEventListener('click', async (e)=>{
+  const el=e.target.closest('[data-cid]'); if(!el) return;
+  const d=await lmsGet('/api/my/courses/'+el.dataset.cid);
+  if(!d||!d.ok||!d.course){ els.modalEyebrow.textContent=''; els.modalTitle.textContent='Course'; els.modalBody.innerHTML='<p>Could not open this course.</p>'; els.modalFoot.innerHTML=''; els.modal.hidden=false; return; }
+  const c=d.course;
+  els.modalEyebrow.textContent=c.category||'Course';
+  els.modalTitle.textContent=c.title;
+  els.modalBody.innerHTML=tdRenderCourse(c);
+  els.modalFoot.innerHTML='';
+  els.modal.hidden=false;
+});
+// Minimal read-only block renderer for course content.
+function tdVideo(url){ let m=url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/); if(m) return '<div style="position:relative;padding-top:56.25%;"><iframe src="https://www.youtube.com/embed/'+m[1]+'" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allowfullscreen></iframe></div>'; m=url.match(/vimeo\.com\/(\d+)/); if(m) return '<div style="position:relative;padding-top:56.25%;"><iframe src="https://player.vimeo.com/video/'+m[1]+'" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allowfullscreen></iframe></div>'; if(/\.(mp4|webm|mov)(\?|#|$)/i.test(url)) return '<video controls src="'+esc(url)+'" style="width:100%;"></video>'; return '<a href="'+esc(url)+'" target="_blank" rel="noopener">Open video ↗</a>'; }
+function tdDoc(url){ let m=url.match(/drive\.google\.com\/file\/d\/([\w-]+)/); if(m) return '<iframe src="https://drive.google.com/file/d/'+m[1]+'/preview" style="width:100%;height:70vh;border:1px solid var(--border);"></iframe>'; if(/\.pdf(\?|#|$)/i.test(url)) return '<iframe src="'+esc(url)+'" style="width:100%;height:70vh;border:1px solid var(--border);"></iframe>'; return '<iframe src="https://docs.google.com/viewer?embedded=true&url='+encodeURIComponent(url)+'" style="width:100%;height:70vh;border:1px solid var(--border);"></iframe>'; }
+function tdRenderCourse(course){
+  let blocks=[]; try{ const j=JSON.parse(course.content||''); if(Array.isArray(j)) blocks=j; }catch(_){}
+  if(!blocks.length && course.content) blocks=[{type:'section',title:'',html:course.content}];
+  if(!blocks.length) return '<p style="color:var(--muted);">This course has no content yet.</p>';
+  return blocks.map(b=>{
+    const t=b.type||'section'; let inner;
+    if(t==='video') inner=b.url?tdVideo(b.url):'';
+    else if(t==='audio') inner=b.url?('<audio controls src="'+esc(b.url)+'" style="width:100%;"></audio>'):'';
+    else if(t==='document') inner=b.url?tdDoc(b.url):(b.html||'');
+    else if(t==='section') inner=b.html||'';
+    else inner=b.url?('<a href="'+esc(b.url)+'" target="_blank" rel="noopener">Open ↗</a>'):'';
+    const h=b.title||(t!=='section'?t.charAt(0).toUpperCase()+t.slice(1):'');
+    return '<section style="margin:0 0 22px;">'+(h?'<h3 style="font-size:15px;margin:0 0 8px;">'+esc(h)+'</h3>':'')+(inner||'')+'</section>';
+  }).join('');
+}
+
 (async function init(){
   const preId=new URLSearchParams(window.location.search).get('id');
   if(preId) els.loginId.value=preId;

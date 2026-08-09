@@ -621,6 +621,21 @@
             <button class="primary" id="ncContinue">Continue →</button>
           </div>
         </div>
+
+        <!-- Assign selected courses to users -->
+        <div id="assignModal" class="card hidden">
+          <h2 id="assignTitle" style="margin-top:0;">Assign courses</h2>
+          <div id="assignNotice"></div>
+          <div class="list-search" style="margin-bottom:10px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="assignSearch" placeholder="Search users…">
+          </div>
+          <div id="assignUsers" style="max-height:340px;overflow:auto;border:1px solid var(--border);border-radius:8px;"></div>
+          <div class="head-actions" style="justify-content:flex-end;margin-top:16px;">
+            <button class="ghost" id="assignCancel">Cancel</button>
+            <button class="primary" id="assignDo">Assign</button>
+          </div>
+        </div>
       </section>
 
       <!-- ===== CERTIFICATES VIEW ===== -->
@@ -3058,7 +3073,42 @@ document.getElementById('trSearch').addEventListener('input', (e) => { TR_SEARCH
 
 // Bulk actions: Assign / Delete
 document.getElementById('trBulkClose').addEventListener('click', () => { SEL_TR.clear(); renderTrainings(); });
-document.getElementById('trAssign').addEventListener('click', () => toast('Assigning '+SEL_TR.size+' course'+(SEL_TR.size===1?'':'s')+' to groups/users (needs enrollment backend).'));
+/* ---------- Assign courses to users (enrollment) ---------- */
+const SEL_ASSIGN = new Set(); let ASSIGN_COURSE_IDS = [];
+async function cEnroll(targetId, itemId){ return lmsApi('/api/enrollments', { method:'POST', body: JSON.stringify({ targetType:'account', targetId:targetId, itemId:itemId }) }); }
+function renderAssignUsers(){
+  const q = (document.getElementById('assignSearch').value||'').trim().toLowerCase();
+  const rows = (LAST_TAKERS||[]).filter(t => t.role !== 'admin' && (!q || (t.name||'').toLowerCase().includes(q) || (t.email||'').toLowerCase().includes(q) || (t.loginId||'').toLowerCase().includes(q)));
+  document.getElementById('assignUsers').innerHTML = rows.length ? rows.map(t =>
+    '<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer;">'+
+      '<input type="checkbox" class="asgn-check" value="'+pEsc(t.takerId)+'"'+(SEL_ASSIGN.has(t.takerId)?' checked':'')+' style="width:auto;margin:0;">'+
+      '<span style="flex:1;min-width:0;"><b style="font-weight:600;font-size:13.5px;">'+pEsc(t.name||t.takerId)+'</b> <span style="color:var(--faint);font-size:12px;">· '+pEsc(t.role||'learner')+'</span>'+
+      (t.email?('<div style="color:var(--muted);font-size:12px;">'+pEsc(t.email)+'</div>'):'')+'</span>'+
+    '</label>').join('') : '<div style="padding:16px;color:var(--muted);font-size:13px;">No users yet — add people in User Management first.</div>';
+}
+document.getElementById('trAssign').addEventListener('click', async () => {
+  if (!SEL_TR.size) return;
+  ASSIGN_COURSE_IDS = [...SEL_TR]; SEL_ASSIGN.clear();
+  document.getElementById('assignSearch').value = ''; document.getElementById('assignNotice').innerHTML = '';
+  document.getElementById('assignTitle').textContent = 'Assign ' + ASSIGN_COURSE_IDS.length + ' course' + (ASSIGN_COURSE_IDS.length===1?'':'s') + ' to users';
+  if (!(LAST_TAKERS && LAST_TAKERS.length)) await refreshTakerList();
+  renderAssignUsers();
+  openSheet(document.getElementById('assignModal'));
+});
+document.getElementById('assignUsers').addEventListener('change', (e) => { const cb = e.target.closest('.asgn-check'); if (!cb) return; if (cb.checked) SEL_ASSIGN.add(cb.value); else SEL_ASSIGN.delete(cb.value); });
+document.getElementById('assignSearch').addEventListener('input', renderAssignUsers);
+document.getElementById('assignCancel').addEventListener('click', () => closeSheet(document.getElementById('assignModal')));
+document.getElementById('assignDo').addEventListener('click', async () => {
+  const notice = document.getElementById('assignNotice'), users = [...SEL_ASSIGN];
+  if (!users.length){ notice.innerHTML = '<div class="notice error">Pick at least one user.</div>'; return; }
+  const btn = document.getElementById('assignDo'); btn.disabled = true; btn.textContent = 'Assigning…';
+  let fail = 0;
+  for (const uid of users){ for (const cid of ASSIGN_COURSE_IDS){ const d = await cEnroll(uid, cid); if (!d || !d.ok) fail++; } }
+  btn.disabled = false; btn.textContent = 'Assign';
+  closeSheet(document.getElementById('assignModal'));
+  SEL_TR.clear(); renderTrainings();
+  toast('Assigned ' + ASSIGN_COURSE_IDS.length + ' course' + (ASSIGN_COURSE_IDS.length===1?'':'s') + ' to ' + users.length + ' user' + (users.length===1?'':'s') + (fail?(' — '+fail+' failed'):''), fail?'error':'success');
+});
 document.getElementById('trDelete').addEventListener('click', async () => {
   const ids=[...SEL_TR]; if(!ids.length) return;
   if (!await confirmDialog({ title:'Delete courses?', message:'Delete '+ids.length+' course'+(ids.length===1?'':'s')+'? This cannot be undone.', confirmText:'Delete', danger:true })) return;

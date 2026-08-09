@@ -57,6 +57,14 @@ export default {
       else if (path.match(/^\/api\/courses\/[^/]+$/) && m === "PATCH") r = await updateCourse(request, env, path.split("/").pop());
       else if (path.match(/^\/api\/courses\/[^/]+$/) && m === "DELETE") r = await deleteCourse(request, env, path.split("/").pop());
 
+      // ---- tenant: enrollment (assign courses to users/groups) ----
+      else if (path === "/api/enrollments" && m === "GET") r = await listEnrollments(request, env);
+      else if (path === "/api/enrollments" && m === "POST") r = await createEnrollment(request, env);
+      else if (path.match(/^\/api\/enrollments\/[^/]+$/) && m === "DELETE") r = await deleteEnrollment(request, env, path.split("/").pop());
+      // ---- learner: my assigned courses ----
+      else if (path === "/api/my/courses" && m === "GET") r = await myCourses(request, env);
+      else if (path.match(/^\/api\/my\/courses\/[^/]+$/) && m === "GET") r = await myCourse(request, env, path.split("/")[4]);
+
       else r = json({ ok: false, error: "not_found" }, 404);
       return cors(r);
     } catch (e) {
@@ -335,7 +343,72 @@ async function deleteCourse(request, env, id) {
   const ctx = await auth(request, env); requireCap(ctx, "manage_content");
   if (!(await ctx.db.prepare("SELECT id FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first())) throw httpError(404, "not_found");
   await ctx.db.prepare("DELETE FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).run();
+  await ctx.db.prepare("DELETE FROM enrollments WHERE org_id = ? AND item_type = 'course' AND item_id = ?").bind(ctx.orgId, id).run();
   return json({ ok: true });
+}
+
+/* ---------- Tenant: enrollment (assign courses) ----------
+   Gated by "enroll" (admin, coach). A course is assigned to an account or a
+   group; group assignments reach every member of that group. */
+async function createEnrollment(request, env) {
+  const ctx = await auth(request, env); requireCap(ctx, "enroll");
+  const b = await body(request);
+  const targetType = b.targetType === "group" ? "group" : "account";
+  if (!b.targetId || !b.itemId) throw httpError(400, "missing_fields");
+  if (!(await ctx.db.prepare("SELECT id FROM courses WHERE id = ? AND org_id = ?").bind(b.itemId, ctx.orgId).first())) throw httpError(404, "course_not_found");
+  const tbl = targetType === "group" ? "groups" : "accounts";
+  if (!(await ctx.db.prepare(`SELECT id FROM ${tbl} WHERE id = ? AND org_id = ?`).bind(b.targetId, ctx.orgId).first())) throw httpError(404, "target_not_found");
+  const dup = await ctx.db.prepare("SELECT id FROM enrollments WHERE org_id = ? AND target_type = ? AND target_id = ? AND item_type = 'course' AND item_id = ?")
+    .bind(ctx.orgId, targetType, b.targetId, b.itemId).first();
+  if (dup) return json({ ok: true, id: dup.id, existed: true });
+  const id = crypto.randomUUID();
+  await ctx.db.prepare("INSERT INTO enrollments (id, org_id, target_type, target_id, item_type, item_id, due_at) VALUES (?, ?, ?, ?, 'course', ?, ?)")
+    .bind(id, ctx.orgId, targetType, b.targetId, b.itemId, b.dueAt || null).run();
+  await audit(env, ctx.accountId, ctx.orgId, "enroll.create", { course: b.itemId, targetType, target: b.targetId });
+  return json({ ok: true, id });
+}
+async function listEnrollments(request, env) {
+  const ctx = await auth(request, env); requireCap(ctx, "enroll");
+  const course = new URL(request.url).searchParams.get("course");
+  const q = course
+    ? ctx.db.prepare("SELECT id, target_type, target_id, item_id, due_at FROM enrollments WHERE org_id = ? AND item_type = 'course' AND item_id = ?").bind(ctx.orgId, course)
+    : ctx.db.prepare("SELECT id, target_type, target_id, item_id, due_at FROM enrollments WHERE org_id = ? AND item_type = 'course'").bind(ctx.orgId);
+  const rows = (await q.all()).results;
+  return json({ ok: true, enrollments: rows.map(r => ({ id: r.id, targetType: r.target_type, targetId: r.target_id, courseId: r.item_id, dueAt: r.due_at })) });
+}
+async function deleteEnrollment(request, env, id) {
+  const ctx = await auth(request, env); requireCap(ctx, "enroll");
+  await ctx.db.prepare("DELETE FROM enrollments WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).run();
+  return json({ ok: true });
+}
+
+/* ---------- Learner: courses assigned to me ---------- */
+async function myCourseIds(ctx) {
+  const ids = new Set();
+  (await ctx.db.prepare("SELECT item_id FROM enrollments WHERE org_id = ? AND item_type = 'course' AND target_type = 'account' AND target_id = ?").bind(ctx.orgId, ctx.accountId).all())
+    .results.forEach(r => ids.add(r.item_id));
+  (await ctx.db.prepare("SELECT e.item_id AS item_id FROM enrollments e JOIN account_groups ag ON ag.group_id = e.target_id WHERE e.org_id = ? AND e.item_type = 'course' AND e.target_type = 'group' AND ag.account_id = ?").bind(ctx.orgId, ctx.accountId).all())
+    .results.forEach(r => ids.add(r.item_id));
+  return [...ids];
+}
+async function myCourses(request, env) {
+  const ctx = await auth(request, env);
+  if (!ctx.orgId) return json({ ok: true, courses: [] });
+  const idList = await myCourseIds(ctx);
+  if (!idList.length) return json({ ok: true, courses: [] });
+  const ph = idList.map(() => "?").join(",");
+  const rows = (await ctx.db.prepare(`SELECT id, title, summary, category, presentation, created_at FROM courses WHERE org_id = ? AND status != 'archived' AND id IN (${ph}) ORDER BY created_at DESC`)
+    .bind(ctx.orgId, ...idList).all()).results;
+  return json({ ok: true, courses: rows.map(c => ({ id: c.id, title: c.title, summary: c.summary || "", category: c.category || "", presentation: c.presentation || "slideshow" })) });
+}
+async function myCourse(request, env, id) {
+  const ctx = await auth(request, env);
+  if (!ctx.orgId) throw httpError(404, "not_found");
+  const idList = await myCourseIds(ctx);
+  if (!idList.includes(id)) throw httpError(403, "not_assigned");
+  const c = await ctx.db.prepare("SELECT id, title, summary, category, content, presentation FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first();
+  if (!c) throw httpError(404, "not_found");
+  return json({ ok: true, course: { id: c.id, title: c.title, summary: c.summary || "", category: c.category || "", content: c.content || "", presentation: c.presentation || "slideshow" } });
 }
 
 /* ---------- Master: role permissions per scope ----------
