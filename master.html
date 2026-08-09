@@ -37,40 +37,55 @@
   .err{background:var(--rose-bg);color:var(--rose-tx);font-size:13px;font-weight:500;padding:10px 13px;margin-bottom:14px;}
 
   /* ---------- App shell ---------- */
-  .topbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:14px;height:56px;
-    padding:0 20px;background:var(--surface);border-bottom:1px solid var(--border);}
-  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:-.01em;}
-  .brand .logo{width:27px;height:27px;border-radius:8px;font-size:14px;}
-  .tag-pill{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);
-    background:var(--accent-soft);border:1px solid var(--accent-soft);padding:2px 8px;}
+  /* Top bar removed: floating utility cluster top-right. */
+  .topbar{position:fixed;top:0;right:0;left:auto;width:auto;height:auto;z-index:50;
+    display:flex;align-items:center;gap:11px;padding:12px 22px;background:transparent;border:none;color:var(--text);}
+  .topbar .brand,.topbar .spacer{display:none;}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:-.01em;color:#fff;min-width:0;}
+  .brand .logo{width:28px;height:28px;border-radius:8px;font-size:14px;flex-shrink:0;}
+  .tag-pill{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#fff;
+    background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3);padding:2px 8px;}
   .spacer{flex:1;}
   .who{display:flex;align-items:center;gap:9px;}
   .avatar{width:32px;height:32px;border-radius:50%;background:var(--accent-soft);color:var(--accent);
     display:grid;place-items:center;font-weight:700;font-size:12px;}
-  .who .nm{font-size:13px;font-weight:600;line-height:1.1;}
+  .who .nm{font-size:13px;font-weight:600;line-height:1.1;color:var(--text);}
   .who .role{font-size:11px;color:var(--faint);}
-  .link-btn{background:none;border:1px solid var(--border);color:var(--muted);font-size:13px;font-weight:600;padding:7px 12px;}
+  .link-btn{background:var(--surface);border:1px solid var(--border);color:var(--muted);font-size:13px;font-weight:600;padding:7px 12px;}
   .link-btn:hover{color:var(--text);border-color:var(--border-strong);background:var(--surface-3);}
-  .icon-btn{position:relative;width:36px;height:36px;border:none;background:none;color:var(--muted);
-    display:grid;place-items:center;flex-shrink:0;cursor:pointer;}
-  .icon-btn:hover{color:var(--text);}
+  .icon-btn{position:relative;width:38px;height:38px;border:1px solid var(--border);background:var(--surface);color:var(--muted);
+    display:grid;place-items:center;flex-shrink:0;cursor:pointer;border-radius:8px;box-shadow:var(--shadow-sm,0 1px 3px rgba(0,0,0,.06));}
+  .icon-btn:hover{color:var(--text);border-color:var(--border-strong);}
   .notif-badge{position:absolute;top:-6px;right:-6px;min-width:17px;height:17px;padding:0 4px;background:#D64C3F;
-    color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;line-height:1;}
+    color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;line-height:1;border-radius:999px;}
   .notif-badge[hidden]{display:none;}
 
-  .shell{display:flex;min-height:calc(100vh - 56px);}
-  .sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);
-    display:flex;flex-direction:column;padding:16px 12px;position:sticky;top:56px;height:calc(100vh - 56px);}
-  .nav-label{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);padding:8px 10px 6px;}
-  .nav-item{display:flex;align-items:center;gap:11px;padding:9px 10px;color:var(--muted);font-weight:500;font-size:13.5px;
-    margin-bottom:2px;width:100%;text-align:left;background:none;border:none;cursor:pointer;}
+  .shell{display:flex;min-height:100vh;}
+  .side-head{display:flex;align-items:center;gap:9px;padding:2px 4px 14px;}
+  .nav-toggle{width:34px;height:34px;flex-shrink:0;display:grid;place-items:center;background:rgba(255,255,255,.12);
+    border:1px solid rgba(255,255,255,.22);border-radius:8px;color:#fff;cursor:pointer;}
+  .nav-toggle:hover{background:rgba(255,255,255,.22);}
+  .nav-toggle svg{width:18px;height:18px;}
+  .sidebar{width:222px;flex-shrink:0;background:#116ACC;border-right:1px solid rgba(255,255,255,.14);
+    display:flex;flex-direction:column;padding:16px 12px;position:sticky;top:0;height:100vh;color:#fff;transition:width .16s ease;}
+  .nav-label{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);padding:8px 10px 6px;}
+  .nav-item{display:flex;align-items:center;gap:11px;padding:9px 10px;border-radius:8px;color:rgba(255,255,255,.85);font-weight:500;font-size:13.5px;
+    margin-bottom:2px;width:100%;text-align:left;background:none;border:none;cursor:pointer;white-space:nowrap;overflow:hidden;}
   .nav-item svg{width:18px;height:18px;flex-shrink:0;stroke-width:1.8;}
-  .nav-item:hover{background:var(--surface-3);color:var(--text);}
-  .nav-item.active{background:var(--accent-soft);color:var(--accent);font-weight:600;}
-  .nav-item .cnt{margin-left:auto;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;}
-  .nav-item.active .cnt{color:var(--accent);}
-  .sidebar .foot{margin-top:auto;border-top:1px solid var(--border);padding-top:12px;display:flex;align-items:center;gap:9px;}
-  .main{flex:1;min-width:0;padding:26px 30px 70px;}
+  .nav-item:hover{background:rgba(255,255,255,.14);color:#fff;}
+  .nav-item.active{background:#fff;color:#116ACC;font-weight:600;}
+  .nav-item .cnt{margin-left:auto;font-size:11px;color:rgba(255,255,255,.7);font-variant-numeric:tabular-nums;}
+  .nav-item.active .cnt{color:#116ACC;}
+  .sidebar .foot{margin-top:auto;border-top:1px solid rgba(255,255,255,.16);padding-top:12px;display:flex;align-items:center;gap:9px;}
+  .shell.nav-collapsed .sidebar{width:66px;padding:16px 8px;}
+  .shell.nav-collapsed .side-head{justify-content:center;}
+  .shell.nav-collapsed .side-head .brand{display:none;}
+  .shell.nav-collapsed .nav-label{display:none;}
+  .shell.nav-collapsed .nav-item{justify-content:center;gap:0;padding:10px 0;font-size:0;}
+  .shell.nav-collapsed .nav-item .cnt{display:none;}
+  .shell.nav-collapsed .sidebar .foot{justify-content:center;}
+  .shell.nav-collapsed .sidebar .foot > div{display:none;}
+  .main{flex:1;min-width:0;padding:56px 30px 70px;}
   .view[hidden]{display:none;}
 
   .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:22px;flex-wrap:wrap;}
@@ -167,8 +182,6 @@
 <!-- ============ APP ============ -->
 <div id="app" class="hidden">
   <div class="topbar">
-    <div class="brand"><span class="logo">T</span>TestPortal<span class="tag-pill">Master</span></div>
-    <div class="spacer"></div>
     <button class="icon-btn" id="btnNotif" aria-label="Notifications">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>
       <span class="notif-badge" id="notifBadge" hidden>0</span>
@@ -180,8 +193,12 @@
     <button class="link-btn" id="btnSignOut">Sign out</button>
   </div>
 
-  <div class="shell">
+  <div class="shell" id="shell">
     <aside class="sidebar">
+      <div class="side-head">
+        <button class="nav-toggle" id="navToggle" aria-label="Collapse menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+        <div class="brand"><span class="logo">T</span>TestPortal<span class="tag-pill">Master</span></div>
+      </div>
       <div class="nav-label">Platform</div>
       <button class="nav-item active" data-view="overview">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M4 4h7v7H4zM13 4h7v4h-7zM13 12h7v8h-7zM4 15h7v5H4z"/></svg>
@@ -490,6 +507,17 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
   showApp();
 });
 document.getElementById('btnSignOut').addEventListener('click', () => { sessionStorage.removeItem(TKEY); TOKEN = ''; location.reload(); });
+
+/* Collapsible sidebar (icons only when collapsed) — persisted. */
+(function(){
+  const shell = document.getElementById('shell'), toggle = document.getElementById('navToggle');
+  if (!shell || !toggle) return;
+  if (localStorage.getItem('navCollapsed') === '1') shell.classList.add('nav-collapsed');
+  toggle.addEventListener('click', () => {
+    shell.classList.toggle('nav-collapsed');
+    localStorage.setItem('navCollapsed', shell.classList.contains('nav-collapsed') ? '1' : '0');
+  });
+})();
 async function showApp(){
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
