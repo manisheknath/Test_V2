@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>My Tests</title>
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="design-system.css">
 <script src="ui.js"></script>
 <style>
   /* Design tokens + toast/confirm come from styles.css. Below is
@@ -235,6 +236,73 @@
   .td-evt .ic{width:32px;height:32px;border-radius:8px;background:var(--accent-soft);color:#116ACC;display:grid;place-items:center;flex-shrink:0;}
   .td-evt .k{font-size:11.5px;color:var(--faint);} .td-evt .v{font-size:13px;font-weight:600;}
   @media(max-width:1000px){ #tview-trainings .td-grid{grid-template-columns:1fr;} .td-cl{grid-template-columns:1fr;} .td-cgrid{grid-template-columns:repeat(2,1fr);} }
+
+  /* ============ Full-screen course player ============ */
+  .cp{position:fixed;inset:0;z-index:400;background:var(--ds-surface,#fff);display:grid;
+    grid-template-columns:300px minmax(0,1fr) 328px;font-family:var(--ds-font,'Ubuntu',system-ui,sans-serif);color:var(--ds-text,#182233);}
+  .cp.hidden{display:none;}
+  .cp-col{min-width:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;}
+  .cp-nav{border-right:1px solid var(--ds-border,#E0E0E0);background:var(--ds-surface,#fff);}
+  .cp-nav-head{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 10px;}
+  .cp-nav-head .t{font-size:16px;font-weight:700;}
+  .cp-nav-head .pct{font-size:14px;font-weight:700;color:var(--ds-primary,#116ACC);}
+  .cp-progress{height:6px;margin:0 20px 14px;background:var(--ds-gray-5,#E0E0E0);border-radius:999px;overflow:hidden;}
+  .cp-progress>span{display:block;height:100%;background:var(--ds-primary,#116ACC);border-radius:inherit;transition:width .25s;}
+  .cp-lessons{padding:2px 10px 24px;display:flex;flex-direction:column;gap:2px;}
+  .cp-lesson{display:flex;align-items:center;gap:11px;padding:11px 12px;border:none;background:none;cursor:pointer;
+    text-align:left;width:100%;border-radius:9px;border-left:3px solid transparent;}
+  .cp-lesson:hover{background:var(--ds-surface-3,#F2F2F2);}
+  .cp-lesson.active{background:var(--ds-primary-soft,#E7F0FB);border-left-color:var(--ds-primary,#116ACC);}
+  .cp-lesson-ic{width:20px;height:20px;border-radius:50%;border:1.6px solid var(--ds-border-strong,#BDBDBD);flex-shrink:0;
+    display:grid;place-items:center;font-size:11px;color:#fff;}
+  .cp-lesson-ic.done{background:var(--ds-success,#27AE60);border-color:var(--ds-success,#27AE60);}
+  .cp-lesson.active .cp-lesson-ic:not(.done){border-color:var(--ds-primary,#116ACC);}
+  .cp-lesson-t{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .cp-lesson-name{font-size:13.5px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cp-lesson.active .cp-lesson-name{color:var(--ds-primary,#116ACC);}
+  .cp-lesson-meta{font-size:11.5px;color:var(--ds-text-faint,#828282);}
+
+  .cp-main{background:var(--ds-surface,#fff);}
+  .cp-main-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:22px 34px 6px;}
+  .cp-eyebrow{font-size:12px;font-weight:600;color:var(--ds-text-muted,#4F4F4F);}
+  .cp-main-head h1{margin:6px 0 0;font-size:26px;font-weight:700;letter-spacing:-.02em;}
+  .cp-close{width:34px;height:34px;border:1px solid var(--ds-border,#E0E0E0);background:var(--ds-surface,#fff);border-radius:8px;
+    cursor:pointer;color:var(--ds-text-muted,#4F4F4F);font-size:18px;line-height:1;flex-shrink:0;}
+  .cp-close:hover{background:var(--ds-surface-3,#F2F2F2);color:var(--ds-text,#182233);}
+  .cp-body{flex:1;overflow-y:auto;padding:14px 34px 30px;font-size:15px;line-height:1.7;color:var(--ds-text,#182233);}
+  .cp-body h1{font-size:24px;} .cp-body h2{font-size:19px;margin:1em 0 .4em;} .cp-body h3{font-size:16px;margin:1em 0 .4em;}
+  .cp-body p{margin:.6em 0;} .cp-body ul,.cp-body ol{margin:.6em 0 .6em 1.5em;} .cp-body a{color:var(--ds-primary,#116ACC);}
+  .cp-body img{max-width:100%;} .cp-body audio,.cp-body video{width:100%;}
+  .cp-foot{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 34px;border-top:1px solid var(--ds-border,#E0E0E0);background:var(--ds-surface,#fff);}
+  .cp-fbtn{font-family:inherit;font-weight:600;font-size:13.5px;padding:11px 18px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;}
+  .cp-prev{background:var(--ds-surface,#fff);border:1px solid var(--ds-border-strong,#BDBDBD);color:var(--ds-text,#182233);}
+  .cp-prev:hover{background:var(--ds-surface-3,#F2F2F2);}
+  .cp-prev:disabled,.cp-next:disabled{opacity:.45;cursor:not-allowed;}
+  .cp-next{background:var(--ds-primary,#116ACC);border:1px solid var(--ds-primary,#116ACC);color:#fff;}
+  .cp-next:hover:not(:disabled){background:var(--ds-primary-hover,#0E5AAE);}
+  .cp-complete{background:none;border:none;color:var(--ds-success,#27AE60);font-weight:600;font-size:13.5px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;}
+  .cp-complete.is-done{color:var(--ds-text-faint,#828282);}
+  .cp-complete .dot{width:18px;height:18px;border-radius:50%;border:1.6px solid currentColor;display:grid;place-items:center;font-size:11px;}
+  .cp-complete.is-done .dot{background:var(--ds-success,#27AE60);border-color:var(--ds-success,#27AE60);color:#fff;}
+
+  .cp-ai{border-left:1px solid var(--ds-border,#E0E0E0);background:var(--ds-surface-2,#F7F9FC);}
+  .cp-ai-head{display:flex;align-items:center;justify-content:space-between;padding:18px 18px 12px;font-weight:700;font-size:15px;}
+  .cp-ai-head .r{display:flex;gap:6px;}
+  .cp-ai-head button{width:28px;height:28px;border:none;background:none;color:var(--ds-text-faint,#828282);cursor:pointer;border-radius:7px;font-size:15px;}
+  .cp-ai-head button:hover{background:var(--ds-surface-3,#F2F2F2);color:var(--ds-text,#182233);}
+  .cp-ai-body{flex:1;overflow-y:auto;padding:6px 16px;display:flex;flex-direction:column;gap:12px;}
+  .cp-msg{max-width:88%;font-size:13px;line-height:1.55;padding:11px 13px;border-radius:12px;}
+  .cp-msg.user{align-self:flex-end;background:var(--ds-primary-soft,#E7F0FB);color:var(--ds-text,#182233);border-bottom-right-radius:4px;}
+  .cp-msg.bot{align-self:flex-start;background:var(--ds-surface,#fff);border:1px solid var(--ds-border,#E0E0E0);border-bottom-left-radius:4px;}
+  .cp-ai-prompts{padding:8px 16px;display:flex;flex-direction:column;gap:8px;}
+  .cp-ai-prompts .lbl{font-size:12px;color:var(--ds-text-faint,#828282);}
+  .cp-chip{text-align:left;font-family:inherit;font-size:12.5px;padding:9px 12px;border:1px solid var(--ds-border,#E0E0E0);background:var(--ds-surface,#fff);border-radius:9px;cursor:pointer;color:var(--ds-text,#182233);}
+  .cp-chip:hover{border-color:var(--ds-primary,#116ACC);color:var(--ds-primary,#116ACC);}
+  .cp-ai-input{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--ds-border,#E0E0E0);}
+  .cp-ai-input input{flex:1;border:1px solid var(--ds-border-strong,#BDBDBD);border-radius:999px;padding:10px 14px;font-family:inherit;font-size:13px;}
+  .cp-ai-input button{width:38px;height:38px;flex-shrink:0;border:none;border-radius:50%;background:var(--ds-primary,#116ACC);color:#fff;cursor:pointer;font-size:15px;}
+  @media(max-width:1080px){ .cp{grid-template-columns:260px minmax(0,1fr);} .cp-ai{display:none;} }
+  @media(max-width:720px){ .cp{grid-template-columns:1fr;} .cp-nav{display:none;} }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -394,6 +462,43 @@
     </div>
     <div class="modal-body" id="modalBody"></div>
     <div class="modal-foot" id="modalFoot"></div>
+  </div>
+</div>
+
+<!-- ============ FULL-SCREEN COURSE PLAYER ============ -->
+<div id="coursePlayer" class="cp hidden">
+  <!-- Left: course content -->
+  <div class="cp-col cp-nav">
+    <div class="cp-nav-head"><span class="t">Course Content</span><span class="pct" id="cpPct">0%</span></div>
+    <div class="cp-progress"><span id="cpBar" style="width:0"></span></div>
+    <div class="cp-lessons" id="cpLessons"></div>
+  </div>
+  <!-- Center: lesson -->
+  <div class="cp-col cp-main">
+    <div class="cp-main-head">
+      <div><div class="cp-eyebrow" id="cpMeta"></div><h1 id="cpTitle">Lesson</h1></div>
+      <button class="cp-close" id="cpClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="cp-body" id="cpBody"></div>
+    <div class="cp-foot">
+      <button class="cp-fbtn cp-prev" id="cpPrev">‹ Previous</button>
+      <button class="cp-complete" id="cpComplete"><span class="dot" id="cpCompDot"></span><span id="cpCompLbl">Mark as Complete</span></button>
+      <button class="cp-fbtn cp-next" id="cpNext">Next Lesson ›</button>
+    </div>
+  </div>
+  <!-- Right: AI assistant -->
+  <div class="cp-col cp-ai" id="cpAi">
+    <div class="cp-ai-head"><span>AI Assistant</span><span class="r"><button id="cpAiReset" title="New chat">⟳</button><button id="cpAiHide" title="Hide">&times;</button></span></div>
+    <div class="cp-ai-body" id="cpAiBody">
+      <div class="cp-msg bot">Hi! Ask me anything about this lesson — I can summarise it, give examples, or explain a concept in simpler terms.</div>
+    </div>
+    <div class="cp-ai-prompts">
+      <div class="lbl">Suggested prompts</div>
+      <button class="cp-chip" data-p="Summarise this lesson">Summarise this lesson</button>
+      <button class="cp-chip" data-p="Give me an example">Give me an example</button>
+      <button class="cp-chip" data-p="What are the key takeaways?">What are the key takeaways?</button>
+    </div>
+    <div class="cp-ai-input"><input id="cpAiInput" placeholder="Ask a question…"><button id="cpAiSend" aria-label="Send">→</button></div>
   </div>
 </div>
 
@@ -856,18 +961,94 @@ function renderMyCourses(){
   contCard.hidden=false;
 }
 document.getElementById('tdRefresh').addEventListener('click', loadMyCourses);
-// Open an assigned course → render its content in the modal.
-document.getElementById('tview-trainings').addEventListener('click', async (e)=>{
+// Open an assigned course → full-screen player.
+document.getElementById('tview-trainings').addEventListener('click', (e)=>{
   const el=e.target.closest('[data-cid]'); if(!el) return;
-  const d=await lmsGet('/api/my/courses/'+el.dataset.cid);
-  if(!d||!d.ok||!d.course){ els.modalEyebrow.textContent=''; els.modalTitle.textContent='Course'; els.modalBody.innerHTML='<p>Could not open this course.</p>'; els.modalFoot.innerHTML=''; els.modal.hidden=false; return; }
-  const c=d.course;
-  els.modalEyebrow.textContent=c.category||'Course';
-  els.modalTitle.textContent=c.title;
-  els.modalBody.innerHTML=tdRenderCourse(c);
-  els.modalFoot.innerHTML='';
-  els.modal.hidden=false;
+  openCourseFull(el.dataset.cid);
 });
+
+/* ---------- Full-screen course player ---------- */
+let CP_LESSONS=[], CP_IDX=0, CP_DONE=new Set(), CP_COURSE=null;
+const CP_KIND={section:'Reading',document:'Document',video:'Video',audio:'Audio',quiz:'Quiz',webinar:'Webinar'};
+function cpKey(cid){ return 'cpDone_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
+function cpLessonName(b,i){ return (b.title||'').trim() || ((b.type||'section')==='section' ? ('Lesson '+(i+1)) : (CP_KIND[b.type]||'Lesson')); }
+function cpBlockHtml(b){
+  const t=b.type||'section'; let inner;
+  if(t==='video') inner=b.url?tdVideo(b.url):'';
+  else if(t==='audio') inner=b.url?('<audio controls src="'+esc(b.url)+'"></audio>'):'';
+  else if(t==='document') inner=b.url?tdDoc(b.url):(b.html||'');
+  else if(t==='section') inner=b.html||'';
+  else inner=b.url?('<a href="'+esc(b.url)+'" target="_blank" rel="noopener">Open ↗</a>'):'';
+  return inner||'<p style="color:var(--ds-text-faint);">This lesson has no content yet.</p>';
+}
+async function openCourseFull(courseId){
+  const d=await lmsGet('/api/my/courses/'+courseId);
+  if(!d||!d.ok||!d.course){ toast&&toast('Could not open this course.','error'); return; }
+  CP_COURSE=d.course;
+  let blocks=[]; try{ const j=JSON.parse(CP_COURSE.content||''); if(Array.isArray(j)) blocks=j; }catch(_){}
+  if(!blocks.length && CP_COURSE.content) blocks=[{type:'section',title:CP_COURSE.title,html:CP_COURSE.content}];
+  CP_LESSONS=blocks.length?blocks:[{type:'section',title:CP_COURSE.title||'Course',html:'<p>No content yet.</p>'}];
+  try{ CP_DONE=new Set(JSON.parse(localStorage.getItem(cpKey(courseId))||'[]')); }catch(e){ CP_DONE=new Set(); }
+  CP_IDX=0;
+  document.getElementById('cpAiBody').innerHTML='<div class="cp-msg bot">Hi! Ask me anything about this lesson — I can summarise it, give examples, or explain a concept in simpler terms.</div>';
+  cpShow(0);
+  document.getElementById('cpAi').style.display='';
+  document.getElementById('coursePlayer').classList.remove('hidden');
+  document.documentElement.style.overflow='hidden';
+}
+function cpRenderLessons(){
+  const total=CP_LESSONS.length, done=CP_LESSONS.filter((_,i)=>CP_DONE.has(i)).length;
+  const pct=total?Math.round(done/total*100):0;
+  document.getElementById('cpPct').textContent=pct+'%';
+  document.getElementById('cpBar').style.width=pct+'%';
+  document.getElementById('cpLessons').innerHTML=CP_LESSONS.map((b,i)=>{
+    const done=CP_DONE.has(i), active=i===CP_IDX;
+    return '<button class="cp-lesson'+(active?' active':'')+'" data-i="'+i+'">'+
+      '<span class="cp-lesson-ic'+(done?' done':'')+'">'+(done?'✓':'')+'</span>'+
+      '<span class="cp-lesson-t"><span class="cp-lesson-name">'+esc(cpLessonName(b,i))+'</span>'+
+      '<span class="cp-lesson-meta">'+esc(CP_KIND[b.type]||'Lesson')+'</span></span></button>';
+  }).join('');
+}
+function cpShow(i){
+  CP_IDX=Math.max(0,Math.min(i,CP_LESSONS.length-1));
+  const b=CP_LESSONS[CP_IDX];
+  document.getElementById('cpMeta').textContent=CP_KIND[b.type]||'Lesson';
+  document.getElementById('cpTitle').textContent=cpLessonName(b,CP_IDX);
+  document.getElementById('cpBody').innerHTML=cpBlockHtml(b);
+  document.getElementById('cpBody').scrollTop=0;
+  document.getElementById('cpPrev').disabled=CP_IDX===0;
+  document.getElementById('cpNext').disabled=CP_IDX===CP_LESSONS.length-1;
+  const isDone=CP_DONE.has(CP_IDX);
+  const comp=document.getElementById('cpComplete');
+  comp.classList.toggle('is-done',isDone);
+  document.getElementById('cpCompLbl').textContent=isDone?'Completed':'Mark as Complete';
+  document.getElementById('cpCompDot').textContent=isDone?'✓':'';
+  cpRenderLessons();
+}
+document.getElementById('cpLessons').addEventListener('click', (e)=>{ const b=e.target.closest('[data-i]'); if(b) cpShow(+b.dataset.i); });
+document.getElementById('cpPrev').addEventListener('click', ()=>cpShow(CP_IDX-1));
+document.getElementById('cpNext').addEventListener('click', ()=>cpShow(CP_IDX+1));
+document.getElementById('cpComplete').addEventListener('click', ()=>{
+  if(CP_DONE.has(CP_IDX)) CP_DONE.delete(CP_IDX); else CP_DONE.add(CP_IDX);
+  if(CP_COURSE) try{ localStorage.setItem(cpKey(CP_COURSE.id), JSON.stringify([...CP_DONE])); }catch(e){}
+  cpShow(CP_IDX);
+});
+function cpClosePlayer(){ document.getElementById('coursePlayer').classList.add('hidden'); document.documentElement.style.overflow=''; if(typeof loadMyCourses==='function') loadMyCourses(); }
+document.getElementById('cpClose').addEventListener('click', cpClosePlayer);
+document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && !document.getElementById('coursePlayer').classList.contains('hidden')) cpClosePlayer(); });
+// AI assistant (placeholder — not wired to a model yet)
+function cpAiAsk(q){
+  q=(q||'').trim(); if(!q) return;
+  const body=document.getElementById('cpAiBody');
+  body.insertAdjacentHTML('beforeend', '<div class="cp-msg user">'+esc(q)+'</div>');
+  body.insertAdjacentHTML('beforeend', '<div class="cp-msg bot">The AI assistant isn\'t connected yet — it\'s coming soon. For now, use the lesson content on the left and centre.</div>');
+  body.scrollTop=body.scrollHeight;
+}
+document.getElementById('cpAiSend').addEventListener('click', ()=>{ const inp=document.getElementById('cpAiInput'); cpAiAsk(inp.value); inp.value=''; });
+document.getElementById('cpAiInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ cpAiAsk(e.target.value); e.target.value=''; } });
+document.querySelectorAll('.cp-chip').forEach(c=>c.addEventListener('click', ()=>cpAiAsk(c.dataset.p)));
+document.getElementById('cpAiHide').addEventListener('click', ()=>{ document.getElementById('cpAi').style.display='none'; });
+document.getElementById('cpAiReset').addEventListener('click', ()=>{ document.getElementById('cpAiBody').innerHTML='<div class="cp-msg bot">New chat — ask me anything about this lesson.</div>'; });
 // Minimal read-only block renderer for course content.
 function tdVideo(url){ let m=url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})/); if(m) return '<div style="position:relative;padding-top:56.25%;"><iframe src="https://www.youtube.com/embed/'+m[1]+'" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allowfullscreen></iframe></div>'; m=url.match(/vimeo\.com\/(\d+)/); if(m) return '<div style="position:relative;padding-top:56.25%;"><iframe src="https://player.vimeo.com/video/'+m[1]+'" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allowfullscreen></iframe></div>'; if(/\.(mp4|webm|mov)(\?|#|$)/i.test(url)) return '<video controls src="'+esc(url)+'" style="width:100%;"></video>'; return '<a href="'+esc(url)+'" target="_blank" rel="noopener">Open video ↗</a>'; }
 function tdDoc(url){ let m=url.match(/drive\.google\.com\/file\/d\/([\w-]+)/); if(m) return '<iframe src="https://drive.google.com/file/d/'+m[1]+'/preview" style="width:100%;height:70vh;border:1px solid var(--border);"></iframe>'; if(/\.pdf(\?|#|$)/i.test(url)) return '<iframe src="'+esc(url)+'" style="width:100%;height:70vh;border:1px solid var(--border);"></iframe>'; return '<iframe src="https://docs.google.com/viewer?embedded=true&url='+encodeURIComponent(url)+'" style="width:100%;height:70vh;border:1px solid var(--border);"></iframe>'; }
