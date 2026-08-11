@@ -47,9 +47,8 @@
   .login-brand .nm{font-weight:700;font-size:17px;letter-spacing:-.01em;}
 
   /* ---------- App shell ---------- */
-  /* Top bar removed: only a floating utility cluster in the top-right corner. */
-  .topbar{position:fixed;top:0;right:0;left:auto;width:auto;height:auto;z-index:50;
-    display:flex;align-items:center;gap:11px;padding:12px 22px;background:transparent;border:none;color:var(--text);}
+  /* Top bar removed entirely (notifications / user / sign-out). */
+  .topbar{display:none;}
   .topbar .brand,.topbar .spacer{display:none;}
   .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;letter-spacing:-.01em;color:#fff;min-width:0;}
   .brand .logo{width:28px;height:28px;border-radius:8px;font-size:14px;flex-shrink:0;}
@@ -67,11 +66,19 @@
   .link-btn:hover{color:var(--text);border-color:var(--border-strong);background:var(--surface-3);}
 
   .shell{display:flex;min-height:100vh;}
-  .side-head{display:flex;align-items:center;gap:9px;padding:2px 4px 14px;}
-  .nav-toggle{width:34px;height:34px;flex-shrink:0;display:grid;place-items:center;background:rgba(255,255,255,.12);
-    border:1px solid rgba(255,255,255,.22);border-radius:8px;color:#fff;cursor:pointer;}
-  .nav-toggle:hover{background:rgba(255,255,255,.22);}
-  .nav-toggle svg{width:18px;height:18px;}
+  .side-head{display:flex;align-items:center;gap:9px;padding:2px 4px 16px;}
+  /* Collapse arrow — a small circular button straddling the sidebar edge */
+  .nav-toggle{position:absolute;top:18px;right:-13px;width:27px;height:27px;border-radius:50%;padding:0;
+    background:#fff;border:1px solid var(--border,#E0E0E0);box-shadow:0 1px 5px rgba(24,34,51,.16);
+    display:grid;place-items:center;color:#116ACC;cursor:pointer;z-index:60;}
+  .nav-toggle:hover{background:#eef4fd;}
+  .nav-toggle svg{width:14px;height:14px;}
+  .shell.nav-collapsed .nav-toggle svg{transform:rotate(180deg);}
+  .sidebar .foot .foot-out{width:32px;height:32px;flex-shrink:0;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);
+    color:#fff;border-radius:8px;display:grid;place-items:center;cursor:pointer;}
+  .sidebar .foot .foot-out:hover{background:#fff;color:#116ACC;}
+  .sidebar .foot .foot-out svg{width:16px;height:16px;}
+  .shell.nav-collapsed .sidebar .foot .avatar{display:none;}
   .sidebar{width:222px;flex-shrink:0;background:#116ACC;border-right:1px solid rgba(255,255,255,.14);
     display:flex;flex-direction:column;padding:16px 12px;position:sticky;top:0;height:100vh;color:#fff;transition:width .16s ease;}
   .nav-label{font-size:10.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.6);padding:8px 10px 6px;}
@@ -91,7 +98,7 @@
   .shell.nav-collapsed .nav-item .cnt{display:none;}
   .shell.nav-collapsed .sidebar .foot{justify-content:center;}
   .shell.nav-collapsed .sidebar .foot > div{display:none;}
-  .main{padding-top:56px;}
+  .main{padding-top:24px;}
   .sidebar .foot{margin-top:auto;border-top:1px solid rgba(255,255,255,.16);padding-top:12px;display:flex;align-items:center;gap:9px;}
   .sidebar .foot .avatar{background:rgba(255,255,255,.22);color:#fff;}
 
@@ -400,7 +407,6 @@
       <div class="avatar">AD</div>
       <div><div class="nm">Administrator</div><div class="role">Signed in</div></div>
     </div>
-    <button class="link-btn" id="btnSignOut">Sign out</button>
   </div>
 
   <!-- Notifications panel -->
@@ -414,7 +420,7 @@
   <div class="shell" id="shell">
     <aside class="sidebar">
       <div class="side-head">
-        <button class="nav-toggle" id="navToggle" aria-label="Collapse menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+        <button class="nav-toggle" id="navToggle" aria-label="Collapse menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
         <div class="brand" id="brandArea"><span class="logo">T</span>TestPortal<span class="tag-pill">Admin</span></div>
       </div>
       <div class="nav-label">Manage</div>
@@ -454,6 +460,7 @@
       <div class="foot">
         <div class="avatar">AD</div>
         <div style="flex:1;min-width:0;"><div class="nm" style="font-size:12.5px;font-weight:600;">Administrator</div></div>
+        <button class="foot-out" id="btnSignOut" title="Sign out" aria-label="Sign out"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/></svg></button>
       </div>
     </aside>
 
