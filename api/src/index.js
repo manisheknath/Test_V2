@@ -61,8 +61,15 @@ export default {
       else if (path === "/api/enrollments" && m === "GET") r = await listEnrollments(request, env);
       else if (path === "/api/enrollments" && m === "POST") r = await createEnrollment(request, env);
       else if (path.match(/^\/api\/enrollments\/[^/]+$/) && m === "DELETE") r = await deleteEnrollment(request, env, path.split("/").pop());
-      // ---- learner: my assigned courses ----
+      // ---- tenant: learning tracks (curricula) ----
+      else if (path === "/api/curricula" && m === "GET") r = await listCurricula(request, env);
+      else if (path === "/api/curricula" && m === "POST") r = await createCurriculum(request, env);
+      else if (path.match(/^\/api\/curricula\/[^/]+$/) && m === "GET") r = await getCurriculum(request, env, path.split("/")[3]);
+      else if (path.match(/^\/api\/curricula\/[^/]+$/) && m === "PATCH") r = await updateCurriculum(request, env, path.split("/")[3]);
+      else if (path.match(/^\/api\/curricula\/[^/]+$/) && m === "DELETE") r = await deleteCurriculum(request, env, path.split("/")[3]);
+      // ---- learner: my assigned courses + tracks ----
       else if (path === "/api/my/courses" && m === "GET") r = await myCourses(request, env);
+      else if (path === "/api/my/curricula" && m === "GET") r = await myCurricula(request, env);
       else if (path.match(/^\/api\/my\/courses\/[^/]+$/) && m === "GET") r = await myCourse(request, env, path.split("/")[4]);
       // ---- learner: course completion progress ----
       else if (path.match(/^\/api\/my\/courses\/[^/]+\/progress$/) && m === "GET") r = await getCourseProgress(request, env, path.split("/")[4]);
@@ -363,17 +370,19 @@ async function createEnrollment(request, env) {
   const ctx = await auth(request, env); requireCap(ctx, "enroll");
   const b = await body(request);
   const targetType = b.targetType === "group" ? "group" : "account";
+  const itemType = b.itemType === "curriculum" ? "curriculum" : "course";
   if (!b.targetId || !b.itemId) throw httpError(400, "missing_fields");
-  if (!(await ctx.db.prepare("SELECT id FROM courses WHERE id = ? AND org_id = ?").bind(b.itemId, ctx.orgId).first())) throw httpError(404, "course_not_found");
+  const itemTbl = itemType === "curriculum" ? "curricula" : "courses";
+  if (!(await ctx.db.prepare(`SELECT id FROM ${itemTbl} WHERE id = ? AND org_id = ?`).bind(b.itemId, ctx.orgId).first())) throw httpError(404, "item_not_found");
   const tbl = targetType === "group" ? "groups" : "accounts";
   if (!(await ctx.db.prepare(`SELECT id FROM ${tbl} WHERE id = ? AND org_id = ?`).bind(b.targetId, ctx.orgId).first())) throw httpError(404, "target_not_found");
-  const dup = await ctx.db.prepare("SELECT id FROM enrollments WHERE org_id = ? AND target_type = ? AND target_id = ? AND item_type = 'course' AND item_id = ?")
-    .bind(ctx.orgId, targetType, b.targetId, b.itemId).first();
+  const dup = await ctx.db.prepare("SELECT id FROM enrollments WHERE org_id = ? AND target_type = ? AND target_id = ? AND item_type = ? AND item_id = ?")
+    .bind(ctx.orgId, targetType, b.targetId, itemType, b.itemId).first();
   if (dup) return json({ ok: true, id: dup.id, existed: true });
   const id = crypto.randomUUID();
-  await ctx.db.prepare("INSERT INTO enrollments (id, org_id, target_type, target_id, item_type, item_id, due_at) VALUES (?, ?, ?, ?, 'course', ?, ?)")
-    .bind(id, ctx.orgId, targetType, b.targetId, b.itemId, b.dueAt || null).run();
-  await audit(env, ctx.accountId, ctx.orgId, "enroll.create", { course: b.itemId, targetType, target: b.targetId });
+  await ctx.db.prepare("INSERT INTO enrollments (id, org_id, target_type, target_id, item_type, item_id, due_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .bind(id, ctx.orgId, targetType, b.targetId, itemType, b.itemId, b.dueAt || null).run();
+  await audit(env, ctx.accountId, ctx.orgId, "enroll.create", { item: b.itemId, itemType, targetType, target: b.targetId });
   return json({ ok: true, id });
 }
 async function listEnrollments(request, env) {
@@ -401,12 +410,29 @@ function courseLessonCount(content) {
   if (Array.isArray(j)) return j.length;
   return 1;
 }
+function parseIds(s){ try { const j = JSON.parse(s); return Array.isArray(j) ? j.filter(x => typeof x === "string") : []; } catch (_) { return []; } }
+// Curriculum ids assigned to the current account (directly or via a group).
+async function myCurriculumIds(ctx) {
+  const set = new Set();
+  (await ctx.db.prepare("SELECT item_id FROM enrollments WHERE org_id = ? AND item_type = 'curriculum' AND target_type = 'account' AND target_id = ?").bind(ctx.orgId, ctx.accountId).all())
+    .results.forEach(r => set.add(r.item_id));
+  (await ctx.db.prepare("SELECT e.item_id AS item_id FROM enrollments e JOIN account_groups ag ON ag.group_id = e.target_id WHERE e.org_id = ? AND e.item_type = 'curriculum' AND e.target_type = 'group' AND ag.account_id = ?").bind(ctx.orgId, ctx.accountId).all())
+    .results.forEach(r => set.add(r.item_id));
+  return [...set];
+}
 async function myCourseIds(ctx) {
   const ids = new Set();
   (await ctx.db.prepare("SELECT item_id FROM enrollments WHERE org_id = ? AND item_type = 'course' AND target_type = 'account' AND target_id = ?").bind(ctx.orgId, ctx.accountId).all())
     .results.forEach(r => ids.add(r.item_id));
   (await ctx.db.prepare("SELECT e.item_id AS item_id FROM enrollments e JOIN account_groups ag ON ag.group_id = e.target_id WHERE e.org_id = ? AND e.item_type = 'course' AND e.target_type = 'group' AND ag.account_id = ?").bind(ctx.orgId, ctx.accountId).all())
     .results.forEach(r => ids.add(r.item_id));
+  // Fan out assigned tracks into their member courses.
+  const curIds = await myCurriculumIds(ctx);
+  if (curIds.length){
+    const ph = curIds.map(() => "?").join(",");
+    (await ctx.db.prepare(`SELECT courses FROM curricula WHERE org_id = ? AND status != 'archived' AND id IN (${ph})`).bind(ctx.orgId, ...curIds).all())
+      .results.forEach(r => parseIds(r.courses).forEach(cid => ids.add(cid)));
+  }
   return [...ids];
 }
 async function myCourses(request, env) {
@@ -433,6 +459,78 @@ async function myCourse(request, env, id) {
   const c = await ctx.db.prepare("SELECT id, title, summary, category, content, presentation FROM courses WHERE id = ? AND org_id = ? AND status = 'published'").bind(id, ctx.orgId).first();
   if (!c) throw httpError(404, "not_found");
   return json({ ok: true, course: { id: c.id, title: c.title, summary: c.summary || "", category: c.category || "", content: c.content || "", presentation: c.presentation || "slideshow" } });
+}
+
+/* ---------- Learning tracks (curricula) ----------
+   A curriculum is an ordered set of course ids (JSON). Managed by manage_content;
+   assignable via enrollments (item_type='curriculum') which fan out to courses. */
+async function listCurricula(request, env) {
+  const ctx = await auth(request, env); requireCap(ctx, "manage_content");
+  const rows = (await ctx.db.prepare("SELECT id, title, summary, courses, status FROM curricula WHERE org_id = ? AND status != 'archived' ORDER BY created_at DESC").bind(ctx.orgId).all()).results;
+  return json({ ok: true, curricula: rows.map(c => ({ id: c.id, title: c.title, summary: c.summary || "", courses: parseIds(c.courses), status: c.status })) });
+}
+async function createCurriculum(request, env) {
+  const ctx = await auth(request, env); requireCap(ctx, "manage_content");
+  const b = await body(request);
+  if (!b.title) throw httpError(400, "title_required");
+  const id = crypto.randomUUID();
+  const status = ["draft", "published"].includes(b.status) ? b.status : "published";
+  await ctx.db.prepare("INSERT INTO curricula (id, org_id, title, summary, courses, status) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(id, ctx.orgId, b.title, b.summary || null, JSON.stringify(Array.isArray(b.courses) ? b.courses : []), status).run();
+  await audit(env, ctx.accountId, ctx.orgId, "curriculum.create", { title: b.title });
+  return json({ ok: true, id });
+}
+async function getCurriculum(request, env, id) {
+  const ctx = await auth(request, env); requireCap(ctx, "manage_content");
+  const c = await ctx.db.prepare("SELECT id, title, summary, courses, status FROM curricula WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first();
+  if (!c) throw httpError(404, "not_found");
+  return json({ ok: true, curriculum: { id: c.id, title: c.title, summary: c.summary || "", courses: parseIds(c.courses), status: c.status } });
+}
+async function updateCurriculum(request, env, id) {
+  const ctx = await auth(request, env); requireCap(ctx, "manage_content");
+  const b = await body(request);
+  if (!(await ctx.db.prepare("SELECT id FROM curricula WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first())) throw httpError(404, "not_found");
+  const sets = [], vals = [];
+  if (b.title != null) { sets.push("title = ?"); vals.push(b.title); }
+  if (b.summary != null) { sets.push("summary = ?"); vals.push(b.summary || null); }
+  if (Array.isArray(b.courses)) { sets.push("courses = ?"); vals.push(JSON.stringify(b.courses)); }
+  if (b.status != null && ["draft", "published", "archived"].includes(b.status)) { sets.push("status = ?"); vals.push(b.status); }
+  if (sets.length) await ctx.db.prepare(`UPDATE curricula SET ${sets.join(", ")} WHERE id = ? AND org_id = ?`).bind(...vals, id, ctx.orgId).run();
+  return json({ ok: true });
+}
+async function deleteCurriculum(request, env, id) {
+  const ctx = await auth(request, env); requireCap(ctx, "manage_content");
+  if (!(await ctx.db.prepare("SELECT id FROM curricula WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first())) throw httpError(404, "not_found");
+  await ctx.db.prepare("DELETE FROM curricula WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).run();
+  await ctx.db.prepare("DELETE FROM enrollments WHERE org_id = ? AND item_type = 'curriculum' AND item_id = ?").bind(ctx.orgId, id).run();
+  return json({ ok: true });
+}
+async function myCurricula(request, env) {
+  const ctx = await auth(request, env);
+  if (!ctx.orgId) return json({ ok: true, curricula: [] });
+  const curIds = await myCurriculumIds(ctx);
+  if (!curIds.length) return json({ ok: true, curricula: [] });
+  const ph = curIds.map(() => "?").join(",");
+  const curs = (await ctx.db.prepare(`SELECT id, title, summary, courses FROM curricula WHERE org_id = ? AND status = 'published' AND id IN (${ph})`).bind(ctx.orgId, ...curIds).all()).results;
+  const doneMap = {};
+  (await ctx.db.prepare("SELECT course_id, COUNT(*) AS done FROM progress WHERE org_id = ? AND account_id = ? AND status = 'complete' GROUP BY course_id").bind(ctx.orgId, ctx.accountId).all())
+    .results.forEach(r => { doneMap[r.course_id] = r.done; });
+  const allCourseIds = [...new Set(curs.flatMap(c => parseIds(c.courses)))];
+  const courseMap = {};
+  if (allCourseIds.length) {
+    const cph = allCourseIds.map(() => "?").join(",");
+    (await ctx.db.prepare(`SELECT id, title, content FROM courses WHERE org_id = ? AND status = 'published' AND id IN (${cph})`).bind(ctx.orgId, ...allCourseIds).all())
+      .results.forEach(c => { courseMap[c.id] = { id: c.id, title: c.title, lessons: courseLessonCount(c.content) }; });
+  }
+  const out = curs.map(cur => {
+    const courses = parseIds(cur.courses).map(cid => courseMap[cid]).filter(Boolean).map(c => {
+      const done = Math.min(doneMap[c.id] || 0, c.lessons || (doneMap[c.id] || 0));
+      return { id: c.id, title: c.title, lessons: c.lessons, done, completed: c.lessons > 0 && done >= c.lessons };
+    });
+    const total = courses.length, doneCourses = courses.filter(c => c.completed).length;
+    return { id: cur.id, title: cur.title, summary: cur.summary || "", courses, coursesTotal: total, coursesDone: doneCourses, pct: total ? Math.round(doneCourses / total * 100) : 0 };
+  });
+  return json({ ok: true, curricula: out });
 }
 
 /* ---------- Learner: course completion progress ----------

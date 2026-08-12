@@ -84,6 +84,18 @@ CREATE TABLE IF NOT EXISTS course_comments (
 );
 CREATE INDEX IF NOT EXISTS course_comments_thread ON course_comments(org_id, course_id, created_at);
 
+-- Learning tracks: an ordered set of courses, assignable like a course.
+CREATE TABLE IF NOT EXISTS curricula (
+  id         TEXT PRIMARY KEY,
+  org_id     TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  title      TEXT NOT NULL,
+  summary    TEXT,
+  courses    TEXT,                                -- JSON array of course ids, ordered
+  status     TEXT NOT NULL DEFAULT 'published',   -- draft | published | archived
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS curricula_org ON curricula(org_id);
+
 CREATE TABLE IF NOT EXISTS modules (
   id        TEXT PRIMARY KEY,
   course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
