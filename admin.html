@@ -657,6 +657,9 @@
         .cb-ch-bk svg{width:14px;height:14px;flex-shrink:0;opacity:.75;}
         .cb-ch-bk.sel{color:var(--bl);background:var(--bl-soft);}
         .cb-ch-bk{cursor:grab;}
+        .cb-ch-bk .cb-bk-name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+        .cb-ch-bk .cb-ch-drag{opacity:0;}
+        .cb-ch-bk:hover .cb-ch-drag{opacity:.7;}
         .cb-ch-bk.dragging{opacity:.4;}
         .cb-ch-bk.drop-before{box-shadow:inset 0 2px 0 var(--bl);}
         .cb-chapter.cb-drop-into>.cb-ch-row{background:var(--bl-soft);box-shadow:inset 0 0 0 1.5px var(--bl);}
@@ -3545,7 +3548,7 @@ function cbRenderChapters(){
   wrap.innerHTML = courseDraft.chapters.map((c,i) => {
     const sel = c.id === CB_SELCH;
     const blocks = c.blocks.length
-      ? c.blocks.map(b => '<div class="cb-ch-bk'+(b.id===CB_SELBK?' sel':'')+'" draggable="true" data-ch="'+c.id+'" data-bk="'+b.id+'">'+cbIcon(b.type)+'<span>'+pEsc(cbBlockLabel(b))+'</span></div>').join('')
+      ? c.blocks.map(b => '<div class="cb-ch-bk'+(b.id===CB_SELBK?' sel':'')+'" draggable="true" data-ch="'+c.id+'" data-bk="'+b.id+'">'+cbIcon(b.type)+'<span class="cb-bk-name">'+pEsc(cbBlockLabel(b))+'</span><span class="cb-ch-drag" title="Drag to reorder or move">⠿</span></div>').join('')
       : '<div class="cb-ch-empty">No content yet</div>';
     return '<div class="cb-chapter'+(sel?' sel open':'')+'" data-ch="'+c.id+'">'+
       '<div class="cb-ch-row" data-ch="'+c.id+'">'+
