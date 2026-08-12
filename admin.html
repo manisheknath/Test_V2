@@ -1276,14 +1276,21 @@
               <input type="text" id="p_email" placeholder="e.g. jordan@email.com">
             </div>
             <div>
-              <label for="p_role">Role</label>
-              <select id="p_role">
-                <option value="learner">Learner</option>
-                <option value="contributor">Contributor</option>
-                <option value="coach">Coach</option>
-                <option value="user_admin">User Admin</option>
-                <option value="admin">Admin</option>
-              </select>
+              <label>Roles <span style="color:var(--faint);font-weight:400;text-transform:none;letter-spacing:0;">— a user can hold several; permissions combine</span></label>
+              <div id="p_roles" class="p-roles">
+                <label><input type="checkbox" value="learner"> Learner</label>
+                <label><input type="checkbox" value="contributor"> Contributor</label>
+                <label><input type="checkbox" value="coach"> Coach</label>
+                <label><input type="checkbox" value="user_admin"> User Admin</label>
+                <label><input type="checkbox" value="admin"> Admin</label>
+              </div>
+              <style>
+                .p-roles{display:flex;flex-wrap:wrap;gap:8px;}
+                .p-roles label{display:flex;align-items:center;gap:7px;margin:0;padding:7px 11px;border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text);text-transform:none;letter-spacing:0;}
+                .p-roles label:hover{border-color:var(--border-strong);}
+                .p-roles input{width:auto;margin:0;}
+                .p-roles label:has(input:checked){border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
+              </style>
             </div>
           </div>
           <label for="p_password" id="p_passwordLabel">Password</label>
@@ -1468,7 +1475,7 @@ async function lmsApi(path, opts){
 async function mList(){
   const r = await lmsApi('/api/members');
   if (r && (r.error==='no_token' || r.error==='unauthorized' || r.error==='bad_token' || r.error==='expired')){ lmsSignOut(); return []; }
-  return (r && r.ok) ? r.members.map(m => ({ takerId:m.id, loginId:m.loginId||'', name:m.name, email:m.email||'', role:m.role, hasPassword:m.hasPassword, groups:m.groups||'' })) : [];
+  return (r && r.ok) ? r.members.map(m => ({ takerId:m.id, loginId:m.loginId||'', name:m.name, email:m.email||'', role:m.role, roles:(m.roles&&m.roles.length)?m.roles:[m.role||'learner'], hasPassword:m.hasPassword, groups:m.groups||'' })) : [];
 }
 async function mCreate(member){ return lmsApi('/api/members', { method:'POST', body: JSON.stringify(member) }); }
 async function mPatch(id, patch){ return lmsApi('/api/members/'+id, { method:'PATCH', body: JSON.stringify(patch) }); }
@@ -1948,7 +1955,7 @@ function renderUserRows(){
         '<td>' + (t.loginId ? '<code>' + pEsc(t.loginId) + '</code>' : '<span style="color:var(--faint);">—</span>') + '</td>' +
         '<td>' + pEsc(t.name || '') + '</td>' +
         '<td style="font-size:12px;color:var(--muted);">' + pEsc(t.email || '') + '</td>' +
-        '<td><span class="rtag ' + (t.role || 'learner') + '">' + roleLabel(t.role || 'learner') + '</span></td>' +
+        '<td><span style="display:inline-flex;flex-wrap:wrap;gap:4px;">' + ((t.roles && t.roles.length ? t.roles : [t.role || 'learner']).map(r => '<span class="rtag ' + r + '">' + roleLabel(r) + '</span>').join('')) + '</span></td>' +
         '<td style="font-size:12px;">' + pEsc(t.groups || '') + '</td>' +
         '<td>' + (t.hasPassword ? '<span class="tag open">set</span>' : '<span class="tag closed">none</span>') + '</td>' +
         '<td style="white-space:nowrap;">' +
@@ -1973,7 +1980,8 @@ function openPersonEditor(taker){
   document.getElementById('p_name').value = taker ? (taker.name || '') : '';
   document.getElementById('p_email').value = taker ? (taker.email || '') : '';
   document.getElementById('p_groups').value = taker ? (taker.groups || '') : '';
-  document.getElementById('p_role').value = taker ? (taker.role || 'learner') : 'learner';
+  const pRoles = taker ? ((taker.roles && taker.roles.length) ? taker.roles : [taker.role || 'learner']) : ['learner'];
+  document.querySelectorAll('#p_roles input').forEach(cb => { cb.checked = pRoles.includes(cb.value); });
   document.getElementById('p_password').value = '';
   document.getElementById('p_passwordLabel').textContent = taker ? 'Reset password (leave blank to keep current)' : 'Password';
   document.getElementById('p_password').placeholder = taker ? 'Leave blank to keep existing' : 'Set a password';
@@ -1998,7 +2006,7 @@ const ROLES = [
 function roleLabel(v){ const r = ROLES.find(x => x.v === v); return r ? r.label : 'Learner'; }
 function renderRoleSeats(){
   const strip = document.getElementById('roleSeats'); if (!strip) return;
-  const counts = {}; (LAST_TAKERS || []).forEach(t => { const r = t.role || 'learner'; counts[r] = (counts[r] || 0) + 1; });
+  const counts = {}; (LAST_TAKERS || []).forEach(t => { ((t.roles && t.roles.length) ? t.roles : [t.role || 'learner']).forEach(r => { counts[r] = (counts[r] || 0) + 1; }); });
   strip.innerHTML = ROLES.map(r => '<span class="seat-chip"><b>' + (counts[r.v] || 0) + '</b>' + r.label + (counts[r.v]===1?'':'s') + '</span>').join('');
 }
 
@@ -2337,11 +2345,12 @@ document.getElementById('btnSavePerson').addEventListener('click', async () => {
     name: document.getElementById('p_name').value.trim(),
     email: document.getElementById('p_email').value.trim(),
     groups: document.getElementById('p_groups').value.trim(),
-    role: document.getElementById('p_role').value,
+    roles: [...document.querySelectorAll('#p_roles input:checked')].map(cb => cb.value),
     password: document.getElementById('p_password').value
   };
   const errs = [];
   if (!member.name) errs.push('Name is required.');
+  if (!member.roles.length) errs.push('Pick at least one role.');
   if (isNew && !member.password) errs.push('A password is required for a new user.');
   if (errs.length){
     document.getElementById('personNotice').innerHTML = '<div class="notice error">' + errs.join('<br>') + '</div>';
@@ -3376,11 +3385,11 @@ const SEL_ASSIGN = new Set(); let ASSIGN_COURSE_IDS = []; let ASSIGN_MODE = 'cou
 async function cEnroll(targetId, itemId, itemType){ return lmsApi('/api/enrollments', { method:'POST', body: JSON.stringify({ targetType:'account', targetId:targetId, itemId:itemId, itemType: itemType || 'course' }) }); }
 function renderAssignUsers(){
   const q = (document.getElementById('assignSearch').value||'').trim().toLowerCase();
-  const rows = (LAST_TAKERS||[]).filter(t => t.role !== 'admin' && (!q || (t.name||'').toLowerCase().includes(q) || (t.email||'').toLowerCase().includes(q) || (t.loginId||'').toLowerCase().includes(q)));
+  const rows = (LAST_TAKERS||[]).filter(t => (!q || (t.name||'').toLowerCase().includes(q) || (t.email||'').toLowerCase().includes(q) || (t.loginId||'').toLowerCase().includes(q)));
   document.getElementById('assignUsers').innerHTML = rows.length ? rows.map(t =>
     '<label style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer;">'+
       '<input type="checkbox" class="asgn-check" value="'+pEsc(t.takerId)+'"'+(SEL_ASSIGN.has(t.takerId)?' checked':'')+' style="width:auto;margin:0;">'+
-      '<span style="flex:1;min-width:0;"><b style="font-weight:600;font-size:13.5px;">'+pEsc(t.name||t.takerId)+'</b> <span style="color:var(--faint);font-size:12px;">· '+pEsc(t.role||'learner')+'</span>'+
+      '<span style="flex:1;min-width:0;"><b style="font-weight:600;font-size:13.5px;">'+pEsc(t.name||t.takerId)+'</b> <span style="color:var(--faint);font-size:12px;">· '+pEsc(((t.roles&&t.roles.length)?t.roles:[t.role||'learner']).map(roleLabel).join(', '))+'</span>'+
       (t.email?('<div style="color:var(--muted);font-size:12px;">'+pEsc(t.email)+'</div>'):'')+'</span>'+
     '</label>').join('') : '<div style="padding:16px;color:var(--muted);font-size:13px;">No users yet — add people in User Management first.</div>';
 }

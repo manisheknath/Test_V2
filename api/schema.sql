@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS accounts (
   org_id        TEXT REFERENCES organizations(id) ON DELETE CASCADE, -- NULL only for master
   role          TEXT NOT NULL
                  CHECK (role IN ('master','admin','user_admin','coach','contributor','learner')),
+  roles         TEXT,        -- CSV of all roles this user holds (primary = `role`)
   name          TEXT NOT NULL,
   email         TEXT,        -- staff sign in with this (or SSO)
   login_id      TEXT,        -- learners sign in with this

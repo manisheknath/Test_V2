@@ -111,7 +111,7 @@ async function login(request, env) {
     sub: acc.id, org: acc.org_id, role: acc.role,
     exp: Math.floor(Date.now() / 1000) + 60 * 60 * 12, // 12h
   });
-  return json({ ok: true, token, account: { ...publicAccount(acc), capabilities: await getCaps(env, acc.role, acc.org_id) }, org: await orgInfoFor(env, acc.org_id) });
+  return json({ ok: true, token, account: { ...publicAccount(acc), capabilities: await getCapsMulti(env, accountRoles(acc), acc.org_id) }, org: await orgInfoFor(env, acc.org_id) });
 }
 
 // Org context (name, slug, logo, seat limits) — shared by login and me.
@@ -134,9 +134,9 @@ async function auth(request, env) {
   const s = await verifySession(env, token);
   const account = await env.DB.prepare("SELECT * FROM accounts WHERE id = ?").bind(s.sub).first();
   if (!account || account.status !== "active") throw httpError(401, "unauthorized");
-  return { env, db: tenantDB(env, account), accountId: account.id, orgId: account.org_id, role: account.role, caps: await getCaps(env, account.role, account.org_id), account };
+  return { env, db: tenantDB(env, account), accountId: account.id, orgId: account.org_id, role: account.role, roles: accountRoles(account), caps: await getCapsMulti(env, accountRoles(account), account.org_id), account };
 }
-function requireRole(ctx, roles) { if (ctx.role !== "master" && !roles.includes(ctx.role)) throw httpError(403, "forbidden"); }
+function requireRole(ctx, roles) { if (ctx.role !== "master" && !(ctx.roles || [ctx.role]).some(r => roles.includes(r))) throw httpError(403, "forbidden"); }
 function requireMaster(ctx) { if (ctx.role !== "master") throw httpError(403, "forbidden"); }
 
 /* ---------- Capabilities (single source of truth) ----------
@@ -168,6 +168,23 @@ async function getCaps(env, role, orgId) {
   const plat = (await env.DB.prepare("SELECT capability FROM role_permissions WHERE org_id = ? AND role = ?").bind(PLATFORM, role).all()).results;
   if (plat.length) return plat.map(r => r.capability);
   return defaultCaps(role);
+}
+// ---- Multiple roles per user ----
+const ROLE_RANK = { admin: 5, user_admin: 4, coach: 3, contributor: 2, learner: 1 };
+// The full set of roles an account holds (CSV `roles`, falling back to the single `role`).
+function accountRoles(a) {
+  let arr = a && a.roles ? String(a.roles).split(",").map(s => s.trim()).filter(Boolean) : [];
+  arr = [...new Set(arr.filter(r => r === "master" || (typeof MEMBER_ROLES !== "undefined" && MEMBER_ROLES.includes(r))))];
+  if (!arr.length && a && a.role) arr = [a.role];
+  return arr;
+}
+// Highest-privilege role in a set — used as the stored primary `role`.
+function primaryRole(roles) { return [...roles].sort((x, y) => (ROLE_RANK[y] || 0) - (ROLE_RANK[x] || 0))[0] || "learner"; }
+// Effective capabilities = the union across all of a user's roles.
+async function getCapsMulti(env, roles, orgId) {
+  const set = new Set();
+  for (const r of roles) (await getCaps(env, r, orgId)).forEach(c => set.add(c));
+  return [...set];
 }
 // Read every role's effective caps for one scope (an org id, or PLATFORM).
 async function rolesForScope(env, orgId, roleList) {
@@ -652,45 +669,56 @@ async function updateOrgSelf(request, env) {
 /* ---------- Tenant: members (User Management) ---------- */
 const MEMBER_ROLES = ["learner", "coach", "contributor", "user_admin", "admin"];
 
+// Roles from a request body: `roles` array (preferred) or legacy single `role`.
+function rolesFromBody(b) {
+  let arr = Array.isArray(b.roles) ? b.roles : (b.role ? [b.role] : null);
+  if (!arr) return null;
+  arr = [...new Set(arr.filter(r => MEMBER_ROLES.includes(r)))];
+  return arr.length ? arr : null;
+}
 async function listMembers(request, env) {
   const ctx = await auth(request, env); requireCap(ctx, "manage_users");
   const members = (await ctx.db.prepare(
-    "SELECT id, login_id, name, email, role, (password_hash IS NOT NULL) AS has_password " +
+    "SELECT id, login_id, name, email, role, roles, (password_hash IS NOT NULL) AS has_password " +
     "FROM accounts WHERE org_id = ? AND role != 'master' ORDER BY created_at DESC").bind(ctx.orgId).all()).results;
   const ag = (await ctx.db.prepare(
     "SELECT ag.account_id AS aid, g.name AS name FROM account_groups ag JOIN groups g ON g.id = ag.group_id WHERE g.org_id = ?").bind(ctx.orgId).all()).results;
   const gby = ag.reduce((a, r) => (((a[r.aid] ||= []).push(r.name)), a), {});
   return json({ ok: true, members: members.map(m => ({
-    id: m.id, loginId: m.login_id, name: m.name, email: m.email, role: m.role,
+    id: m.id, loginId: m.login_id, name: m.name, email: m.email, role: m.role, roles: accountRoles(m),
     hasPassword: !!m.has_password, groups: (gby[m.id] || []).join(", "),
   })) });
 }
 async function createMember(request, env) {
   const ctx = await auth(request, env); requireCap(ctx, "manage_users");
   const b = await body(request);
-  const role = b.role || "learner";
+  const rolesArr = rolesFromBody(b) || ["learner"];
   if (!b.name) throw httpError(400, "name_required");
-  if (!MEMBER_ROLES.includes(role)) throw httpError(400, "bad_role");
-  if (ctx.role === "user_admin" && role !== "learner") throw httpError(403, "cannot_grant_role");
+  if (rolesArr.some(r => !MEMBER_ROLES.includes(r))) throw httpError(400, "bad_role");
+  if (ctx.role === "user_admin" && rolesArr.some(r => r !== "learner")) throw httpError(403, "cannot_grant_role");
+  const role = primaryRole(rolesArr);
   await assertSeatAvailable(ctx, ctx.orgId, role);
   const id = crypto.randomUUID();
-  await ctx.db.prepare("INSERT INTO accounts (id, org_id, role, name, email, login_id, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .bind(id, ctx.orgId, role, b.name, b.email || null, (b.loginId || "").trim() || null, b.password ? await hashPassword(b.password) : null).run();
+  await ctx.db.prepare("INSERT INTO accounts (id, org_id, role, roles, name, email, login_id, password_hash) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(id, ctx.orgId, role, rolesArr.join(","), b.name, b.email || null, (b.loginId || "").trim() || null, b.password ? await hashPassword(b.password) : null).run();
   await setMemberGroups(env, ctx.orgId, id, b.groups);
   return json({ ok: true, id });
 }
 async function updateMember(request, env, id) {
   const ctx = await auth(request, env); requireCap(ctx, "manage_users");
   const b = await body(request);
-  const m = await ctx.db.prepare("SELECT id, role FROM accounts WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first();
+  const m = await ctx.db.prepare("SELECT id, role, roles FROM accounts WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first();
   if (!m) throw httpError(404, "not_found");
-  if (ctx.role === "user_admin" && (m.role !== "learner" || (b.role && b.role !== "learner"))) throw httpError(403, "forbidden");
-  if (b.role && !MEMBER_ROLES.includes(b.role)) throw httpError(400, "bad_role");
+  const newRoles = rolesFromBody(b);
+  if (ctx.role === "user_admin") {
+    const wouldBe = newRoles || accountRoles(m);
+    if (accountRoles(m).some(r => r !== "learner") || wouldBe.some(r => r !== "learner")) throw httpError(403, "forbidden");
+  }
   const sets = [], vals = [];
   if (b.name != null) { sets.push("name = ?"); vals.push(b.name); }
   if (b.email != null) { sets.push("email = ?"); vals.push(b.email || null); }
   if (b.loginId != null) { sets.push("login_id = ?"); vals.push((b.loginId || "").trim() || null); }
-  if (b.role != null) { sets.push("role = ?"); vals.push(b.role); }
+  if (newRoles) { sets.push("role = ?"); vals.push(primaryRole(newRoles)); sets.push("roles = ?"); vals.push(newRoles.join(",")); }
   if (b.password) { sets.push("password_hash = ?"); vals.push(await hashPassword(b.password)); }
   if (sets.length) await ctx.db.prepare(`UPDATE accounts SET ${sets.join(", ")} WHERE id = ?`).bind(...vals, id).run();
   if (b.groups != null) await setMemberGroups(env, ctx.orgId, id, b.groups);
@@ -698,9 +726,9 @@ async function updateMember(request, env, id) {
 }
 async function deleteMember(request, env, id) {
   const ctx = await auth(request, env); requireCap(ctx, "manage_users");
-  const m = await ctx.db.prepare("SELECT role FROM accounts WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first();
+  const m = await ctx.db.prepare("SELECT role, roles FROM accounts WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first();
   if (!m) throw httpError(404, "not_found");
-  if (ctx.role === "user_admin" && m.role !== "learner") throw httpError(403, "forbidden");
+  if (ctx.role === "user_admin" && accountRoles(m).some(r => r !== "learner")) throw httpError(403, "forbidden");
   await ctx.db.prepare("DELETE FROM accounts WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).run();
   return json({ ok: true });
 }
@@ -751,7 +779,7 @@ async function audit(env, actorId, orgId, action, detail) {
   await env.DB.prepare("INSERT INTO audit_log (id, actor_id, org_id, action, detail) VALUES (?, ?, ?, ?, ?)")
     .bind(crypto.randomUUID(), actorId, orgId, action, JSON.stringify(detail || {})).run();
 }
-function publicAccount(a) { return { id: a.id, name: a.name, role: a.role, orgId: a.org_id, email: a.email, loginId: a.login_id }; }
+function publicAccount(a) { return { id: a.id, name: a.name, role: a.role, roles: accountRoles(a), orgId: a.org_id, email: a.email, loginId: a.login_id }; }
 async function body(request) { try { return await request.json(); } catch { return {}; } }
 function bearer(request) { const h = request.headers.get("authorization") || ""; return h.startsWith("Bearer ") ? h.slice(7) : null; }
 function json(obj, status = 200) { return new Response(JSON.stringify(obj), { status, headers: { "content-type": "application/json;charset=utf-8" } }); }
