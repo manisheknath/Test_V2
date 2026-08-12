@@ -64,6 +64,10 @@ export default {
       // ---- learner: my assigned courses ----
       else if (path === "/api/my/courses" && m === "GET") r = await myCourses(request, env);
       else if (path.match(/^\/api\/my\/courses\/[^/]+$/) && m === "GET") r = await myCourse(request, env, path.split("/")[4]);
+      // ---- course discussion (comments) ----
+      else if (path.match(/^\/api\/my\/courses\/[^/]+\/comments$/) && m === "GET") r = await listCourseComments(request, env, path.split("/")[4]);
+      else if (path.match(/^\/api\/my\/courses\/[^/]+\/comments$/) && m === "POST") r = await addCourseComment(request, env, path.split("/")[4]);
+      else if (path.match(/^\/api\/my\/courses\/[^/]+\/comments\/[^/]+$/) && m === "DELETE") r = await deleteCourseComment(request, env, path.split("/")[4], path.split("/")[6]);
 
       else r = json({ ok: false, error: "not_found" }, 404);
       return cors(r);
@@ -321,8 +325,9 @@ async function createCourse(request, env) {
   const b = await body(request);
   if (!b.title) throw httpError(400, "title_required");
   const id = crypto.randomUUID();
-  await ctx.db.prepare("INSERT INTO courses (id, org_id, title, summary, category, content, presentation, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'published')")
-    .bind(id, ctx.orgId, b.title, b.summary || null, b.category || null, b.content || null, cleanPresentation(b.presentation)).run();
+  const status = ["draft", "published"].includes(b.status) ? b.status : "draft";
+  await ctx.db.prepare("INSERT INTO courses (id, org_id, title, summary, category, content, presentation, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(id, ctx.orgId, b.title, b.summary || null, b.category || null, b.content || null, cleanPresentation(b.presentation), status).run();
   await audit(env, ctx.accountId, ctx.orgId, "course.create", { title: b.title });
   return json({ ok: true, id });
 }
@@ -336,6 +341,7 @@ async function updateCourse(request, env, id) {
   if (b.category != null) { sets.push("category = ?"); vals.push(b.category || null); }
   if (b.content != null) { sets.push("content = ?"); vals.push(b.content || null); }
   if (b.presentation != null) { sets.push("presentation = ?"); vals.push(cleanPresentation(b.presentation)); }
+  if (b.status != null && ["draft", "published", "archived"].includes(b.status)) { sets.push("status = ?"); vals.push(b.status); }
   if (sets.length) await ctx.db.prepare(`UPDATE courses SET ${sets.join(", ")} WHERE id = ? AND org_id = ?`).bind(...vals, id, ctx.orgId).run();
   return json({ ok: true });
 }
@@ -383,6 +389,15 @@ async function deleteEnrollment(request, env, id) {
 }
 
 /* ---------- Learner: courses assigned to me ---------- */
+// Lesson count as the learner player derives it: one lesson per visible chapter
+// (new format), one per block (legacy array), or a single lesson (legacy HTML).
+function courseLessonCount(content) {
+  if (!content) return 0;
+  let j = null; try { j = JSON.parse(content); } catch (_) { }
+  if (j && !Array.isArray(j) && j.chapters) return (j.chapters || []).filter(c => c && c.visible !== false).length;
+  if (Array.isArray(j)) return j.length;
+  return 1;
+}
 async function myCourseIds(ctx) {
   const ids = new Set();
   (await ctx.db.prepare("SELECT item_id FROM enrollments WHERE org_id = ? AND item_type = 'course' AND target_type = 'account' AND target_id = ?").bind(ctx.orgId, ctx.accountId).all())
@@ -397,18 +412,62 @@ async function myCourses(request, env) {
   const idList = await myCourseIds(ctx);
   if (!idList.length) return json({ ok: true, courses: [] });
   const ph = idList.map(() => "?").join(",");
-  const rows = (await ctx.db.prepare(`SELECT id, title, summary, category, presentation, created_at FROM courses WHERE org_id = ? AND status != 'archived' AND id IN (${ph}) ORDER BY created_at DESC`)
+  const rows = (await ctx.db.prepare(`SELECT id, title, summary, category, presentation, content, created_at FROM courses WHERE org_id = ? AND status = 'published' AND id IN (${ph}) ORDER BY created_at DESC`)
     .bind(ctx.orgId, ...idList).all()).results;
-  return json({ ok: true, courses: rows.map(c => ({ id: c.id, title: c.title, summary: c.summary || "", category: c.category || "", presentation: c.presentation || "slideshow" })) });
+  return json({ ok: true, courses: rows.map(c => ({ id: c.id, title: c.title, summary: c.summary || "", category: c.category || "", presentation: c.presentation || "slideshow", lessons: courseLessonCount(c.content) })) });
 }
 async function myCourse(request, env, id) {
   const ctx = await auth(request, env);
   if (!ctx.orgId) throw httpError(404, "not_found");
   const idList = await myCourseIds(ctx);
   if (!idList.includes(id)) throw httpError(403, "not_assigned");
-  const c = await ctx.db.prepare("SELECT id, title, summary, category, content, presentation FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first();
+  const c = await ctx.db.prepare("SELECT id, title, summary, category, content, presentation FROM courses WHERE id = ? AND org_id = ? AND status = 'published'").bind(id, ctx.orgId).first();
   if (!c) throw httpError(404, "not_found");
   return json({ ok: true, course: { id: c.id, title: c.title, summary: c.summary || "", category: c.category || "", content: c.content || "", presentation: c.presentation || "slideshow" } });
+}
+
+/* ---------- Course discussion (comments) ----------
+   One thread per course. Visible to anyone who can view the course: enrolled
+   learners (published courses) plus admins/coaches with manage_content. */
+async function canViewCourse(ctx, id) {
+  const c = await ctx.db.prepare("SELECT status FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first();
+  if (!c) return false;
+  if (ctx.role === "master" || (ctx.caps || []).includes("manage_content")) return true;
+  if (c.status !== "published") return false;
+  return (await myCourseIds(ctx)).includes(id);
+}
+async function listCourseComments(request, env, id) {
+  const ctx = await auth(request, env);
+  if (!ctx.orgId || !(await canViewCourse(ctx, id))) throw httpError(403, "forbidden");
+  const rows = (await ctx.db.prepare(
+    "SELECT cc.id, cc.account_id, cc.body, cc.created_at, a.name AS author FROM course_comments cc " +
+    "LEFT JOIN accounts a ON a.id = cc.account_id WHERE cc.org_id = ? AND cc.course_id = ? ORDER BY cc.created_at ASC")
+    .bind(ctx.orgId, id).all()).results;
+  return json({ ok: true, comments: rows.map(r => ({
+    id: r.id, body: r.body, author: r.author || "Someone", mine: r.account_id === ctx.accountId, createdAt: r.created_at,
+  })) });
+}
+async function addCourseComment(request, env, id) {
+  const ctx = await auth(request, env);
+  if (!ctx.orgId || !(await canViewCourse(ctx, id))) throw httpError(403, "forbidden");
+  const b = await body(request);
+  const text = (b.body || "").toString().trim();
+  if (!text) throw httpError(400, "empty");
+  if (text.length > 4000) throw httpError(400, "too_long");
+  const cid = crypto.randomUUID();
+  await ctx.db.prepare("INSERT INTO course_comments (id, org_id, course_id, account_id, body) VALUES (?, ?, ?, ?, ?)")
+    .bind(cid, ctx.orgId, id, ctx.accountId, text).run();
+  return json({ ok: true, id: cid });
+}
+async function deleteCourseComment(request, env, id, cid) {
+  const ctx = await auth(request, env);
+  if (!ctx.orgId) throw httpError(404, "not_found");
+  const row = await ctx.db.prepare("SELECT account_id FROM course_comments WHERE id = ? AND org_id = ? AND course_id = ?").bind(cid, ctx.orgId, id).first();
+  if (!row) throw httpError(404, "not_found");
+  const isAdmin = ctx.role === "master" || (ctx.caps || []).includes("manage_content");
+  if (row.account_id !== ctx.accountId && !isAdmin) throw httpError(403, "forbidden");
+  await ctx.db.prepare("DELETE FROM course_comments WHERE id = ? AND org_id = ?").bind(cid, ctx.orgId).run();
+  return json({ ok: true });
 }
 
 /* ---------- Master: role permissions per scope ----------

@@ -73,6 +73,17 @@ CREATE TABLE IF NOT EXISTS courses (
 );
 CREATE INDEX IF NOT EXISTS courses_org ON courses(org_id);
 
+-- Discussion thread shown to learners alongside a course (one thread per course).
+CREATE TABLE IF NOT EXISTS course_comments (
+  id         TEXT PRIMARY KEY,
+  org_id     TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+  course_id  TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  account_id TEXT REFERENCES accounts(id) ON DELETE SET NULL,
+  body       TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS course_comments_thread ON course_comments(org_id, course_id, created_at);
+
 CREATE TABLE IF NOT EXISTS modules (
   id        TEXT PRIMARY KEY,
   course_id TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
