@@ -265,57 +265,104 @@
   .td-evt .k{font-size:11.5px;color:var(--faint);} .td-evt .v{font-size:13px;font-weight:600;}
   @media(max-width:1000px){ #tview-trainings .td-grid{grid-template-columns:1fr;} .td-cl{grid-template-columns:1fr;} .td-cgrid{grid-template-columns:repeat(2,1fr);} }
 
-  /* ============ Full-screen course player ============ */
+  /* ============ Course player ============ */
   /* Opens in the content area, keeping the portal sidebar visible on the left. */
-  .cp{position:fixed;top:0;right:0;bottom:0;left:var(--sb-w,222px);z-index:40;background:var(--ds-surface,#fff);display:grid;
-    grid-template-columns:280px minmax(0,1fr) 320px;font-family:var(--ds-font,'Newsreader',Georgia,serif);color:var(--ds-text,#182233);transition:left .16s ease;}
+  .cp{position:fixed;top:0;right:0;bottom:0;left:var(--sb-w,222px);z-index:40;background:#F1F4F9;display:flex;flex-direction:column;
+    font-family:var(--ds-font,'Newsreader',Georgia,serif);color:var(--ds-text,#182233);transition:left .16s ease;}
   .cp.hidden{display:none;}
-  .cp-col{min-width:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column;}
-  .cp-nav{border-right:1px solid var(--ds-border,#E0E0E0);background:var(--ds-surface,#fff);}
-  .cp-nav-head{display:flex;align-items:center;justify-content:space-between;padding:20px 20px 10px;}
+  /* header bar */
+  .cp-top{display:flex;align-items:center;gap:20px;padding:15px 26px;background:#fff;border-bottom:1px solid var(--ds-border,#E6E9EF);flex-shrink:0;}
+  .cp-top-left{display:flex;align-items:center;gap:14px;min-width:0;flex:1;}
+  .cp-cover{width:54px;height:54px;border-radius:12px;flex-shrink:0;background-size:cover;background-position:center;background-color:#CBD5E3;}
+  .cp-top-info{min-width:0;}
+  .cp-top-title{display:flex;align-items:center;gap:10px;min-width:0;}
+  .cp-course-title{font-size:20px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cp-top-badge{font-size:11.5px;font-weight:600;padding:3px 10px;border-radius:999px;background:var(--ds-primary-soft,#E7F0FB);color:var(--ds-primary,#116ACC);flex-shrink:0;white-space:nowrap;}
+  .cp-top-badge.done{background:#DEF3E6;color:#1F8A4C;}
+  .cp-top-sub{font-size:13px;color:var(--ds-text-muted,#5B6472);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cp-top-right{display:flex;align-items:center;gap:14px;flex-shrink:0;}
+  .cp-top-prog{width:220px;}
+  .cp-top-prog-head{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--ds-text-muted,#5B6472);}
+  .cp-top-pct{font-weight:700;color:#27AE60;}
+  .cp-top-bar{height:7px;background:#E6E9EF;border-radius:999px;overflow:hidden;margin:6px 0 4px;}
+  .cp-top-bar>span{display:block;height:100%;background:#27AE60;border-radius:inherit;transition:width .3s;}
+  .cp-top-count{font-size:12px;color:var(--ds-text-faint,#8A94A3);}
+  .cp-hbtn{width:40px;height:40px;border:1px solid var(--ds-border,#E6E9EF);background:#fff;border-radius:10px;cursor:pointer;color:var(--ds-text-muted,#5B6472);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+  .cp-hbtn svg{width:18px;height:18px;}
+  .cp-hbtn:hover{border-color:var(--ds-primary,#116ACC);color:var(--ds-primary,#116ACC);}
+  .cp-hbtn.on{border-color:var(--ds-primary,#116ACC);color:var(--ds-primary,#116ACC);background:var(--ds-primary-soft,#E7F0FB);}
+  .cp-menu-wrap{position:relative;}
+  .cp-menu{position:absolute;top:46px;right:0;background:#fff;border:1px solid var(--ds-border,#E6E9EF);border-radius:10px;box-shadow:0 10px 30px rgba(24,34,51,.14);padding:6px;min-width:160px;z-index:8;}
+  .cp-menu.hidden{display:none;}
+  .cp-menu button{display:block;width:100%;text-align:left;padding:8px 11px;border:0;background:none;font-size:13.5px;color:var(--ds-text,#182233);border-radius:7px;cursor:pointer;font-family:inherit;}
+  .cp-menu button:hover{background:var(--ds-surface-3,#F2F4F8);}
+  /* two-pane body */
+  .cp-panes{flex:1;display:grid;grid-template-columns:340px minmax(0,1fr);gap:20px;padding:20px 26px;min-height:0;position:relative;}
+  .cp.cp-focus .cp-panes{grid-template-columns:minmax(0,1fr);}
+  .cp.cp-focus .cp-nav{display:none;}
+  .cp-nav{min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:14px;padding-right:2px;}
+  .cp-nav-card{background:#fff;border:1px solid var(--ds-border,#E6E9EF);border-radius:14px;padding:16px 18px;flex-shrink:0;}
+  .cp-nav-head{display:flex;align-items:center;justify-content:space-between;}
   .cp-nav-head .t{font-size:16px;font-weight:700;}
-  .cp-nav-head .pct{font-size:14px;font-weight:700;color:var(--ds-primary,#116ACC);}
-  .cp-progress{height:6px;margin:0 20px 14px;background:var(--ds-gray-5,#E0E0E0);border-radius:999px;overflow:hidden;}
-  .cp-progress>span{display:block;height:100%;background:var(--ds-primary,#116ACC);border-radius:inherit;transition:width .25s;}
-  .cp-lessons{padding:2px 10px 24px;display:flex;flex-direction:column;gap:2px;}
-  .cp-lesson{display:flex;align-items:center;gap:11px;padding:11px 12px;border:none;background:none;cursor:pointer;
-    text-align:left;width:100%;border-radius:9px;border-left:3px solid transparent;}
-  .cp-lesson:hover{background:var(--ds-surface-3,#F2F2F2);}
-  .cp-lesson.active{background:var(--ds-primary-soft,#E7F0FB);border-left-color:var(--ds-primary,#116ACC);}
-  .cp-lesson-ic{width:20px;height:20px;border-radius:50%;border:1.6px solid var(--ds-border-strong,#BDBDBD);flex-shrink:0;
-    display:grid;place-items:center;font-size:11px;color:#fff;}
-  .cp-lesson-ic.done{background:var(--ds-success,#27AE60);border-color:var(--ds-success,#27AE60);}
-  .cp-lesson.active .cp-lesson-ic:not(.done){border-color:var(--ds-primary,#116ACC);}
-  .cp-lesson-t{display:flex;flex-direction:column;gap:2px;min-width:0;}
-  .cp-lesson-name{font-size:13.5px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .cp-lesson.active .cp-lesson-name{color:var(--ds-primary,#116ACC);}
-  .cp-lesson-meta{font-size:11.5px;color:var(--ds-text-faint,#828282);}
-
-  .cp-main{background:var(--ds-surface,#fff);}
-  .cp-main-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:22px 34px 6px;}
-  .cp-eyebrow{font-size:12px;font-weight:600;color:var(--ds-text-muted,#4F4F4F);}
-  .cp-main-head h1{margin:6px 0 0;font-size:26px;font-weight:700;letter-spacing:-.02em;}
-  .cp-close{width:34px;height:34px;border:1px solid var(--ds-border,#E0E0E0);background:var(--ds-surface,#fff);border-radius:8px;
-    cursor:pointer;color:var(--ds-text-muted,#4F4F4F);font-size:18px;line-height:1;flex-shrink:0;}
-  .cp-close:hover{background:var(--ds-surface-3,#F2F2F2);color:var(--ds-text,#182233);}
-  .cp-body{flex:1;overflow-y:auto;padding:14px 34px 30px;font-size:15px;line-height:1.7;color:var(--ds-text,#182233);}
-  .cp-body h1{font-size:24px;} .cp-body h2{font-size:19px;margin:1em 0 .4em;} .cp-body h3{font-size:16px;margin:1em 0 .4em;}
+  .cp-items-badge{font-size:12px;font-weight:600;color:var(--ds-primary,#116ACC);background:var(--ds-primary-soft,#E7F0FB);padding:2px 9px;border-radius:999px;}
+  .cp-nav-sub{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--ds-text-muted,#5B6472);margin:12px 0 8px;}
+  .cp-nav-sub .pct{font-weight:700;color:#27AE60;}
+  .cp-progress{height:7px;background:#E6E9EF;border-radius:999px;overflow:hidden;}
+  .cp-progress>span{display:block;height:100%;background:#27AE60;border-radius:inherit;transition:width .3s;}
+  .cp-chapters{display:flex;flex-direction:column;gap:12px;padding-bottom:12px;}
+  .cp-chapter{background:#fff;border:1px solid var(--ds-border,#E6E9EF);border-radius:14px;overflow:hidden;}
+  .cp-ch-head{display:flex;align-items:center;gap:12px;width:100%;padding:14px 16px;border:0;background:none;cursor:pointer;font-family:inherit;text-align:left;}
+  .cp-ch-ic{width:38px;height:38px;flex-shrink:0;border-radius:10px;background:var(--ds-primary,#116ACC);color:#fff;display:grid;place-items:center;}
+  .cp-ch-ic.done{background:#27AE60;}
+  .cp-ch-ic svg{width:19px;height:19px;}
+  .cp-ch-meta{flex:1;min-width:0;}
+  .cp-ch-name{display:block;font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cp-ch-sub{display:block;font-size:12px;color:var(--ds-text-faint,#8A94A3);margin-top:1px;}
+  .cp-ch-caret{color:var(--ds-text-faint,#8A94A3);transition:transform .18s;flex-shrink:0;display:flex;}
+  .cp-ch-caret svg{width:18px;height:18px;}
+  .cp-chapter.open .cp-ch-caret{transform:rotate(180deg);}
+  .cp-ch-items{display:none;flex-direction:column;padding:0 10px 10px;}
+  .cp-chapter.open .cp-ch-items{display:flex;}
+  .cp-item{display:flex;align-items:center;gap:11px;width:100%;padding:10px;border:0;background:none;cursor:pointer;font-family:inherit;text-align:left;border-radius:9px;}
+  .cp-item:hover{background:#F4F6FA;}
+  .cp-item.active{background:var(--ds-primary-soft,#E7F0FB);}
+  .cp-item-ic{width:20px;height:20px;flex-shrink:0;border-radius:50%;border:2px solid var(--ds-border-strong,#C4CBD6);display:grid;place-items:center;font-size:11px;color:#fff;}
+  .cp-item-ic.cur{background:var(--ds-primary,#116ACC);border-color:var(--ds-primary,#116ACC);box-shadow:inset 0 0 0 2px #fff;}
+  .cp-item-ic.done{background:#27AE60;border-color:#27AE60;box-shadow:none;}
+  .cp-item-doc{color:var(--ds-text-faint,#8A94A3);display:flex;flex-shrink:0;}
+  .cp-item-doc svg{width:16px;height:16px;}
+  .cp-item.active .cp-item-doc{color:var(--ds-primary,#116ACC);}
+  .cp-item-name{flex:1;min-width:0;font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .cp-item.active .cp-item-name{color:var(--ds-primary,#116ACC);font-weight:600;}
+  .cp-item-cur{font-size:10.5px;font-weight:600;color:var(--ds-primary,#116ACC);background:#fff;border:1px solid var(--ds-primary,#116ACC);padding:1px 8px;border-radius:999px;flex-shrink:0;}
+  /* main lesson card */
+  .cp-main{min-height:0;display:flex;}
+  .cp-main-card{flex:1;min-height:0;background:#fff;border:1px solid var(--ds-border,#E6E9EF);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;}
+  .cp-main-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;padding:24px 30px 0;flex-shrink:0;}
+  .cp-eyebrow{font-size:13px;font-weight:600;color:var(--ds-primary,#116ACC);}
+  .cp-main-head h1{margin:8px 0 0;font-size:27px;font-weight:700;letter-spacing:-.02em;line-height:1.15;}
+  .cp-main-actions{display:flex;gap:8px;flex-shrink:0;}
+  .cp-divider{height:1px;background:var(--ds-border,#E6E9EF);margin:18px 30px 0;flex-shrink:0;}
+  .cp-body{flex:1;overflow-y:auto;padding:18px 30px 26px;font-size:15.5px;line-height:1.7;color:var(--ds-text,#182233);}
+  .cp-body h1{font-size:23px;} .cp-body h2{font-size:19px;margin:1em 0 .4em;} .cp-body h3{font-size:16px;margin:1em 0 .4em;}
   .cp-body p{margin:.6em 0;} .cp-body ul,.cp-body ol{margin:.6em 0 .6em 1.5em;} .cp-body a{color:var(--ds-primary,#116ACC);}
   .cp-body img{max-width:100%;} .cp-body audio,.cp-body video{width:100%;}
-  .cp-foot{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 34px;border-top:1px solid var(--ds-border,#E0E0E0);background:var(--ds-surface,#fff);}
-  .cp-fbtn{font-family:inherit;font-weight:600;font-size:13.5px;padding:11px 18px;border-radius:9px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;}
-  .cp-prev{background:var(--ds-surface,#fff);border:1px solid var(--ds-border-strong,#BDBDBD);color:var(--ds-text,#182233);}
-  .cp-prev:hover{background:var(--ds-surface-3,#F2F2F2);}
+  .cp-foot{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 30px;border-top:1px solid var(--ds-border,#E6E9EF);flex-shrink:0;}
+  .cp-fbtn{font-family:inherit;font-weight:600;font-size:13.5px;padding:11px 18px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;}
+  .cp-prev{background:#fff;border:1px solid var(--ds-border-strong,#C4CBD6);color:var(--ds-text,#182233);}
+  .cp-prev:hover:not(:disabled){background:#F4F6FA;}
   .cp-prev:disabled,.cp-next:disabled{opacity:.45;cursor:not-allowed;}
   .cp-next{background:var(--ds-primary,#116ACC);border:1px solid var(--ds-primary,#116ACC);color:#fff;}
   .cp-next:hover:not(:disabled){background:var(--ds-primary-hover,#0E5AAE);}
-  .cp-complete{background:none;border:none;color:var(--ds-success,#27AE60);font-weight:600;font-size:13.5px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;}
-  .cp-complete.is-done{color:var(--ds-text-faint,#828282);}
-  .cp-complete .dot{width:18px;height:18px;border-radius:50%;border:1.6px solid currentColor;display:grid;place-items:center;font-size:11px;}
-  .cp-complete.is-done .dot{background:var(--ds-success,#27AE60);border-color:var(--ds-success,#27AE60);color:#fff;}
-
-  .cp-cm{border-left:1px solid var(--ds-border,#E0E0E0);background:var(--ds-surface-2,#F7F9FC);}
-  .cp-cm-head{display:flex;align-items:center;gap:8px;padding:18px 18px 12px;font-weight:700;font-size:15px;}
+  .cp-complete{background:#fff;border:1px solid var(--ds-border-strong,#C4CBD6);color:var(--ds-text,#182233);font-family:inherit;font-weight:600;font-size:13.5px;padding:11px 18px;border-radius:10px;cursor:pointer;display:inline-flex;align-items:center;gap:8px;}
+  .cp-complete:hover{background:#F4F6FA;}
+  .cp-complete.is-done{background:#DEF3E6;border-color:#27AE60;color:#1F8A4C;}
+  .cp-complete .dot{width:18px;height:18px;border-radius:50%;border:1.6px solid #27AE60;color:#27AE60;display:grid;place-items:center;font-size:11px;}
+  .cp-complete.is-done .dot{background:#27AE60;border-color:#27AE60;color:#fff;}
+  /* comments drawer */
+  .cp-cm{position:absolute;top:20px;right:26px;bottom:20px;width:340px;max-width:calc(100% - 40px);background:#fff;border:1px solid var(--ds-border,#E6E9EF);border-radius:14px;box-shadow:0 18px 44px rgba(24,34,51,.18);display:flex;flex-direction:column;transform:translateX(calc(100% + 60px));transition:transform .2s ease;z-index:7;}
+  .cp.cm-open .cp-cm{transform:translateX(0);}
+  .cp-cm-head{display:flex;align-items:center;gap:8px;padding:16px 16px 12px;font-weight:700;font-size:15px;border-bottom:1px solid var(--ds-border,#E6E9EF);}
   .cp-cm-count{font-size:12px;font-weight:600;color:#fff;background:var(--ds-primary,#116ACC);min-width:20px;height:20px;padding:0 6px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;}
   .cp-cm-count:empty{display:none;}
   .cp-cm-body{flex:1;overflow-y:auto;padding:6px 16px 14px;display:flex;flex-direction:column;gap:14px;}
@@ -334,18 +381,11 @@
   .cp-cm-input textarea{flex:1;border:1px solid var(--ds-border-strong,#BDBDBD);border-radius:16px;padding:9px 14px;font-family:inherit;font-size:13px;resize:none;max-height:120px;line-height:1.4;}
   .cp-cm-input textarea:focus{outline:none;border-color:var(--ds-primary,#116ACC);}
   .cp-cm-input button{width:38px;height:38px;flex-shrink:0;border:none;border-radius:50%;background:var(--ds-primary,#116ACC);color:#fff;cursor:pointer;font-size:15px;}
-  .cp.no-cm{grid-template-columns:280px minmax(0,1fr);}
-  .cp.no-cm .cp-cm{display:none;}
-  .cp-head-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
-  .cp-headbtn{width:34px;height:34px;border:1px solid var(--ds-border,#E0E0E0);background:var(--ds-surface,#fff);border-radius:8px;cursor:pointer;color:var(--ds-text-muted,#4F4F4F);display:inline-flex;align-items:center;justify-content:center;}
-  .cp-headbtn svg{width:17px;height:17px;}
-  .cp-headbtn:hover{border-color:var(--ds-primary,#116ACC);color:var(--ds-primary,#116ACC);}
-  .cp-headbtn.on{border-color:var(--ds-primary,#116ACC);color:var(--ds-primary,#116ACC);background:var(--ds-primary-soft,#E7F0FB);}
   .cp-cm-hide{margin-left:auto;border:none;background:none;color:var(--ds-text-faint,#828282);cursor:pointer;font-size:18px;line-height:1;padding:2px 7px;border-radius:7px;}
-  .cp-cm-hide:hover{background:var(--ds-surface-3,#F2F2F2);color:var(--ds-text,#182233);}
-  @media(max-width:1180px){ .cp,.cp.no-cm{grid-template-columns:250px minmax(0,1fr);} .cp-cm{display:none;} .cp-headbtn{display:none;} }
+  .cp-cm-hide:hover{background:var(--ds-surface-3,#F2F4F8);color:var(--ds-text,#182233);}
+  @media(max-width:1100px){ .cp-panes{grid-template-columns:280px minmax(0,1fr);} .cp-top-prog{width:170px;} }
+  @media(max-width:900px){ .cp-panes{grid-template-columns:minmax(0,1fr);} .cp-nav{display:none;} .cp-top-sub{display:none;} }
   @media(max-width:820px){ .cp{left:0;} }
-  @media(max-width:720px){ .cp{grid-template-columns:1fr;} .cp-nav{display:none;} }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
@@ -513,38 +553,67 @@
   </div>
 </div>
 
-<!-- ============ FULL-SCREEN COURSE PLAYER ============ -->
+<!-- ============ COURSE PLAYER ============ -->
 <div id="coursePlayer" class="cp hidden">
-  <!-- Left: course content -->
-  <div class="cp-col cp-nav">
-    <div class="cp-nav-head"><span class="t">Course Content</span><span class="pct" id="cpPct">0%</span></div>
-    <div class="cp-progress"><span id="cpBar" style="width:0"></span></div>
-    <div class="cp-lessons" id="cpLessons"></div>
-  </div>
-  <!-- Center: lesson -->
-  <div class="cp-col cp-main">
-    <div class="cp-main-head">
-      <div><div class="cp-eyebrow" id="cpMeta"></div><h1 id="cpTitle">Lesson</h1></div>
-      <div class="cp-head-actions">
-        <button class="cp-headbtn on" id="cpCmToggle" title="Toggle comments" aria-label="Toggle comments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
-        <button class="cp-close" id="cpClose" aria-label="Close">&times;</button>
+  <!-- header bar -->
+  <div class="cp-top">
+    <div class="cp-top-left">
+      <div class="cp-cover" id="cpCover"></div>
+      <div class="cp-top-info">
+        <div class="cp-top-title"><span class="cp-course-title" id="cpCourseTitle">Course</span><span class="cp-top-badge" id="cpCourseBadge">In Progress</span></div>
+        <div class="cp-top-sub" id="cpCourseSub"></div>
       </div>
     </div>
-    <div class="cp-body" id="cpBody"></div>
-    <div class="cp-foot">
-      <button class="cp-fbtn cp-prev" id="cpPrev">‹ Previous</button>
-      <button class="cp-complete" id="cpComplete"><span class="dot" id="cpCompDot"></span><span id="cpCompLbl">Mark as Complete</span></button>
-      <button class="cp-fbtn cp-next" id="cpNext">Next Lesson ›</button>
+    <div class="cp-top-right">
+      <div class="cp-top-prog">
+        <div class="cp-top-prog-head"><span>Course Progress</span><span class="cp-top-pct" id="cpTopPct">0%</span></div>
+        <div class="cp-top-bar"><span id="cpTopBar" style="width:0"></span></div>
+        <div class="cp-top-count" id="cpTopCount">0 of 0 items completed</div>
+      </div>
+      <button class="cp-hbtn" id="cpCmToggle" title="Comments" aria-label="Comments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+      <div class="cp-menu-wrap">
+        <button class="cp-hbtn" id="cpMore" title="More" aria-label="More"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="12" cy="19" r="1.9"/></svg></button>
+        <div class="cp-menu hidden" id="cpMenu"><button id="cpExitBtn">Exit course</button></div>
+      </div>
     </div>
   </div>
-  <!-- Right: comments / discussion -->
-  <div class="cp-col cp-cm" id="cpCm">
-    <div class="cp-cm-head"><span>Comments</span><span class="cp-cm-count" id="cpCmCount"></span><button class="cp-cm-hide" id="cpCmClose" title="Hide comments" aria-label="Hide comments">&times;</button></div>
-    <div class="cp-cm-body" id="cpCmBody"></div>
-    <div class="cp-cm-input">
-      <textarea id="cpCmInput" rows="1" placeholder="Add a comment…"></textarea>
-      <button id="cpCmSend" aria-label="Post comment">→</button>
-    </div>
+  <!-- two-pane body -->
+  <div class="cp-panes">
+    <aside class="cp-nav">
+      <div class="cp-nav-card">
+        <div class="cp-nav-head"><span class="t">Course Content</span><span class="cp-items-badge" id="cpItemsBadge">0 items</span></div>
+        <div class="cp-nav-sub"><span id="cpNavCount">0 of 0 items completed</span><span class="pct" id="cpNavPct">0%</span></div>
+        <div class="cp-progress"><span id="cpBar" style="width:0"></span></div>
+      </div>
+      <div class="cp-chapters" id="cpChapters"></div>
+    </aside>
+    <main class="cp-main">
+      <div class="cp-main-card">
+        <div class="cp-main-head">
+          <div><div class="cp-eyebrow" id="cpMeta">Chapter 1</div><h1 id="cpTitle">Lesson</h1></div>
+          <div class="cp-main-actions">
+            <button class="cp-hbtn" id="cpBookmark" title="Bookmark this lesson" aria-label="Bookmark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1Z"/></svg></button>
+            <button class="cp-hbtn" id="cpExpand" title="Focus mode" aria-label="Focus mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
+          </div>
+        </div>
+        <div class="cp-divider"></div>
+        <div class="cp-body" id="cpBody"></div>
+        <div class="cp-foot">
+          <button class="cp-fbtn cp-prev" id="cpPrev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Previous Lesson</button>
+          <button class="cp-complete" id="cpComplete"><span class="dot" id="cpCompDot"></span><span id="cpCompLbl">Mark as Complete</span></button>
+          <button class="cp-fbtn cp-next" id="cpNext">Next Lesson <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+        </div>
+      </div>
+    </main>
+    <!-- comments drawer -->
+    <aside class="cp-cm" id="cpCm">
+      <div class="cp-cm-head"><span>Comments</span><span class="cp-cm-count" id="cpCmCount"></span><button class="cp-cm-hide" id="cpCmClose" title="Hide" aria-label="Hide">&times;</button></div>
+      <div class="cp-cm-body" id="cpCmBody"></div>
+      <div class="cp-cm-input">
+        <textarea id="cpCmInput" rows="1" placeholder="Add a comment…"></textarea>
+        <button id="cpCmSend" aria-label="Post comment">→</button>
+      </div>
+    </aside>
   </div>
 </div>
 
@@ -663,6 +732,7 @@ function updateTakerNavCounts(){
   const nr=document.getElementById('navResultsCount'); if(nr) nr.textContent=(counts.completed||0)||'';
 }
 function switchTakerView(view){
+  const cp=document.getElementById('coursePlayer'); if(cp && !cp.classList.contains('hidden') && typeof cpClosePlayer==='function') cpClosePlayer();
   document.querySelectorAll('#screenApp .nav-item').forEach(b=>b.classList.toggle('active', b.dataset.tview===view));
   ['dashboard','trainings','tests','results','certificates'].forEach(v=>{
     const el=document.getElementById('tview-'+v); if(el) el.hidden = (v!==view);
@@ -1054,9 +1124,14 @@ document.getElementById('tview-trainings').addEventListener('click', (e)=>{
 });
 
 /* ---------- Full-screen course player ---------- */
-let CP_LESSONS=[], CP_IDX=0, CP_DONE=new Set(), CP_COURSE=null;
-const CP_KIND={chapter:'Chapter',section:'Reading',document:'Document',video:'Video',audio:'Audio',quiz:'Quiz',webinar:'Webinar'};
+let CP_CHAPTERS=[], CP_ITEMS=[], CP_IDX=0, CP_DONE=new Set(), CP_COURSE=null, CP_OPEN=new Set(), CP_BM=null;
+const CP_KIND={heading:'Heading',text:'Text',assignment:'Assignment',image:'Image',video:'Video',audio:'Audio',pdf:'PDF',presentation:'Presentation',link:'Link',embed:'Embed',quiz:'Quiz',section:'Reading',document:'Document',webinar:'Webinar'};
+const CP_DOC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M7 3h8l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M9 13h6M9 17h4"/></svg>';
+const CP_BOOK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4a2 2 0 0 1 2-2h12v18H7a2 2 0 0 0-2 2z"/><path d="M5 20a2 2 0 0 0 2 2h12"/></svg>';
+const CP_CARET='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
 function cpKey(cid){ return 'cpDone_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
+function cpBmKey(cid){ return 'cpBm_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
+function cpCssUrl(u){ return "'"+String(u).replace(/'/g,'%27')+"'"; }
 // Completion is stored server-side (cross-device); localStorage is a cache/fallback.
 async function cpLoadProgress(courseId){
   const d = await lmsGet('/api/my/courses/'+courseId+'/progress');
@@ -1073,105 +1148,138 @@ function cpSaveProgress(){
   try{ localStorage.setItem(cpKey(CP_COURSE.id), JSON.stringify(arr)); }catch(e){}
   lmsSend('/api/my/courses/'+CP_COURSE.id+'/progress','PUT',{ lessons: arr.map(String) });
 }
-function cpLessonName(b,i){
-  if(b.type==='chapter') return (b.title||'').trim() || ('Chapter '+(i+1));
-  return (b.title||'').trim() || ((b.type||'section')==='section' ? ('Lesson '+(i+1)) : (CP_KIND[b.type]||'Lesson'));
-}
-function cpLessonMeta(b){
-  if(b.type==='chapter'){ const n=(b.blocks||[]).length; return n?(n+' item'+(n===1?'':'s')):'Empty'; }
-  return CP_KIND[b.type]||'Lesson';
-}
-// Render a single content block (new chapter-based courses).
+// Render a single content block into the main lesson pane.
 function cpNewBlockHtml(b){
   const t=b.type;
-  if(t==='heading') return b.text?'<h2 style="font-size:20px;margin:22px 0 10px;font-weight:700;letter-spacing:-.01em;">'+esc(b.text)+'</h2>':'';
-  if(t==='text') return b.html?'<div style="margin:0 0 14px;line-height:1.65;">'+b.html+'</div>':'';
-  if(t==='assignment') return '<div style="border-left:3px solid var(--ds-primary,#116ACC);background:rgba(17,106,204,.06);padding:12px 14px;border-radius:0 8px 8px 0;margin:14px 0;"><div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ds-primary,#116ACC);margin-bottom:6px;">Assignment</div>'+(b.html||'<span style="opacity:.6;">(no instructions)</span>')+'</div>';
-  if(t==='image') return b.url?'<figure style="margin:14px 0;"><img src="'+esc(b.url)+'" style="max-width:100%;border-radius:8px;display:block;">'+(b.caption?'<figcaption style="font-size:12px;color:var(--ds-text-muted,#667);margin-top:6px;">'+esc(b.caption)+'</figcaption>':'')+'</figure>':'';
-  if(t==='video') return b.url?'<div style="margin:14px 0;">'+tdVideo(b.url)+'</div>':'';
-  if(t==='audio') return b.url?'<audio controls src="'+esc(b.url)+'" style="width:100%;margin:14px 0;"></audio>':'';
-  if(t==='pdf'||t==='presentation') return b.url?'<div style="margin:14px 0;">'+tdDoc(b.url)+'</div>':'';
-  if(t==='embed') return b.html?'<div style="margin:14px 0;">'+b.html+'</div>':'';
-  if(t==='link') return b.url?'<p style="margin:12px 0;"><a href="'+esc(b.url)+'" target="_blank" rel="noopener">'+esc(b.label||'Open link ↗')+'</a></p>':'';
-  if(t==='quiz') return b.url?'<p style="margin:12px 0;"><a href="'+esc(b.url)+'" target="_blank" rel="noopener">'+esc(b.label||'Open quiz ↗')+'</a></p>':'';
+  if(t==='heading') return b.text?'<h2 style="font-size:20px;margin:0 0 10px;font-weight:700;letter-spacing:-.01em;">'+esc(b.text)+'</h2>':'';
+  if(t==='text') return b.html?'<div style="line-height:1.7;">'+b.html+'</div>':'';
+  if(t==='assignment') return '<div style="border-left:3px solid var(--ds-primary,#116ACC);background:rgba(17,106,204,.06);padding:12px 14px;border-radius:0 8px 8px 0;margin:6px 0;"><div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ds-primary,#116ACC);margin-bottom:6px;">Assignment</div>'+(b.html||'<span style="opacity:.6;">(no instructions)</span>')+'</div>';
+  if(t==='image') return b.url?'<figure style="margin:6px 0;"><img src="'+esc(b.url)+'" style="max-width:100%;border-radius:8px;display:block;">'+(b.caption?'<figcaption style="font-size:12px;color:var(--ds-text-muted,#667);margin-top:6px;">'+esc(b.caption)+'</figcaption>':'')+'</figure>':'';
+  if(t==='video') return b.url?'<div style="margin:6px 0;">'+tdVideo(b.url)+'</div>':'';
+  if(t==='audio') return b.url?'<audio controls src="'+esc(b.url)+'" style="width:100%;margin:6px 0;"></audio>':'';
+  if(t==='pdf'||t==='presentation') return b.url?'<div style="margin:6px 0;">'+tdDoc(b.url)+'</div>':'';
+  if(t==='embed') return b.html?'<div style="margin:6px 0;">'+b.html+'</div>':'';
+  if(t==='link') return b.url?'<p style="margin:8px 0;"><a href="'+esc(b.url)+'" target="_blank" rel="noopener">'+esc(b.label||'Open link ↗')+'</a></p>':'';
+  if(t==='quiz') return b.url?'<p style="margin:8px 0;"><a href="'+esc(b.url)+'" target="_blank" rel="noopener">'+esc(b.label||'Open quiz ↗')+'</a></p>':'';
   return '';
 }
-function cpChapterHtml(ch){
-  const body=(ch.blocks||[]).map(cpNewBlockHtml).join('');
-  return (ch.description?'<p style="color:var(--ds-text-muted,#667);font-size:14.5px;margin:0 0 16px;">'+esc(ch.description)+'</p>':'')+
-    (body||'<p style="color:var(--ds-text-faint);">This chapter has no content yet.</p>');
+// A readable name for an item (block) in the content tree.
+function cpClip(s){ s=(s||'').replace(/\s+/g,' ').trim(); return s.length>46?s.slice(0,46)+'…':s; }
+function cpItemName(b,i){
+  if(b.type==='heading') return b.text||('Lesson '+(i+1));
+  if(b.type==='text'||b.type==='assignment'){
+    const hm=(b.html||'').match(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/i);
+    if(hm){ const ht=cpClip(hm[1].replace(/<[^>]+>/g,' ').replace(/&[^;]+;/g,' ')); if(ht) return ht; }
+    const t=cpClip((b.html||'').replace(/<[^>]+>/g,' ').replace(/&[^;]+;/g,' '));
+    return t||('Lesson '+(i+1));
+  }
+  if(b.type==='image') return b.caption||'Image';
+  if((b.type==='link'||b.type==='quiz')&&b.label) return b.label;
+  return CP_KIND[b.type]||('Item '+(i+1));
 }
-function cpBlockHtml(b){
-  if(b.type==='chapter') return cpChapterHtml(b);
-  const t=b.type||'section'; let inner;
-  if(t==='video') inner=b.url?tdVideo(b.url):'';
-  else if(t==='audio') inner=b.url?('<audio controls src="'+esc(b.url)+'"></audio>'):'';
-  else if(t==='document') inner=b.url?tdDoc(b.url):(b.html||'');
-  else if(t==='section') inner=b.html||'';
-  else inner=b.url?('<a href="'+esc(b.url)+'" target="_blank" rel="noopener">Open ↗</a>'):'';
-  return inner||'<p style="color:var(--ds-text-faint);">This lesson has no content yet.</p>';
-}
+function cpBuildItems(){ CP_ITEMS=[]; CP_CHAPTERS.forEach((ch,ci)=>{ (ch.blocks||[]).forEach(b=>CP_ITEMS.push({ci:ci,block:b})); }); }
 async function openCourseFull(courseId){
   const d=await lmsGet('/api/my/courses/'+courseId);
   if(!d||!d.ok||!d.course){ toast&&toast('Could not open this course.','error'); return; }
   CP_COURSE=d.course;
-  const raw=CP_COURSE.content||''; let lessons=[]; let j=null; try{ j=JSON.parse(raw); }catch(_){}
-  if(j && !Array.isArray(j) && j.chapters){                 // new chapter-based course → one lesson per (visible) chapter
-    lessons=(j.chapters||[]).filter(c=>c.visible!==false).map(c=>({type:'chapter',title:c.title,description:c.description,blocks:c.blocks||[]}));
-  } else if(Array.isArray(j)){                              // legacy flat blocks
-    lessons=j;
-  } else if(raw){                                           // legacy plain HTML
-    lessons=[{type:'section',title:CP_COURSE.title,html:raw}];
-  }
-  CP_LESSONS=lessons.length?lessons:[{type:'section',title:CP_COURSE.title||'Course',html:'<p>No content yet.</p>'}];
+  const raw=CP_COURSE.content||''; let j=null; try{ j=JSON.parse(raw); }catch(_){}
+  let cover='', chapters=[];
+  if(j && !Array.isArray(j) && j.chapters){ cover=j.cover||''; chapters=(j.chapters||[]).filter(c=>c.visible!==false).map(c=>({title:c.title,description:c.description,blocks:c.blocks||[]})); }
+  else if(Array.isArray(j)){ chapters=[{title:CP_COURSE.title,description:'',blocks:j}]; }
+  else if(raw){ chapters=[{title:CP_COURSE.title,description:'',blocks:[{type:'text',html:raw}]}]; }
+  if(!chapters.length) chapters=[{title:CP_COURSE.title||'Course',description:'',blocks:[{type:'text',html:'<p>No content yet.</p>'}]}];
+  CP_CHAPTERS=chapters; cpBuildItems();
+  if(!CP_ITEMS.length){ CP_CHAPTERS=[{title:CP_COURSE.title||'Course',description:'',blocks:[{type:'text',html:'<p>No content yet.</p>'}]}]; cpBuildItems(); }
   await cpLoadProgress(courseId);
-  CP_IDX=0;
-  cpShow(0);
+  try{ CP_BM=JSON.parse(localStorage.getItem(cpBmKey(courseId))); if(typeof CP_BM!=='number') CP_BM=null; }catch(e){ CP_BM=null; }
+  document.getElementById('cpCourseTitle').textContent=CP_COURSE.title||'Course';
+  document.getElementById('cpCourseSub').textContent=CP_COURSE.summary||'';
+  document.getElementById('cpCover').style.backgroundImage=cover?('url('+cpCssUrl(cover)+')'):'';
+  CP_OPEN=new Set();
+  CP_IDX=(CP_BM!=null && CP_BM<CP_ITEMS.length)?CP_BM:0;
+  const p=document.getElementById('coursePlayer'); p.classList.remove('cp-focus'); cpSetComments(false);
+  cpShow(CP_IDX);
   cpLoadComments(courseId);
-  cpSetComments(localStorage.getItem('cpCmHidden')==='1');
-  document.getElementById('coursePlayer').classList.remove('hidden');
+  p.classList.remove('hidden');
   document.documentElement.style.overflow='hidden';
 }
-function cpRenderLessons(){
-  const total=CP_LESSONS.length, done=CP_LESSONS.filter((_,i)=>CP_DONE.has(i)).length;
-  const pct=total?Math.round(done/total*100):0;
-  document.getElementById('cpPct').textContent=pct+'%';
-  document.getElementById('cpBar').style.width=pct+'%';
-  document.getElementById('cpLessons').innerHTML=CP_LESSONS.map((b,i)=>{
-    const done=CP_DONE.has(i), active=i===CP_IDX;
-    return '<button class="cp-lesson'+(active?' active':'')+'" data-i="'+i+'">'+
-      '<span class="cp-lesson-ic'+(done?' done':'')+'">'+(done?'✓':'')+'</span>'+
-      '<span class="cp-lesson-t"><span class="cp-lesson-name">'+esc(cpLessonName(b,i))+'</span>'+
-      '<span class="cp-lesson-meta">'+esc(cpLessonMeta(b))+'</span></span></button>';
-  }).join('');
+function cpRenderChapters(){
+  const el=document.getElementById('cpChapters'); let gi=0; const out=[];
+  CP_CHAPTERS.forEach((ch,ci)=>{
+    const items=[]; (ch.blocks||[]).forEach(b=>{ items.push({g:gi,block:b}); gi++; });
+    const total=items.length, doneN=items.filter(x=>CP_DONE.has(x.g)).length;
+    const chDone=total>0&&doneN>=total, open=CP_OPEN.has(ci);
+    const rows=open?items.map(x=>{
+      const done=CP_DONE.has(x.g), cur=x.g===CP_IDX;
+      return '<button class="cp-item'+(cur?' active':'')+'" data-i="'+x.g+'">'+
+        '<span class="cp-item-ic'+(done?' done':(cur?' cur':''))+'">'+(done?'✓':'')+'</span>'+
+        '<span class="cp-item-doc">'+CP_DOC+'</span>'+
+        '<span class="cp-item-name">'+esc(cpItemName(x.block,x.g))+'</span>'+
+        (cur?'<span class="cp-item-cur">Current</span>':'')+'</button>';
+    }).join(''):'';
+    out.push('<div class="cp-chapter'+(open?' open':'')+'" data-ch="'+ci+'">'+
+      '<button class="cp-ch-head" data-chtoggle="'+ci+'">'+
+        '<span class="cp-ch-ic'+(chDone?' done':'')+'">'+CP_BOOK+'</span>'+
+        '<span class="cp-ch-meta"><span class="cp-ch-name">'+esc(ch.title||('Chapter '+(ci+1)))+'</span><span class="cp-ch-sub">'+total+' item'+(total===1?'':'s')+'</span></span>'+
+        '<span class="cp-ch-caret">'+CP_CARET+'</span></button>'+
+      '<div class="cp-ch-items">'+rows+'</div></div>');
+  });
+  el.innerHTML=out.join('');
+}
+function cpUpdateProgressUI(){
+  const total=CP_ITEMS.length, done=[...CP_DONE].filter(i=>i>=0&&i<total).length;
+  const pct=total?Math.round(done/total*100):0, txt=done+' of '+total+' item'+(total===1?'':'s')+' completed';
+  const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
+  const barW=(id,pp)=>{ const e=document.getElementById(id); if(e) e.style.width=pp+'%'; };
+  set('cpTopPct',pct+'%'); barW('cpTopBar',pct); set('cpTopCount',txt);
+  set('cpNavPct',pct+'%'); barW('cpBar',pct); set('cpNavCount',txt);
+  set('cpItemsBadge',total+' item'+(total===1?'':'s'));
+  const badge=document.getElementById('cpCourseBadge'); if(badge){ const c=total>0&&pct>=100; badge.textContent=c?'Completed':(done>0?'In Progress':'Not started'); badge.className='cp-top-badge'+(c?' done':''); }
 }
 function cpShow(i){
-  CP_IDX=Math.max(0,Math.min(i,CP_LESSONS.length-1));
-  const b=CP_LESSONS[CP_IDX];
-  document.getElementById('cpMeta').textContent=cpLessonMeta(b);
-  document.getElementById('cpTitle').textContent=cpLessonName(b,CP_IDX);
-  document.getElementById('cpBody').innerHTML=cpBlockHtml(b);
+  if(!CP_ITEMS.length) return;
+  CP_IDX=Math.max(0,Math.min(i,CP_ITEMS.length-1));
+  const it=CP_ITEMS[CP_IDX]; CP_OPEN.add(it.ci);
+  document.getElementById('cpMeta').textContent='Chapter '+(it.ci+1)+' of '+CP_CHAPTERS.length;
+  document.getElementById('cpTitle').textContent=cpItemName(it.block,CP_IDX);
+  document.getElementById('cpBody').innerHTML=cpNewBlockHtml(it.block)||'<p style="color:var(--ds-text-faint,#8A94A3);">This item has no content yet.</p>';
   document.getElementById('cpBody').scrollTop=0;
   document.getElementById('cpPrev').disabled=CP_IDX===0;
-  document.getElementById('cpNext').disabled=CP_IDX===CP_LESSONS.length-1;
-  const isDone=CP_DONE.has(CP_IDX);
-  const comp=document.getElementById('cpComplete');
+  document.getElementById('cpNext').disabled=CP_IDX===CP_ITEMS.length-1;
+  const isDone=CP_DONE.has(CP_IDX), comp=document.getElementById('cpComplete');
   comp.classList.toggle('is-done',isDone);
   document.getElementById('cpCompLbl').textContent=isDone?'Completed':'Mark as Complete';
   document.getElementById('cpCompDot').textContent=isDone?'✓':'';
-  cpRenderLessons();
+  const bm=document.getElementById('cpBookmark'); if(bm) bm.classList.toggle('on',CP_BM===CP_IDX);
+  cpRenderChapters(); cpUpdateProgressUI();
 }
-document.getElementById('cpLessons').addEventListener('click', (e)=>{ const b=e.target.closest('[data-i]'); if(b) cpShow(+b.dataset.i); });
+document.getElementById('cpChapters').addEventListener('click',(e)=>{
+  const tog=e.target.closest('[data-chtoggle]');
+  if(tog){ const ci=+tog.dataset.chtoggle; if(CP_OPEN.has(ci)) CP_OPEN.delete(ci); else CP_OPEN.add(ci); cpRenderChapters(); return; }
+  const it=e.target.closest('[data-i]'); if(it) cpShow(+it.dataset.i);
+});
 document.getElementById('cpPrev').addEventListener('click', ()=>cpShow(CP_IDX-1));
 document.getElementById('cpNext').addEventListener('click', ()=>cpShow(CP_IDX+1));
 document.getElementById('cpComplete').addEventListener('click', ()=>{
   if(CP_DONE.has(CP_IDX)) CP_DONE.delete(CP_IDX); else CP_DONE.add(CP_IDX);
-  cpSaveProgress();
-  cpShow(CP_IDX);
+  cpSaveProgress(); cpShow(CP_IDX);
 });
+document.getElementById('cpBookmark').addEventListener('click', ()=>{
+  CP_BM=(CP_BM===CP_IDX)?null:CP_IDX;
+  if(CP_COURSE){ try{ if(CP_BM==null) localStorage.removeItem(cpBmKey(CP_COURSE.id)); else localStorage.setItem(cpBmKey(CP_COURSE.id),String(CP_BM)); }catch(e){} }
+  document.getElementById('cpBookmark').classList.toggle('on',CP_BM===CP_IDX);
+});
+document.getElementById('cpExpand').addEventListener('click', ()=>{ document.getElementById('coursePlayer').classList.toggle('cp-focus'); });
+document.getElementById('cpMore').addEventListener('click',(e)=>{ e.stopPropagation(); document.getElementById('cpMenu').classList.toggle('hidden'); });
+document.addEventListener('click', ()=>{ const m=document.getElementById('cpMenu'); if(m) m.classList.add('hidden'); });
 function cpClosePlayer(){ document.getElementById('coursePlayer').classList.add('hidden'); document.documentElement.style.overflow=''; if(typeof loadMyCourses==='function') loadMyCourses(); }
-document.getElementById('cpClose').addEventListener('click', cpClosePlayer);
-document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && !document.getElementById('coursePlayer').classList.contains('hidden')) cpClosePlayer(); });
+document.getElementById('cpExitBtn').addEventListener('click', cpClosePlayer);
+document.addEventListener('keydown', (e)=>{
+  if(e.key!=='Escape' || document.getElementById('coursePlayer').classList.contains('hidden')) return;
+  const m=document.getElementById('cpMenu'); if(m && !m.classList.contains('hidden')){ m.classList.add('hidden'); return; }
+  if(document.getElementById('coursePlayer').classList.contains('cm-open')){ cpSetComments(false); return; }
+  cpClosePlayer();
+});
 /* ---------- Comments (course discussion) ---------- */
 let CP_CM_COURSE = null;
 function lmsSend(path, method, bodyObj){
@@ -1221,13 +1329,13 @@ async function cpDeleteComment(cid){
   const d=await lmsSend('/api/my/courses/'+CP_CM_COURSE+'/comments/'+cid,'DELETE');
   if(d&&d.ok) cpLoadComments(CP_CM_COURSE); else toast&&toast('Could not delete the comment.','error');
 }
-function cpSetComments(hidden){
-  document.getElementById('coursePlayer').classList.toggle('no-cm', hidden);
-  const btn=document.getElementById('cpCmToggle'); if(btn) btn.classList.toggle('on', !hidden);
-  try{ localStorage.setItem('cpCmHidden', hidden?'1':'0'); }catch(e){}
+function cpSetComments(open){
+  document.getElementById('coursePlayer').classList.toggle('cm-open', open);
+  const btn=document.getElementById('cpCmToggle'); if(btn) btn.classList.toggle('on', open);
+  if(open) setTimeout(()=>{ const i=document.getElementById('cpCmInput'); if(i) i.focus(); }, 60);
 }
-document.getElementById('cpCmClose').addEventListener('click', ()=>cpSetComments(true));
-document.getElementById('cpCmToggle').addEventListener('click', ()=>cpSetComments(!document.getElementById('coursePlayer').classList.contains('no-cm')));
+document.getElementById('cpCmClose').addEventListener('click', ()=>cpSetComments(false));
+document.getElementById('cpCmToggle').addEventListener('click', ()=>cpSetComments(!document.getElementById('coursePlayer').classList.contains('cm-open')));
 document.getElementById('cpCmSend').addEventListener('click', cpPostComment);
 document.getElementById('cpCmInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); cpPostComment(); } });
 document.getElementById('cpCmInput').addEventListener('input', (e)=>{ e.target.style.height='auto'; e.target.style.height=Math.min(e.target.scrollHeight,120)+'px'; });

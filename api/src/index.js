@@ -423,7 +423,7 @@ async function deleteEnrollment(request, env, id) {
 function courseLessonCount(content) {
   if (!content) return 0;
   let j = null; try { j = JSON.parse(content); } catch (_) { }
-  if (j && !Array.isArray(j) && j.chapters) return (j.chapters || []).filter(c => c && c.visible !== false).length;
+  if (j && !Array.isArray(j) && j.chapters) return (j.chapters || []).filter(c => c && c.visible !== false).reduce((n, c) => n + ((c.blocks || []).length), 0);
   if (Array.isArray(j)) return j.length;
   return 1;
 }
