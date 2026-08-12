@@ -565,6 +565,10 @@
             </div>
             <div class="cb-top-right">
               <span id="cbSaved" class="cb-saved"></span>
+              <button class="cb-btn cb-btn-icon" id="cbCommentsBtn" title="Comments">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Comments<span class="cb-cm-badge" id="cbCmBtnCount"></span>
+              </button>
               <button class="cb-btn" id="cbPreview">Preview</button>
               <button class="cb-btn cb-btn-primary" id="cbPublish">Publish</button>
               <div class="cb-menu-wrap">
@@ -589,6 +593,17 @@
             </aside>
             <main class="cb-canvas" id="cbCanvas"></main>
             <aside class="cb-right" id="cbProps"></aside>
+            <!-- Comments drawer (course discussion; admins can @mention users) -->
+            <div class="cb-cm-drawer" id="cbCmDrawer">
+              <div class="cb-cm-dhead"><span>Comments</span><span class="cb-cm-dcount" id="cbCmCount"></span>
+                <button class="cb-cm-dclose" id="cbCmClose" title="Close" aria-label="Close">×</button></div>
+              <div class="cb-cm-list" id="cbCmList"></div>
+              <div class="cb-cm-compose">
+                <div class="cb-cm-suggest hidden" id="cbCmSuggest"></div>
+                <textarea id="cbCmInput" rows="1" placeholder="Add a comment…  type @ to tag a user"></textarea>
+                <button id="cbCmSend" aria-label="Post comment">→</button>
+              </div>
+            </div>
           </div>
           <input type="file" id="cbImgInput" accept="image/*" class="hidden">
           <input type="file" id="cbDocInput" accept=".pdf,.docx,.pptx" class="hidden">
@@ -605,7 +620,7 @@
 
         <style>
         /* ===== Course builder ===== */
-        #courseBuilder{--bl:#116ACC;--bl-soft:#EAF2FC;position:fixed;inset:0 0 0 var(--sb-w,222px);z-index:35;background:var(--bg);display:flex;flex-direction:column;}
+        #courseBuilder{--bl:#116ACC;--bl-soft:#EAF2FC;position:fixed;inset:0 0 0 var(--sb-w,222px);z-index:35;background:var(--bg);display:flex;flex-direction:column;transition:left .16s ease;}
         .cb-top{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
         .cb-icon{width:34px;height:34px;flex-shrink:0;display:grid;place-items:center;border:1px solid var(--border);background:var(--surface);border-radius:8px;color:var(--muted);cursor:pointer;padding:0;}
         .cb-icon:hover{color:var(--text);border-color:var(--border-strong);background:var(--surface-2);}
@@ -630,7 +645,7 @@
         .cb-menu button:hover{background:var(--surface-2);}
         .cb-menu button.danger{color:#D14343;}
         .cb-notice-wrap:not(:empty){padding:10px 16px 0;}
-        .cb-panes{flex:1;display:grid;grid-template-columns:270px minmax(0,1fr) 300px;min-height:0;}
+        .cb-panes{flex:1;display:grid;grid-template-columns:270px minmax(0,1fr) 300px;min-height:0;position:relative;}
         .cb-left,.cb-right{background:var(--surface);overflow-y:auto;display:flex;flex-direction:column;}
         .cb-left{border-right:1px solid var(--border);}
         .cb-right{border-left:1px solid var(--border);}
@@ -772,6 +787,40 @@
         @media (max-width:560px){.bp-grid{grid-template-columns:repeat(2,1fr);}}
         .tr-card{position:relative;}
         .tr-draft{position:absolute;top:8px;left:8px;z-index:2;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 7px;border-radius:5px;background:#FDF3D7;color:#9A7A15;}
+        /* comments drawer */
+        #courseBuilder .cb-btn-icon{display:inline-flex;align-items:center;gap:6px;}
+        #courseBuilder .cb-btn-icon svg{width:15px;height:15px;}
+        .cb-cm-badge{font-size:11px;font-weight:700;background:var(--bl);color:#fff;min-width:17px;height:17px;padding:0 5px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;}
+        .cb-cm-badge:empty{display:none;}
+        .cb-cm-drawer{position:absolute;top:0;right:0;bottom:0;width:360px;max-width:88vw;background:var(--surface);border-left:1px solid var(--border);box-shadow:-10px 0 34px rgba(24,34,51,.14);z-index:32;display:flex;flex-direction:column;transform:translateX(100%);transition:transform .18s ease;}
+        .cb-cm-drawer.open{transform:translateX(0);}
+        .cb-cm-dhead{display:flex;align-items:center;gap:9px;padding:16px 16px 12px;border-bottom:1px solid var(--border);font-size:15px;font-weight:700;}
+        .cb-cm-dcount{font-size:12px;font-weight:600;color:#fff;background:var(--bl);min-width:20px;height:20px;padding:0 6px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;}
+        .cb-cm-dcount:empty{display:none;}
+        .cb-cm-dclose{margin-left:auto;border:none;background:none;color:var(--faint);cursor:pointer;font-size:19px;line-height:1;padding:2px 7px;border-radius:7px;}
+        .cb-cm-dclose:hover{background:var(--surface-2);color:var(--text);}
+        .cb-cm-list{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:15px;}
+        .cb-cm-empty{color:var(--faint);font-size:13px;line-height:1.5;padding:8px 2px;}
+        .cb-cm-item{display:flex;gap:10px;}
+        .cb-cm-av{width:32px;height:32px;flex-shrink:0;border-radius:50%;background:var(--bl-soft);color:var(--bl);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}
+        .cb-cm-main{min-width:0;flex:1;}
+        .cb-cm-meta{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--faint);margin-bottom:3px;}
+        .cb-cm-meta b{font-size:13px;font-weight:700;color:var(--text);}
+        .cb-cm-you{font-size:10px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;background:var(--bl-soft);color:var(--bl);padding:1px 6px;border-radius:5px;}
+        .cb-cm-del{margin-left:auto;border:none;background:none;color:var(--faint);cursor:pointer;font-size:15px;line-height:1;padding:0 3px;border-radius:5px;}
+        .cb-cm-del:hover{color:#EB5757;background:#FBECEC;}
+        .cb-cm-text{font-size:13px;line-height:1.55;color:var(--text);white-space:pre-wrap;word-wrap:break-word;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;border-top-left-radius:4px;padding:9px 12px;}
+        .cb-cm-mention{color:var(--bl);font-weight:600;background:var(--bl-soft);border-radius:4px;padding:0 3px;}
+        .cb-cm-compose{position:relative;display:flex;align-items:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--border);}
+        .cb-cm-compose textarea{flex:1;border:1px solid var(--border-strong);border-radius:16px;padding:9px 14px;font-family:inherit;font-size:13px;resize:none;max-height:120px;line-height:1.4;}
+        .cb-cm-compose textarea:focus{outline:none;border-color:var(--bl);box-shadow:0 0 0 3px var(--bl-soft);}
+        .cb-cm-compose button{width:38px;height:38px;flex-shrink:0;border:none;border-radius:50%;background:var(--bl);color:#fff;cursor:pointer;font-size:15px;}
+        .cb-cm-suggest{position:absolute;left:16px;right:56px;bottom:calc(100% - 6px);background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 28px rgba(24,34,51,.16);overflow:hidden;max-height:216px;overflow-y:auto;z-index:5;}
+        .cb-cm-sug{display:flex;flex-direction:column;gap:1px;width:100%;text-align:left;border:none;background:none;padding:8px 12px;cursor:pointer;}
+        .cb-cm-sug:hover{background:var(--bl-soft);}
+        .cb-cm-sug b{font-size:13px;color:var(--bl);font-weight:600;}
+        .cb-cm-sug span{font-size:11.5px;color:var(--muted);}
+        @media (max-width:900px){ .cb-cm-drawer{width:320px;} }
         </style>
 
         <!-- Step 1 of creating a course: name + cover, then open the builder -->
@@ -3490,6 +3539,7 @@ function cbShowView(which){
   document.getElementById('coursesListView').classList.toggle('hidden', which !== 'list');
   document.getElementById('coursePreview').classList.toggle('hidden', which !== 'preview');
   document.getElementById('courseBuilder').classList.toggle('hidden', which !== 'builder');
+  if (which !== 'builder'){ const dr = document.getElementById('cbCmDrawer'); if (dr) dr.classList.remove('open'); }
 }
 function showCourseList(){ cbShowView('list'); }
 function closeCourseDoc(){ showCourseList(); } // used by the sidebar nav handler
@@ -3524,7 +3574,10 @@ function cbOpen(existing){
   cbRenderStatus();
   cbSetSaved(existing ? 'Saved' : '');
   cbRenderChapters(); cbRenderCanvas(); cbRenderProps();
+  document.getElementById('cbCmDrawer').classList.remove('open');
+  document.getElementById('cbCmBtnCount').textContent = '';
   cbShowView('builder');
+  cbCmRefreshCount();
 }
 function cbRenderStatus(){
   const pub = courseDraft.status === 'published';
@@ -3728,6 +3781,92 @@ function cbOpenPicker(){
   }).join('');
   openSheet(document.getElementById('blockPicker'));
 }
+
+/* ---------- course comments (admin side; @mention users) ---------- */
+let CB_CM_MEMBERS = [];
+function cbInitials(n){ const p=String(n||'').trim().split(/\s+/); return (((p[0]||'')[0]||'')+((p[1]||'')[0]||'')||'?').toUpperCase(); }
+function cbTimeAgo(s){ if(!s) return ''; const t=new Date(String(s).replace(' ','T')+'Z').getTime(); if(isNaN(t)) return ''; const d=Math.max(0,(Date.now()-t)/1000); if(d<60)return'just now'; if(d<3600)return Math.floor(d/60)+'m ago'; if(d<86400)return Math.floor(d/3600)+'h ago'; if(d<604800)return Math.floor(d/86400)+'d ago'; return new Date(t).toLocaleDateString(); }
+function cbMentionHandle(t){ return (t.loginId || (t.email ? t.email.split('@')[0] : (t.name||'').toLowerCase().replace(/[^a-z0-9._-]+/g,'')) || 'user'); }
+function cbMentionize(text){ return pEsc(text).replace(/@([\w.\-]+)/g, '<span class="cb-cm-mention">@$1</span>'); }
+async function cbEnsureMembers(){
+  if (CB_CM_MEMBERS.length) return;
+  if (!(LAST_TAKERS && LAST_TAKERS.length)) { try { await refreshTakerList(); } catch(_){} }
+  CB_CM_MEMBERS = (LAST_TAKERS || []).map(t => ({ name: t.name || t.loginId || t.email || 'User', handle: cbMentionHandle(t), sub: t.email || t.role || '' }));
+}
+async function cbCmRefreshCount(){
+  const badge = document.getElementById('cbCmBtnCount'); badge.textContent = '';
+  if (!courseDraft || !courseDraft.id) return;
+  const d = await lmsApi('/api/my/courses/'+courseDraft.id+'/comments');
+  if (d && d.ok) badge.textContent = (d.comments||[]).length ? String(d.comments.length) : '';
+}
+function cbCmOpen(){
+  if (!courseDraft || !courseDraft.id){ toast('Save the course first — comments attach to a saved course.','error'); return; }
+  document.getElementById('cbCmDrawer').classList.add('open');
+  cbEnsureMembers();
+  cbCmLoad();
+  setTimeout(()=>document.getElementById('cbCmInput').focus(), 60);
+}
+function cbCmClose(){ document.getElementById('cbCmDrawer').classList.remove('open'); cbCmHideSuggest(); }
+async function cbCmLoad(){
+  const list = document.getElementById('cbCmList'); list.innerHTML = '<div class="cb-cm-empty">Loading…</div>';
+  const d = await lmsApi('/api/my/courses/'+courseDraft.id+'/comments');
+  if (!d || !d.ok){ list.innerHTML = '<div class="cb-cm-empty">Comments aren’t available for this course.</div>'; document.getElementById('cbCmCount').textContent=''; return; }
+  cbCmRender(d.comments || []);
+}
+function cbCmRender(items){
+  const list = document.getElementById('cbCmList');
+  const n = items.length;
+  document.getElementById('cbCmCount').textContent = n ? String(n) : '';
+  document.getElementById('cbCmBtnCount').textContent = n ? String(n) : '';
+  if (!n){ list.innerHTML = '<div class="cb-cm-empty">No comments yet. Post an update or tag a learner with @ to start the discussion.</div>'; return; }
+  list.innerHTML = items.map(c =>
+    '<div class="cb-cm-item"><div class="cb-cm-av">'+pEsc(cbInitials(c.author))+'</div>'+
+    '<div class="cb-cm-main"><div class="cb-cm-meta"><b>'+pEsc(c.author)+'</b>'+(c.mine?'<span class="cb-cm-you">You</span>':'')+'<span>'+pEsc(cbTimeAgo(c.createdAt))+'</span>'+
+    (c.mine?'<button class="cb-cm-del" data-cmdel="'+c.id+'" title="Delete" aria-label="Delete">×</button>':'')+'</div>'+
+    '<div class="cb-cm-text">'+cbMentionize(c.body)+'</div></div></div>').join('');
+  list.scrollTop = list.scrollHeight;
+}
+async function cbCmPost(){
+  const inp = document.getElementById('cbCmInput'); const text = (inp.value||'').trim();
+  if (!text || !courseDraft || !courseDraft.id) return;
+  inp.value=''; inp.style.height='auto'; cbCmHideSuggest();
+  const d = await lmsApi('/api/my/courses/'+courseDraft.id+'/comments', { method:'POST', body: JSON.stringify({ body: text }) });
+  if (!d || !d.ok){ toast('Could not post your comment.','error'); inp.value = text; return; }
+  cbCmLoad();
+}
+async function cbCmDelete(cid){
+  const d = await lmsApi('/api/my/courses/'+courseDraft.id+'/comments/'+cid, { method:'DELETE' });
+  if (d && d.ok) cbCmLoad(); else toast('Could not delete the comment.','error');
+}
+// @mention autocomplete
+function cbCmHideSuggest(){ document.getElementById('cbCmSuggest').classList.add('hidden'); }
+function cbCmUpdateSuggest(){
+  const inp = document.getElementById('cbCmInput'), box = document.getElementById('cbCmSuggest');
+  const upto = inp.value.slice(0, inp.selectionStart);
+  const m = upto.match(/@([\w.\-]*)$/);
+  if (!m){ cbCmHideSuggest(); return; }
+  const q = m[1].toLowerCase();
+  const matches = CB_CM_MEMBERS.filter(u => u.handle.toLowerCase().includes(q) || u.name.toLowerCase().includes(q)).slice(0, 6);
+  if (!matches.length){ cbCmHideSuggest(); return; }
+  box.innerHTML = matches.map(u => '<button type="button" class="cb-cm-sug" data-h="'+pEsc(u.handle)+'"><b>@'+pEsc(u.handle)+'</b><span>'+pEsc(u.name)+(u.sub?' · '+pEsc(u.sub):'')+'</span></button>').join('');
+  box.classList.remove('hidden');
+}
+function cbCmInsertMention(handle){
+  const inp = document.getElementById('cbCmInput'), pos = inp.selectionStart;
+  const before = inp.value.slice(0, pos).replace(/@([\w.\-]*)$/, '@'+handle+' '), after = inp.value.slice(pos);
+  inp.value = before + after; const np = before.length; inp.focus(); inp.setSelectionRange(np, np);
+  cbCmHideSuggest();
+}
+document.getElementById('cbCommentsBtn').addEventListener('click', cbCmOpen);
+document.getElementById('cbCmClose').addEventListener('click', cbCmClose);
+document.getElementById('cbCmSend').addEventListener('click', cbCmPost);
+document.getElementById('cbCmList').addEventListener('click', (e) => { const b = e.target.closest('[data-cmdel]'); if (b) cbCmDelete(b.dataset.cmdel); });
+document.getElementById('cbCmSuggest').addEventListener('mousedown', (e) => { const b = e.target.closest('[data-h]'); if (b){ e.preventDefault(); cbCmInsertMention(b.dataset.h); } });
+document.getElementById('cbCmInput').addEventListener('input', (e) => { e.target.style.height='auto'; e.target.style.height=Math.min(e.target.scrollHeight,120)+'px'; cbCmUpdateSuggest(); });
+document.getElementById('cbCmInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Escape'){ cbCmHideSuggest(); return; }
+  if (e.key === 'Enter' && !e.shiftKey && document.getElementById('cbCmSuggest').classList.contains('hidden')){ e.preventDefault(); cbCmPost(); }
+});
 
 /* ---------- wiring: top bar ---------- */
 document.getElementById('cbBack').addEventListener('click', async () => { clearTimeout(cbSaveTimer); await cbSave(false); showCourseList(); await refreshCourses(); });
@@ -4038,10 +4177,14 @@ document.getElementById('btnSignOut').addEventListener('click', () => {
 (function(){
   const shell = document.getElementById('shell'), toggle = document.getElementById('navToggle');
   if (!shell || !toggle) return;
+  // Publish the sidebar width so the fixed course builder sits (and resizes) beside it.
+  function syncWidth(){ document.documentElement.style.setProperty('--sb-w', shell.classList.contains('nav-collapsed') ? '66px' : '222px'); }
   if (localStorage.getItem('navCollapsed') === '1') shell.classList.add('nav-collapsed');
+  syncWidth();
   toggle.addEventListener('click', () => {
     shell.classList.toggle('nav-collapsed');
     localStorage.setItem('navCollapsed', shell.classList.contains('nav-collapsed') ? '1' : '0');
+    syncWidth();
   });
 })();
 

@@ -309,6 +309,7 @@
   .cp-cm-del{margin-left:auto;border:none;background:none;color:var(--ds-text-faint,#B0B0B0);cursor:pointer;font-size:15px;line-height:1;padding:0 2px;border-radius:5px;}
   .cp-cm-del:hover{color:#EB5757;background:#FBECEC;}
   .cp-cm-text{font-size:13px;line-height:1.55;color:var(--ds-text,#182233);white-space:pre-wrap;word-wrap:break-word;background:var(--ds-surface,#fff);border:1px solid var(--ds-border,#E0E0E0);border-radius:10px;border-top-left-radius:4px;padding:9px 12px;}
+  .cp-cm-mention{color:var(--ds-primary,#116ACC);font-weight:600;background:var(--ds-primary-soft,#E7F0FB);border-radius:4px;padding:0 3px;}
   .cp-cm-input{display:flex;align-items:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--ds-border,#E0E0E0);}
   .cp-cm-input textarea{flex:1;border:1px solid var(--ds-border-strong,#BDBDBD);border-radius:16px;padding:9px 14px;font-family:inherit;font-size:13px;resize:none;max-height:120px;line-height:1.4;}
   .cp-cm-input textarea:focus{outline:none;border-color:var(--ds-primary,#116ACC);}
@@ -1134,7 +1135,7 @@ function cpRenderComments(list){
     '<div class="cp-cm-item"><div class="cp-cm-av">'+esc(initials(c.author).toUpperCase())+'</div>'+
     '<div class="cp-cm-main"><div class="cp-cm-meta"><b>'+esc(c.author)+'</b>'+(c.mine?'<span class="cp-cm-you">You</span>':'')+'<span>'+esc(cpTimeAgo(c.createdAt))+'</span>'+
     (c.mine?'<button class="cp-cm-del" data-del="'+c.id+'" title="Delete comment" aria-label="Delete comment">×</button>':'')+'</div>'+
-    '<div class="cp-cm-text">'+esc(c.body)+'</div></div></div>').join('');
+    '<div class="cp-cm-text">'+esc(c.body).replace(/@([\w.\-]+)/g,'<span class="cp-cm-mention">@$1</span>')+'</div></div></div>').join('');
   body.scrollTop=body.scrollHeight;
 }
 async function cpPostComment(){
