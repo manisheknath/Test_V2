@@ -656,6 +656,10 @@
         .cb-ch-bk:hover{background:var(--surface-2);color:var(--text);}
         .cb-ch-bk svg{width:14px;height:14px;flex-shrink:0;opacity:.75;}
         .cb-ch-bk.sel{color:var(--bl);background:var(--bl-soft);}
+        .cb-ch-bk{cursor:grab;}
+        .cb-ch-bk.dragging{opacity:.4;}
+        .cb-ch-bk.drop-before{box-shadow:inset 0 2px 0 var(--bl);}
+        .cb-chapter.cb-drop-into>.cb-ch-row{background:var(--bl-soft);box-shadow:inset 0 0 0 1.5px var(--bl);}
         .cb-ch-empty{font-size:12px;color:var(--faint);padding:5px 9px;}
         .cb-add-chapter{display:flex;align-items:center;justify-content:center;gap:7px;margin:8px 14px 16px;padding:10px;border:1px dashed var(--border-strong);border-radius:9px;background:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;}
         .cb-add-chapter:hover{border-color:var(--bl);color:var(--bl);background:var(--bl-soft);}
@@ -3462,6 +3466,21 @@ let cbSaveTimer = null, cbSaving = false, cbImgTarget = null, previewCourse = nu
 function curChapter(){ return courseDraft ? courseDraft.chapters.find(c => c.id === CB_SELCH) : null; }
 function cbBlockIn(c, id){ return c ? c.blocks.find(x => x.id === id) : null; }
 function cbFindBlockGlobal(id){ if(!courseDraft) return null; for (const c of courseDraft.chapters){ const b = c.blocks.find(x => x.id === id); if (b) return b; } return null; }
+function cbChapterOfBlock(id){ return courseDraft ? (courseDraft.chapters.find(c => c.blocks.some(b => b.id === id)) || null) : null; }
+function cbClearDrag(){ document.querySelectorAll('#courseBuilder .dragging, #courseBuilder .drop-before, #courseBuilder .cb-drop-into').forEach(x => x.classList.remove('dragging','drop-before','cb-drop-into')); }
+// Move a block (cbDragBk) into a chapter, before a target block or appended; re-renders + saves.
+function cbMoveBlockTo(targetChapterId, beforeBlockId){
+  const srcCh = cbChapterOfBlock(cbDragBk); if (!srcCh) return;
+  const tgtCh = courseDraft.chapters.find(c => c.id === targetChapterId); if (!tgtCh) return;
+  const from = srcCh.blocks.findIndex(b => b.id === cbDragBk); if (from < 0) return;
+  const [m] = srcCh.blocks.splice(from, 1);
+  if (beforeBlockId && beforeBlockId !== cbDragBk){ const to = tgtCh.blocks.findIndex(b => b.id === beforeBlockId); tgtCh.blocks.splice(to < 0 ? tgtCh.blocks.length : to, 0, m); }
+  else tgtCh.blocks.push(m);
+  const crossed = srcCh.id !== tgtCh.id;
+  CB_SELCH = tgtCh.id; CB_SELBK = m.id;
+  cbRenderChapters(); cbRenderCanvas(); cbRenderProps(); scheduleSave();
+  if (crossed) toast('Moved to “'+(tgtCh.title || 'Untitled chapter')+'”', 'success');
+}
 
 /* ---------- view switching ---------- */
 function cbShowView(which){
@@ -3526,7 +3545,7 @@ function cbRenderChapters(){
   wrap.innerHTML = courseDraft.chapters.map((c,i) => {
     const sel = c.id === CB_SELCH;
     const blocks = c.blocks.length
-      ? c.blocks.map(b => '<div class="cb-ch-bk'+(b.id===CB_SELBK?' sel':'')+'" data-ch="'+c.id+'" data-bk="'+b.id+'">'+cbIcon(b.type)+'<span>'+pEsc(cbBlockLabel(b))+'</span></div>').join('')
+      ? c.blocks.map(b => '<div class="cb-ch-bk'+(b.id===CB_SELBK?' sel':'')+'" draggable="true" data-ch="'+c.id+'" data-bk="'+b.id+'">'+cbIcon(b.type)+'<span>'+pEsc(cbBlockLabel(b))+'</span></div>').join('')
       : '<div class="cb-ch-empty">No content yet</div>';
     return '<div class="cb-chapter'+(sel?' sel open':'')+'" data-ch="'+c.id+'">'+
       '<div class="cb-ch-row" data-ch="'+c.id+'">'+
@@ -3743,9 +3762,22 @@ document.getElementById('cbChapters').addEventListener('click', (e) => {
   if (row) cbSelectChapter(row.dataset.ch);
 });
 let cbDragCh = null;
-document.getElementById('cbChapters').addEventListener('dragstart', (e) => { const h = e.target.closest('[data-chdrag]'); if (!h) return; cbDragCh = h.getAttribute('data-chdrag'); h.closest('.cb-chapter').classList.add('dragging'); e.dataTransfer.effectAllowed='move'; try{ e.dataTransfer.setData('text/plain', cbDragCh); }catch(_){} });
-document.getElementById('cbChapters').addEventListener('dragend', () => { cbDragCh = null; document.querySelectorAll('#cbChapters .cb-chapter').forEach(x => x.classList.remove('dragging','drop-before')); });
-document.getElementById('cbChapters').addEventListener('dragover', (e) => { if (!cbDragCh) return; e.preventDefault(); document.querySelectorAll('#cbChapters .cb-chapter').forEach(x => x.classList.remove('drop-before')); const over = e.target.closest('.cb-chapter'); if (over && over.dataset.ch !== cbDragCh) over.classList.add('drop-before'); });
+document.getElementById('cbChapters').addEventListener('dragstart', (e) => {
+  const chh = e.target.closest('[data-chdrag]');
+  if (chh){ cbDragCh = chh.getAttribute('data-chdrag'); cbDragBk = null; chh.closest('.cb-chapter').classList.add('dragging'); e.dataTransfer.effectAllowed='move'; try{ e.dataTransfer.setData('text/plain', cbDragCh); }catch(_){} return; }
+  const bk = e.target.closest('.cb-ch-bk');
+  if (bk){ cbDragBk = bk.dataset.bk; cbDragCh = null; bk.classList.add('dragging'); e.dataTransfer.effectAllowed='move'; try{ e.dataTransfer.setData('text/plain', cbDragBk); }catch(_){} }
+});
+document.getElementById('cbChapters').addEventListener('dragend', () => { cbDragCh = null; cbDragBk = null; cbClearDrag(); });
+document.getElementById('cbChapters').addEventListener('dragover', (e) => {
+  document.querySelectorAll('#cbChapters .drop-before, #cbChapters .cb-drop-into').forEach(x => x.classList.remove('drop-before','cb-drop-into'));
+  if (cbDragCh){ e.preventDefault(); const over = e.target.closest('.cb-chapter'); if (over && over.dataset.ch !== cbDragCh) over.classList.add('drop-before'); return; }
+  if (cbDragBk){ e.preventDefault(); const overBk = e.target.closest('.cb-ch-bk'); if (overBk && overBk.dataset.bk !== cbDragBk){ overBk.classList.add('drop-before'); return; } const overCh = e.target.closest('.cb-chapter'); if (overCh) overCh.classList.add('cb-drop-into'); }
+});
+document.getElementById('cbChapters').addEventListener('drop', (e) => {
+  if (cbDragCh){ e.preventDefault(); const over = e.target.closest('.cb-chapter'); const from = courseDraft.chapters.findIndex(c => c.id === cbDragCh); if (from < 0){ return; } const [m] = courseDraft.chapters.splice(from,1); if (over && over.dataset.ch !== cbDragCh){ const to = courseDraft.chapters.findIndex(c => c.id === over.dataset.ch); courseDraft.chapters.splice(to<0?courseDraft.chapters.length:to, 0, m); } else courseDraft.chapters.push(m); cbRenderChapters(); scheduleSave(); return; }
+  if (cbDragBk){ e.preventDefault(); const overBk = e.target.closest('.cb-ch-bk'); const overCh = e.target.closest('.cb-chapter'); if (overBk && overBk.dataset.bk !== cbDragBk) cbMoveBlockTo(overBk.dataset.ch, overBk.dataset.bk); else if (overCh) cbMoveBlockTo(overCh.dataset.ch, null); }
+});
 document.getElementById('cbChapters').addEventListener('drop', (e) => { if (!cbDragCh) return; e.preventDefault(); const over = e.target.closest('.cb-chapter'); const from = courseDraft.chapters.findIndex(c => c.id === cbDragCh); if (from < 0) return; const [m] = courseDraft.chapters.splice(from,1); if (over && over.dataset.ch !== cbDragCh){ const to = courseDraft.chapters.findIndex(c => c.id === over.dataset.ch); courseDraft.chapters.splice(to<0?courseDraft.chapters.length:to, 0, m); } else courseDraft.chapters.push(m); cbRenderChapters(); scheduleSave(); });
 
 /* ---------- wiring: canvas ---------- */
@@ -3788,7 +3820,7 @@ document.getElementById('cbCanvas').addEventListener('click', (e) => {
 });
 let cbDragBk = null;
 document.getElementById('cbCanvas').addEventListener('dragstart', (e) => { const h = e.target.closest('[data-bkdrag]'); if (!h) return; cbDragBk = h.getAttribute('data-bkdrag'); h.closest('.cb-block').classList.add('dragging'); e.dataTransfer.effectAllowed='move'; try{ e.dataTransfer.setData('text/plain', cbDragBk); }catch(_){} });
-document.getElementById('cbCanvas').addEventListener('dragend', () => { cbDragBk = null; document.querySelectorAll('#cbCanvas .cb-block').forEach(x => x.classList.remove('dragging','drop-before')); });
+document.getElementById('cbCanvas').addEventListener('dragend', () => { cbDragBk = null; cbClearDrag(); });
 document.getElementById('cbCanvas').addEventListener('dragover', (e) => { if (!cbDragBk) return; e.preventDefault(); document.querySelectorAll('#cbCanvas .cb-block').forEach(x => x.classList.remove('drop-before')); const over = e.target.closest('.cb-block'); if (over && over.dataset.bk !== cbDragBk) over.classList.add('drop-before'); });
 document.getElementById('cbCanvas').addEventListener('drop', (e) => { if (!cbDragBk) return; e.preventDefault(); const c = curChapter(); if (!c) return; const over = e.target.closest('.cb-block'); const from = c.blocks.findIndex(b => b.id === cbDragBk); if (from < 0) return; const [m] = c.blocks.splice(from,1); if (over && over.dataset.bk !== cbDragBk){ const to = c.blocks.findIndex(b => b.id === over.dataset.bk); c.blocks.splice(to<0?c.blocks.length:to, 0, m); } else c.blocks.push(m); cbRenderCanvas(); cbRenderChapters(); scheduleSave(); });
 
