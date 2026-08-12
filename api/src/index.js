@@ -64,6 +64,9 @@ export default {
       // ---- learner: my assigned courses ----
       else if (path === "/api/my/courses" && m === "GET") r = await myCourses(request, env);
       else if (path.match(/^\/api\/my\/courses\/[^/]+$/) && m === "GET") r = await myCourse(request, env, path.split("/")[4]);
+      // ---- learner: course completion progress ----
+      else if (path.match(/^\/api\/my\/courses\/[^/]+\/progress$/) && m === "GET") r = await getCourseProgress(request, env, path.split("/")[4]);
+      else if (path.match(/^\/api\/my\/courses\/[^/]+\/progress$/) && (m === "PUT" || m === "POST")) r = await setCourseProgress(request, env, path.split("/")[4]);
       // ---- course discussion (comments) ----
       else if (path.match(/^\/api\/my\/courses\/[^/]+\/comments$/) && m === "GET") r = await listCourseComments(request, env, path.split("/")[4]);
       else if (path.match(/^\/api\/my\/courses\/[^/]+\/comments$/) && m === "POST") r = await addCourseComment(request, env, path.split("/")[4]);
@@ -414,7 +417,13 @@ async function myCourses(request, env) {
   const ph = idList.map(() => "?").join(",");
   const rows = (await ctx.db.prepare(`SELECT id, title, summary, category, presentation, content, created_at FROM courses WHERE org_id = ? AND status = 'published' AND id IN (${ph}) ORDER BY created_at DESC`)
     .bind(ctx.orgId, ...idList).all()).results;
-  return json({ ok: true, courses: rows.map(c => ({ id: c.id, title: c.title, summary: c.summary || "", category: c.category || "", presentation: c.presentation || "slideshow", lessons: courseLessonCount(c.content) })) });
+  const doneMap = {};
+  (await ctx.db.prepare(`SELECT course_id, COUNT(*) AS done FROM progress WHERE org_id = ? AND account_id = ? AND status = 'complete' AND course_id IN (${ph}) GROUP BY course_id`)
+    .bind(ctx.orgId, ctx.accountId, ...idList).all()).results.forEach(r => { doneMap[r.course_id] = r.done; });
+  return json({ ok: true, courses: rows.map(c => {
+    const total = courseLessonCount(c.content), done = Math.min(doneMap[c.id] || 0, total || (doneMap[c.id] || 0));
+    return { id: c.id, title: c.title, summary: c.summary || "", category: c.category || "", presentation: c.presentation || "slideshow", lessons: total, done, completed: total > 0 && done >= total };
+  }) });
 }
 async function myCourse(request, env, id) {
   const ctx = await auth(request, env);
@@ -424,6 +433,30 @@ async function myCourse(request, env, id) {
   const c = await ctx.db.prepare("SELECT id, title, summary, category, content, presentation FROM courses WHERE id = ? AND org_id = ? AND status = 'published'").bind(id, ctx.orgId).first();
   if (!c) throw httpError(404, "not_found");
   return json({ ok: true, course: { id: c.id, title: c.title, summary: c.summary || "", category: c.category || "", content: c.content || "", presentation: c.presentation || "slideshow" } });
+}
+
+/* ---------- Learner: course completion progress ----------
+   A learner's completed lessons for a course, stored one row per lesson index
+   in `progress`. The client holds the full set and PUTs it on each change. */
+async function getCourseProgress(request, env, id) {
+  const ctx = await auth(request, env);
+  if (!ctx.orgId || !(await myCourseIds(ctx)).includes(id)) throw httpError(403, "forbidden");
+  const rows = (await ctx.db.prepare("SELECT lesson_id FROM progress WHERE org_id = ? AND account_id = ? AND course_id = ? AND status = 'complete'")
+    .bind(ctx.orgId, ctx.accountId, id).all()).results;
+  return json({ ok: true, lessons: rows.map(r => r.lesson_id) });
+}
+async function setCourseProgress(request, env, id) {
+  const ctx = await auth(request, env);
+  if (!ctx.orgId || !(await myCourseIds(ctx)).includes(id)) throw httpError(403, "forbidden");
+  const b = await body(request);
+  const lessons = Array.isArray(b.lessons)
+    ? [...new Set(b.lessons.map(x => String(x)).filter(x => /^\d+$/.test(x)))].slice(0, 2000) : [];
+  const stmts = [ctx.db.prepare("DELETE FROM progress WHERE org_id = ? AND account_id = ? AND course_id = ?").bind(ctx.orgId, ctx.accountId, id)];
+  for (const li of lessons) stmts.push(
+    ctx.db.prepare("INSERT INTO progress (id, org_id, account_id, course_id, lesson_id, status, completed_at) VALUES (?, ?, ?, ?, ?, 'complete', datetime('now'))")
+      .bind(crypto.randomUUID(), ctx.orgId, ctx.accountId, id, li));
+  await ctx.db.batch(stmts);
+  return json({ ok: true, done: lessons.length });
 }
 
 /* ---------- Course discussion (comments) ----------

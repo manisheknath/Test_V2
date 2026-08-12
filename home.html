@@ -221,6 +221,9 @@
   .td-cover{position:relative;border-radius:12px;overflow:hidden;aspect-ratio:16/9;display:grid;place-items:center;background:var(--cv,linear-gradient(140deg,#0b2c4d,#123a63));color:rgba(255,255,255,.9);}
   .td-cover svg{width:38%;max-width:64px;opacity:.9;}
   .td-cover .pct{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.92);color:#182233;font-size:11px;font-weight:700;padding:3px 8px;border-radius:999px;}
+  .td-cover .pct.done{background:#27AE60;color:#fff;}
+  .td-progress>span{transition:width .25s;}
+  .td-ccard.is-done .td-progress>span{background:#27AE60;}
   .td-cl{display:grid;grid-template-columns:230px 1fr;gap:20px;align-items:center;}
   .td-cl h3{margin:0 0 5px;font-size:18px;font-weight:700;letter-spacing:-.01em;}
   .td-cl .cat{font-size:12.5px;color:var(--muted);margin-bottom:14px;}
@@ -966,17 +969,18 @@ async function loadMyCourses(){
 // Progress for a course card: done lessons (from local completion) over the
 // course's lesson count (from the API), clamped so stale data can't exceed 100%.
 function cpDoneCount(cid){ try{ return new Set(JSON.parse(localStorage.getItem(cpKey(cid))||'[]')).size; }catch(e){ return 0; } }
-function courseProg(c){ const total=c.lessons||0; let done=cpDoneCount(c.id); if(total) done=Math.min(done,total); return { done, total, pct: total?Math.round(done/total*100):0 }; }
+function courseProg(c){ const total=c.lessons||0; let done=(typeof c.done==='number')?c.done:cpDoneCount(c.id); if(total) done=Math.min(done,total); return { done, total, pct: total?Math.round(done/total*100):0, completed:(typeof c.completed==='boolean')?c.completed:(total>0&&done>=total) }; }
 function renderMyCourses(){
   const grid=document.getElementById('tdCourses'), contCard=document.getElementById('tdContinueCard');
   if(!MY_COURSES.length){ grid.innerHTML='<div class="td-empty">No courses assigned to you yet. Your admin assigns courses from the console.</div>'; contCard.hidden=true; return; }
   grid.innerHTML=MY_COURSES.map(c=>{
     const p=courseProg(c);
-    const label = p.total ? (p.done>=p.total ? 'Completed' : p.done ? (p.done+' / '+p.total+' lessons') : 'Not started') : '';
-    return '<div class="td-ccard" data-cid="'+esc(c.id)+'">'+
-      '<div class="td-cover" style="--cv:'+tdGrad(c.id)+';">'+tdIcon()+(p.done&&p.total?'<span class="pct">'+p.pct+'%</span>':'')+'</div>'+
+    const label = p.total ? (p.completed ? 'Completed' : p.done ? (p.done+' / '+p.total+' lessons') : 'Not started') : '';
+    const badge = p.completed ? '<span class="pct done">✓ Done</span>' : (p.done&&p.total?'<span class="pct">'+p.pct+'%</span>':'');
+    return '<div class="td-ccard'+(p.completed?' is-done':'')+'" data-cid="'+esc(c.id)+'">'+
+      '<div class="td-cover" style="--cv:'+tdGrad(c.id)+';">'+tdIcon()+badge+'</div>'+
       '<h3>'+esc(c.title)+'</h3><div class="lvl">'+esc(c.category||'Course')+' · '+(c.presentation==='single_page'?'Single page':'Slideshow')+'</div>'+
-      (p.total?'<div class="td-progress"><span style="width:'+p.pct+'%"></span></div><div class="td-metaline"><span>'+label+'</span></div>':'')+
+      (p.total?'<div class="td-progress"><span style="width:'+p.pct+'%"></span></div><div class="td-metaline"><span'+(p.completed?' style="color:#27AE60;font-weight:600;"':'')+'>'+label+'</span></div>':'')+
     '</div>';
   }).join('');
   // "Continue" card: the first in-progress course, else the first assigned.
@@ -1003,6 +1007,22 @@ document.getElementById('tview-trainings').addEventListener('click', (e)=>{
 let CP_LESSONS=[], CP_IDX=0, CP_DONE=new Set(), CP_COURSE=null;
 const CP_KIND={chapter:'Chapter',section:'Reading',document:'Document',video:'Video',audio:'Audio',quiz:'Quiz',webinar:'Webinar'};
 function cpKey(cid){ return 'cpDone_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
+// Completion is stored server-side (cross-device); localStorage is a cache/fallback.
+async function cpLoadProgress(courseId){
+  const d = await lmsGet('/api/my/courses/'+courseId+'/progress');
+  if (d && d.ok && Array.isArray(d.lessons)){
+    CP_DONE = new Set(d.lessons.map(x=>parseInt(x,10)).filter(n=>!isNaN(n)));
+    try{ localStorage.setItem(cpKey(courseId), JSON.stringify([...CP_DONE])); }catch(e){}
+  } else {
+    try{ CP_DONE = new Set(JSON.parse(localStorage.getItem(cpKey(courseId))||'[]')); }catch(e){ CP_DONE = new Set(); }
+  }
+}
+function cpSaveProgress(){
+  if (!CP_COURSE) return;
+  const arr = [...CP_DONE];
+  try{ localStorage.setItem(cpKey(CP_COURSE.id), JSON.stringify(arr)); }catch(e){}
+  lmsSend('/api/my/courses/'+CP_COURSE.id+'/progress','PUT',{ lessons: arr.map(String) });
+}
 function cpLessonName(b,i){
   if(b.type==='chapter') return (b.title||'').trim() || ('Chapter '+(i+1));
   return (b.title||'').trim() || ((b.type||'section')==='section' ? ('Lesson '+(i+1)) : (CP_KIND[b.type]||'Lesson'));
@@ -1054,7 +1074,7 @@ async function openCourseFull(courseId){
     lessons=[{type:'section',title:CP_COURSE.title,html:raw}];
   }
   CP_LESSONS=lessons.length?lessons:[{type:'section',title:CP_COURSE.title||'Course',html:'<p>No content yet.</p>'}];
-  try{ CP_DONE=new Set(JSON.parse(localStorage.getItem(cpKey(courseId))||'[]')); }catch(e){ CP_DONE=new Set(); }
+  await cpLoadProgress(courseId);
   CP_IDX=0;
   cpShow(0);
   cpLoadComments(courseId);
@@ -1096,7 +1116,7 @@ document.getElementById('cpPrev').addEventListener('click', ()=>cpShow(CP_IDX-1)
 document.getElementById('cpNext').addEventListener('click', ()=>cpShow(CP_IDX+1));
 document.getElementById('cpComplete').addEventListener('click', ()=>{
   if(CP_DONE.has(CP_IDX)) CP_DONE.delete(CP_IDX); else CP_DONE.add(CP_IDX);
-  if(CP_COURSE) try{ localStorage.setItem(cpKey(CP_COURSE.id), JSON.stringify([...CP_DONE])); }catch(e){}
+  cpSaveProgress();
   cpShow(CP_IDX);
 });
 function cpClosePlayer(){ document.getElementById('coursePlayer').classList.add('hidden'); document.documentElement.style.overflow=''; if(typeof loadMyCourses==='function') loadMyCourses(); }

@@ -154,6 +154,8 @@ CREATE TABLE IF NOT EXISTS progress (
   status       TEXT NOT NULL DEFAULT 'in_progress',  -- in_progress | complete
   completed_at TEXT
 );
+CREATE UNIQUE INDEX IF NOT EXISTS progress_uniq ON progress(org_id, account_id, course_id, lesson_id);
+CREATE INDEX IF NOT EXISTS progress_lookup ON progress(org_id, account_id, course_id);
 
 CREATE TABLE IF NOT EXISTS submissions (
   id            TEXT PRIMARY KEY,
