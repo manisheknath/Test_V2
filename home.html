@@ -313,7 +313,16 @@
   .cp-cm-input textarea{flex:1;border:1px solid var(--ds-border-strong,#BDBDBD);border-radius:16px;padding:9px 14px;font-family:inherit;font-size:13px;resize:none;max-height:120px;line-height:1.4;}
   .cp-cm-input textarea:focus{outline:none;border-color:var(--ds-primary,#116ACC);}
   .cp-cm-input button{width:38px;height:38px;flex-shrink:0;border:none;border-radius:50%;background:var(--ds-primary,#116ACC);color:#fff;cursor:pointer;font-size:15px;}
-  @media(max-width:1180px){ .cp{grid-template-columns:250px minmax(0,1fr);} .cp-cm{display:none;} }
+  .cp.no-cm{grid-template-columns:280px minmax(0,1fr);}
+  .cp.no-cm .cp-cm{display:none;}
+  .cp-head-actions{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+  .cp-headbtn{width:34px;height:34px;border:1px solid var(--ds-border,#E0E0E0);background:var(--ds-surface,#fff);border-radius:8px;cursor:pointer;color:var(--ds-text-muted,#4F4F4F);display:inline-flex;align-items:center;justify-content:center;}
+  .cp-headbtn svg{width:17px;height:17px;}
+  .cp-headbtn:hover{border-color:var(--ds-primary,#116ACC);color:var(--ds-primary,#116ACC);}
+  .cp-headbtn.on{border-color:var(--ds-primary,#116ACC);color:var(--ds-primary,#116ACC);background:var(--ds-primary-soft,#E7F0FB);}
+  .cp-cm-hide{margin-left:auto;border:none;background:none;color:var(--ds-text-faint,#828282);cursor:pointer;font-size:18px;line-height:1;padding:2px 7px;border-radius:7px;}
+  .cp-cm-hide:hover{background:var(--ds-surface-3,#F2F2F2);color:var(--ds-text,#182233);}
+  @media(max-width:1180px){ .cp,.cp.no-cm{grid-template-columns:250px minmax(0,1fr);} .cp-cm{display:none;} .cp-headbtn{display:none;} }
   @media(max-width:820px){ .cp{left:0;} }
   @media(max-width:720px){ .cp{grid-template-columns:1fr;} .cp-nav{display:none;} }
 </style>
@@ -490,7 +499,10 @@
   <div class="cp-col cp-main">
     <div class="cp-main-head">
       <div><div class="cp-eyebrow" id="cpMeta"></div><h1 id="cpTitle">Lesson</h1></div>
-      <button class="cp-close" id="cpClose" aria-label="Close">&times;</button>
+      <div class="cp-head-actions">
+        <button class="cp-headbtn on" id="cpCmToggle" title="Toggle comments" aria-label="Toggle comments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+        <button class="cp-close" id="cpClose" aria-label="Close">&times;</button>
+      </div>
     </div>
     <div class="cp-body" id="cpBody"></div>
     <div class="cp-foot">
@@ -501,7 +513,7 @@
   </div>
   <!-- Right: comments / discussion -->
   <div class="cp-col cp-cm" id="cpCm">
-    <div class="cp-cm-head"><span>Comments</span><span class="cp-cm-count" id="cpCmCount"></span></div>
+    <div class="cp-cm-head"><span>Comments</span><span class="cp-cm-count" id="cpCmCount"></span><button class="cp-cm-hide" id="cpCmClose" title="Hide comments" aria-label="Hide comments">&times;</button></div>
     <div class="cp-cm-body" id="cpCmBody"></div>
     <div class="cp-cm-input">
       <textarea id="cpCmInput" rows="1" placeholder="Add a comment…"></textarea>
@@ -950,22 +962,33 @@ async function loadMyCourses(){
   MY_COURSES=(d&&d.ok)?(d.courses||[]):[];
   renderMyCourses();
 }
+// Progress for a course card: done lessons (from local completion) over the
+// course's lesson count (from the API), clamped so stale data can't exceed 100%.
+function cpDoneCount(cid){ try{ return new Set(JSON.parse(localStorage.getItem(cpKey(cid))||'[]')).size; }catch(e){ return 0; } }
+function courseProg(c){ const total=c.lessons||0; let done=cpDoneCount(c.id); if(total) done=Math.min(done,total); return { done, total, pct: total?Math.round(done/total*100):0 }; }
 function renderMyCourses(){
   const grid=document.getElementById('tdCourses'), contCard=document.getElementById('tdContinueCard');
   if(!MY_COURSES.length){ grid.innerHTML='<div class="td-empty">No courses assigned to you yet. Your admin assigns courses from the console.</div>'; contCard.hidden=true; return; }
-  grid.innerHTML=MY_COURSES.map(c=>
-    '<div class="td-ccard" data-cid="'+esc(c.id)+'">'+
-      '<div class="td-cover" style="--cv:'+tdGrad(c.id)+';">'+tdIcon()+'</div>'+
+  grid.innerHTML=MY_COURSES.map(c=>{
+    const p=courseProg(c);
+    const label = p.total ? (p.done>=p.total ? 'Completed' : p.done ? (p.done+' / '+p.total+' lessons') : 'Not started') : '';
+    return '<div class="td-ccard" data-cid="'+esc(c.id)+'">'+
+      '<div class="td-cover" style="--cv:'+tdGrad(c.id)+';">'+tdIcon()+(p.done&&p.total?'<span class="pct">'+p.pct+'%</span>':'')+'</div>'+
       '<h3>'+esc(c.title)+'</h3><div class="lvl">'+esc(c.category||'Course')+' · '+(c.presentation==='single_page'?'Single page':'Slideshow')+'</div>'+
-    '</div>').join('');
-  const c=MY_COURSES[0];
+      (p.total?'<div class="td-progress"><span style="width:'+p.pct+'%"></span></div><div class="td-metaline"><span>'+label+'</span></div>':'')+
+    '</div>';
+  }).join('');
+  // "Continue" card: the first in-progress course, else the first assigned.
+  const cont=MY_COURSES.find(c=>{ const p=courseProg(c); return p.pct>0 && p.pct<100; }) || MY_COURSES[0];
+  const cp=courseProg(cont);
+  const contLabel = cp.total ? (cp.done>=cp.total ? 'Completed' : cp.done ? (cp.pct+'% · '+cp.done+' of '+cp.total+' lessons') : 'Not started') : 'Not started';
   document.getElementById('tdContinue').innerHTML=
-    '<div class="td-cover" style="--cv:'+tdGrad(c.id)+';">'+tdIcon()+'</div>'+
-    '<div><h3>'+esc(c.title)+'</h3><div class="cat">'+esc(c.category||'Course')+'</div>'+
-    (c.summary?'<p style="margin:0 0 8px;color:var(--muted);font-size:13px;">'+esc(c.summary)+'</p>':'')+
-    '<div class="td-progress"><span style="width:0"></span></div>'+
-    '<div class="td-metaline"><span>Not started</span><span>'+MY_COURSES.length+' assigned</span></div>'+
-    '<div class="td-btns"><button class="td-btn" data-cid="'+esc(c.id)+'">Start course</button></div></div>';
+    '<div class="td-cover" style="--cv:'+tdGrad(cont.id)+';">'+tdIcon()+'</div>'+
+    '<div><h3>'+esc(cont.title)+'</h3><div class="cat">'+esc(cont.category||'Course')+'</div>'+
+    (cont.summary?'<p style="margin:0 0 8px;color:var(--muted);font-size:13px;">'+esc(cont.summary)+'</p>':'')+
+    '<div class="td-progress"><span style="width:'+cp.pct+'%"></span></div>'+
+    '<div class="td-metaline"><span>'+contLabel+'</span><span>'+MY_COURSES.length+' assigned</span></div>'+
+    '<div class="td-btns"><button class="td-btn" data-cid="'+esc(cont.id)+'">'+(cp.done? 'Continue' : 'Start course')+'</button></div></div>';
   contCard.hidden=false;
 }
 document.getElementById('tdRefresh').addEventListener('click', loadMyCourses);
@@ -1034,6 +1057,7 @@ async function openCourseFull(courseId){
   CP_IDX=0;
   cpShow(0);
   cpLoadComments(courseId);
+  cpSetComments(localStorage.getItem('cpCmHidden')==='1');
   document.getElementById('coursePlayer').classList.remove('hidden');
   document.documentElement.style.overflow='hidden';
 }
@@ -1126,6 +1150,13 @@ async function cpDeleteComment(cid){
   const d=await lmsSend('/api/my/courses/'+CP_CM_COURSE+'/comments/'+cid,'DELETE');
   if(d&&d.ok) cpLoadComments(CP_CM_COURSE); else toast&&toast('Could not delete the comment.','error');
 }
+function cpSetComments(hidden){
+  document.getElementById('coursePlayer').classList.toggle('no-cm', hidden);
+  const btn=document.getElementById('cpCmToggle'); if(btn) btn.classList.toggle('on', !hidden);
+  try{ localStorage.setItem('cpCmHidden', hidden?'1':'0'); }catch(e){}
+}
+document.getElementById('cpCmClose').addEventListener('click', ()=>cpSetComments(true));
+document.getElementById('cpCmToggle').addEventListener('click', ()=>cpSetComments(!document.getElementById('coursePlayer').classList.contains('no-cm')));
 document.getElementById('cpCmSend').addEventListener('click', cpPostComment);
 document.getElementById('cpCmInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); cpPostComment(); } });
 document.getElementById('cpCmInput').addEventListener('input', (e)=>{ e.target.style.height='auto'; e.target.style.height=Math.min(e.target.scrollHeight,120)+'px'; });

@@ -389,6 +389,15 @@ async function deleteEnrollment(request, env, id) {
 }
 
 /* ---------- Learner: courses assigned to me ---------- */
+// Lesson count as the learner player derives it: one lesson per visible chapter
+// (new format), one per block (legacy array), or a single lesson (legacy HTML).
+function courseLessonCount(content) {
+  if (!content) return 0;
+  let j = null; try { j = JSON.parse(content); } catch (_) { }
+  if (j && !Array.isArray(j) && j.chapters) return (j.chapters || []).filter(c => c && c.visible !== false).length;
+  if (Array.isArray(j)) return j.length;
+  return 1;
+}
 async function myCourseIds(ctx) {
   const ids = new Set();
   (await ctx.db.prepare("SELECT item_id FROM enrollments WHERE org_id = ? AND item_type = 'course' AND target_type = 'account' AND target_id = ?").bind(ctx.orgId, ctx.accountId).all())
@@ -403,9 +412,9 @@ async function myCourses(request, env) {
   const idList = await myCourseIds(ctx);
   if (!idList.length) return json({ ok: true, courses: [] });
   const ph = idList.map(() => "?").join(",");
-  const rows = (await ctx.db.prepare(`SELECT id, title, summary, category, presentation, created_at FROM courses WHERE org_id = ? AND status = 'published' AND id IN (${ph}) ORDER BY created_at DESC`)
+  const rows = (await ctx.db.prepare(`SELECT id, title, summary, category, presentation, content, created_at FROM courses WHERE org_id = ? AND status = 'published' AND id IN (${ph}) ORDER BY created_at DESC`)
     .bind(ctx.orgId, ...idList).all()).results;
-  return json({ ok: true, courses: rows.map(c => ({ id: c.id, title: c.title, summary: c.summary || "", category: c.category || "", presentation: c.presentation || "slideshow" })) });
+  return json({ ok: true, courses: rows.map(c => ({ id: c.id, title: c.title, summary: c.summary || "", category: c.category || "", presentation: c.presentation || "slideshow", lessons: courseLessonCount(c.content) })) });
 }
 async function myCourse(request, env, id) {
   const ctx = await auth(request, env);
