@@ -553,100 +553,249 @@
           </div>
         </div>
 
-        <!-- Course editor: a compact title bar, then the content blocks.
-             Name / description / category / presentation are edited in the popup. -->
-        <div id="courseEdit" class="hidden">
-          <div class="page-head">
-            <div style="display:flex;align-items:center;gap:12px;min-width:0;">
-              <button class="ghost" id="ceBack" title="Back to courses">←</button>
-              <div style="min-width:0;">
-                <h1 id="ceHeading" style="margin:0;font-size:19px;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Course</h1>
-                <p class="sub" id="ceSub" style="margin:0;font-size:12.5px;"></p>
+        <!-- Redesigned three-pane course builder (chapters + content blocks) -->
+        <div id="courseBuilder" class="hidden cb">
+          <div class="cb-top">
+            <button class="cb-icon" id="cbBack" title="Back to courses" aria-label="Back to courses">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+            </button>
+            <div class="cb-title-wrap">
+              <input id="cbTitle" class="cb-title" placeholder="Untitled course">
+              <span id="cbStatus" class="cb-badge cb-badge-draft">Draft</span>
+            </div>
+            <div class="cb-top-right">
+              <span id="cbSaved" class="cb-saved"></span>
+              <button class="cb-btn" id="cbPreview">Preview</button>
+              <button class="cb-btn cb-btn-primary" id="cbPublish">Publish</button>
+              <div class="cb-menu-wrap">
+                <button class="cb-icon" id="cbMore" title="More" aria-label="More">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/></svg>
+                </button>
+                <div class="cb-menu hidden" id="cbMoreMenu">
+                  <button data-act="settings">Course settings</button>
+                  <button data-act="delete" class="danger">Delete course</button>
+                </div>
               </div>
             </div>
-            <div class="head-actions">
-              <button class="ghost" id="ceEditDetails">Edit details</button>
-              <button class="primary" id="cdSave">Save course</button>
-            </div>
           </div>
-          <div id="cdNotice"></div>
-          <div class="ce-build">
-            <div class="ce-blocks-wrap">
-              <div class="cd-toolbar" id="cdToolbar">
-                <select id="cdFont" class="cd-select" title="Font">
-                  <option value="">Font</option>
-                  <option value="Inter, system-ui, sans-serif">Sans</option>
-                  <option value="Georgia, 'Times New Roman', serif">Serif</option>
-                  <option value="Consolas, monospace">Mono</option>
-                </select>
-                <select id="cdSize" class="cd-select" title="Text size">
-                  <option value="">Size</option>
-                  <option value="2">Small</option>
-                  <option value="3">Normal</option>
-                  <option value="5">Large</option>
-                  <option value="6">X-Large</option>
-                  <option value="7">Huge</option>
-                </select>
-                <span class="cd-sep"></span>
-                <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
-                <button type="button" data-cmd="italic" title="Italic"><i>I</i></button>
-                <button type="button" data-cmd="underline" title="Underline"><span style="text-decoration:underline;">U</span></button>
-                <button type="button" data-cmd="strikeThrough" title="Strikethrough"><s>S</s></button>
-                <label class="cd-color" title="Text colour"><span>A</span><input type="color" id="cdColor" value="#0f6146"></label>
-                <span class="cd-sep"></span>
-                <button type="button" data-block="H1" title="Heading">H1</button>
-                <button type="button" data-block="H2" title="Subheading">H2</button>
-                <button type="button" data-block="P" title="Normal text">¶</button>
-                <span class="cd-sep"></span>
-                <button type="button" data-cmd="insertUnorderedList" title="Bulleted list">•&nbsp;List</button>
-                <button type="button" data-cmd="insertOrderedList" title="Numbered list">1.&nbsp;List</button>
-                <button type="button" data-align="justifyLeft" title="Align left">⯇</button>
-                <button type="button" data-align="justifyCenter" title="Align centre">≡</button>
-                <button type="button" data-align="justifyRight" title="Align right">⯈</button>
-                <span class="cd-sep"></span>
-                <button type="button" data-link="1" title="Insert link">Link</button>
-                <button type="button" data-cmd="removeFormat" title="Clear formatting">Clear</button>
-              </div>
-              <div id="ceBlocks" class="ce-blocks"></div>
-              <div id="ceEmpty" class="ce-empty">This course is empty. Add a section or activity using the toolbar on the right →</div>
-            </div>
-            <div class="ce-addbar" id="ceAddBar"></div>
+          <div id="cbNotice" class="cb-notice-wrap"></div>
+          <div class="cb-panes">
+            <aside class="cb-left">
+              <div class="cb-left-head"><span>Course Content</span></div>
+              <div id="cbChapters" class="cb-chapters"></div>
+              <button class="cb-add-chapter" id="cbAddChapter">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg> Add Chapter
+              </button>
+            </aside>
+            <main class="cb-canvas" id="cbCanvas"></main>
+            <aside class="cb-right" id="cbProps"></aside>
           </div>
-          <input type="file" id="ceDocInput" accept=".pdf,.docx,.pptx" class="hidden">
+          <input type="file" id="cbImgInput" accept="image/*" class="hidden">
+          <input type="file" id="cbDocInput" accept=".pdf,.docx,.pptx" class="hidden">
         </div>
 
-        <!-- Step 1 of creating a course: details popup -->
-        <div id="newCoursePopup" class="card hidden">
-          <h2 id="ncTitle" style="margin-top:0;">New course</h2>
-          <div id="ncNotice"></div>
-          <div id="nc_importRow" class="hidden" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:9px 11px;background:var(--surface-3);font-size:12.5px;">
+        <!-- Add Content: block-type picker as a grid -->
+        <div id="blockPicker" class="card hidden bp">
+          <div class="bp-head">
+            <div><h3>Add Content</h3><p class="bp-sub">Choose a block to add to this chapter.</p></div>
+            <button class="bp-close" id="bpClose" aria-label="Close">×</button>
+          </div>
+          <div class="bp-grid" id="bpGrid"></div>
+        </div>
+
+        <style>
+        /* ===== Course builder ===== */
+        #courseBuilder{--bl:#116ACC;--bl-soft:#EAF2FC;position:fixed;inset:0 0 0 var(--sb-w,222px);z-index:35;background:var(--bg);display:flex;flex-direction:column;}
+        .cb-top{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;}
+        .cb-icon{width:34px;height:34px;flex-shrink:0;display:grid;place-items:center;border:1px solid var(--border);background:var(--surface);border-radius:8px;color:var(--muted);cursor:pointer;padding:0;}
+        .cb-icon:hover{color:var(--text);border-color:var(--border-strong);background:var(--surface-2);}
+        .cb-icon svg{width:17px;height:17px;}
+        .cb-title-wrap{display:flex;align-items:center;gap:10px;min-width:0;flex:1;}
+        .cb-title{font-size:16px;font-weight:600;color:var(--text);border:1px solid transparent;background:transparent;border-radius:7px;padding:6px 9px;min-width:0;max-width:460px;width:100%;margin:0;}
+        .cb-title:hover{border-color:var(--border);}
+        .cb-title:focus{border-color:var(--bl);background:var(--surface);outline:none;box-shadow:0 0 0 3px var(--bl-soft);}
+        .cb-badge{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase;padding:3px 9px;border-radius:999px;flex-shrink:0;}
+        .cb-badge-draft{background:#FDF3D7;color:#9A7A15;}
+        .cb-badge-published{background:#DEF3E6;color:#1F8A4C;}
+        .cb-top-right{display:flex;align-items:center;gap:9px;flex-shrink:0;}
+        .cb-saved{font-size:12px;color:var(--faint);min-width:64px;text-align:right;}
+        .cb-saved.saving{color:var(--muted);}
+        .cb-btn{font-size:13px;font-weight:600;padding:8px 15px;border-radius:8px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;}
+        .cb-btn:hover{background:var(--surface-2);border-color:var(--border-strong);}
+        .cb-btn-primary{background:var(--bl);border-color:var(--bl);color:#fff;}
+        .cb-btn-primary:hover{background:#0F5DB4;border-color:#0F5DB4;}
+        .cb-menu-wrap{position:relative;}
+        .cb-menu{position:absolute;top:40px;right:0;background:var(--surface);border:1px solid var(--border);border-radius:10px;box-shadow:0 10px 30px rgba(24,34,51,.16);padding:6px;min-width:170px;z-index:20;}
+        .cb-menu button{display:block;width:100%;text-align:left;padding:8px 11px;border:0;background:none;font-size:13px;color:var(--text);border-radius:7px;cursor:pointer;}
+        .cb-menu button:hover{background:var(--surface-2);}
+        .cb-menu button.danger{color:#D14343;}
+        .cb-notice-wrap:not(:empty){padding:10px 16px 0;}
+        .cb-panes{flex:1;display:grid;grid-template-columns:270px minmax(0,1fr) 300px;min-height:0;}
+        .cb-left,.cb-right{background:var(--surface);overflow-y:auto;display:flex;flex-direction:column;}
+        .cb-left{border-right:1px solid var(--border);}
+        .cb-right{border-left:1px solid var(--border);}
+        .cb-left-head{display:flex;align-items:center;justify-content:space-between;padding:16px 16px 10px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);}
+        .cb-chapters{padding:0 10px;flex:1;}
+        .cb-chapter{border-radius:9px;margin-bottom:4px;}
+        .cb-chapter.sel>.cb-ch-row{background:var(--bl-soft);}
+        .cb-ch-row{display:flex;align-items:center;gap:8px;padding:9px 10px;border-radius:9px;cursor:pointer;}
+        .cb-ch-row:hover{background:var(--surface-2);}
+        .cb-chapter.sel .cb-ch-row:hover{background:var(--bl-soft);}
+        .cb-ch-caret{width:16px;height:16px;flex-shrink:0;color:var(--faint);display:grid;place-items:center;transition:transform .15s;}
+        .cb-chapter.open .cb-ch-caret{transform:rotate(90deg);}
+        .cb-ch-num{font-size:12px;font-weight:700;color:var(--muted);flex-shrink:0;}
+        .cb-ch-name{flex:1;font-size:13.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+        .cb-chapter.sel .cb-ch-name{color:var(--bl);}
+        .cb-ch-count{font-size:11px;color:var(--faint);flex-shrink:0;}
+        .cb-ch-drag{cursor:grab;color:var(--faint);opacity:0;font-size:13px;flex-shrink:0;}
+        .cb-ch-row:hover .cb-ch-drag{opacity:.7;}
+        .cb-chapter.dragging{opacity:.4;}
+        .cb-chapter.drop-before>.cb-ch-row{box-shadow:inset 0 2px 0 var(--bl);}
+        .cb-ch-blocks{padding:2px 10px 8px 30px;}
+        .cb-ch-bk{display:flex;align-items:center;gap:8px;padding:6px 9px;border-radius:7px;font-size:12.5px;color:var(--muted);cursor:pointer;}
+        .cb-ch-bk:hover{background:var(--surface-2);color:var(--text);}
+        .cb-ch-bk svg{width:14px;height:14px;flex-shrink:0;opacity:.75;}
+        .cb-ch-bk.sel{color:var(--bl);background:var(--bl-soft);}
+        .cb-ch-empty{font-size:12px;color:var(--faint);padding:5px 9px;}
+        .cb-add-chapter{display:flex;align-items:center;justify-content:center;gap:7px;margin:8px 14px 16px;padding:10px;border:1px dashed var(--border-strong);border-radius:9px;background:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;}
+        .cb-add-chapter:hover{border-color:var(--bl);color:var(--bl);background:var(--bl-soft);}
+        .cb-add-chapter svg{width:15px;height:15px;}
+        /* canvas */
+        .cb-canvas{overflow-y:auto;padding:30px 34px 120px;}
+        .cb-canvas-inner{max-width:760px;margin:0 auto;}
+        .cb-cover-band{height:150px;border-radius:14px;margin-bottom:22px;background-size:cover;background-position:center;background-color:var(--surface-3);position:relative;}
+        .cb-ch-title-in{font-size:26px;font-weight:700;letter-spacing:-.02em;color:var(--text);border:1px solid transparent;background:transparent;border-radius:8px;padding:4px 8px;width:100%;margin:0 0 4px -8px;}
+        .cb-ch-title-in:hover{border-color:var(--border);}
+        .cb-ch-title-in:focus{outline:none;border-color:var(--bl);background:var(--surface);box-shadow:0 0 0 3px var(--bl-soft);}
+        .cb-ch-desc-in{font-size:14px;color:var(--muted);border:1px solid transparent;background:transparent;border-radius:8px;padding:5px 8px;width:100%;resize:none;margin:0 0 18px -8px;line-height:1.5;font-family:inherit;}
+        .cb-ch-desc-in:hover{border-color:var(--border);}
+        .cb-ch-desc-in:focus{outline:none;border-color:var(--bl);background:var(--surface);box-shadow:0 0 0 3px var(--bl-soft);}
+        .cb-blocks{display:flex;flex-direction:column;gap:14px;}
+        .cb-block{border:1px solid var(--border);border-radius:12px;background:var(--surface);position:relative;transition:border-color .12s,box-shadow .12s;}
+        .cb-block:hover{border-color:var(--border-strong);}
+        .cb-block.sel{border-color:var(--bl);box-shadow:0 0 0 3px var(--bl-soft);}
+        .cb-block-head{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--border);color:var(--muted);}
+        .cb-block-head .cb-bk-drag{cursor:grab;color:var(--faint);font-size:13px;}
+        .cb-block-head .cb-bk-ic{width:15px;height:15px;color:var(--bl);}
+        .cb-block-head .cb-bk-label{font-size:11.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;flex:1;}
+        .cb-block-head .cb-bk-del{width:26px;height:26px;display:grid;place-items:center;border:0;background:none;color:var(--faint);border-radius:6px;cursor:pointer;font-size:16px;}
+        .cb-block-head .cb-bk-del:hover{background:#FBE9E9;color:#D14343;}
+        .cb-block.dragging{opacity:.4;}
+        .cb-block.drop-before{box-shadow:inset 0 3px 0 var(--bl);}
+        .cb-block-body{padding:14px;}
+        .cb-rich{min-height:44px;font-size:14.5px;line-height:1.6;color:var(--text);outline:none;}
+        .cb-rich:empty:before{content:attr(data-ph);color:var(--faint);}
+        .cb-heading-in{font-size:20px;font-weight:700;color:var(--text);border:0;background:none;width:100%;outline:none;padding:0;}
+        .cb-input{width:100%;font-size:13.5px;padding:9px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);margin:0;}
+        .cb-input:focus{outline:none;border-color:var(--bl);box-shadow:0 0 0 3px var(--bl-soft);}
+        .cb-input+.cb-input{margin-top:8px;}
+        .cb-field-lbl{font-size:11px;font-weight:600;color:var(--muted);margin:0 0 5px;display:block;}
+        .cb-embed-prev{margin-top:12px;border-radius:8px;overflow:hidden;}
+        .cb-embed-prev:empty{display:none;}
+        .cb-mini{display:flex;gap:2px;padding:6px 10px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+        .cb-mini button{width:28px;height:26px;border:0;background:none;border-radius:6px;color:var(--muted);cursor:pointer;font-size:13px;}
+        .cb-mini button:hover{background:var(--surface-2);color:var(--text);}
+        .cb-img-prev{margin-top:12px;}
+        .cb-img-prev img{max-width:100%;border-radius:8px;display:block;}
+        .cb-upload-btn{margin-top:8px;font-size:12.5px;padding:7px 12px;border:1px dashed var(--border-strong);background:none;border-radius:8px;color:var(--muted);cursor:pointer;}
+        .cb-upload-btn:hover{border-color:var(--bl);color:var(--bl);}
+        .cb-addcontent{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:16px;padding:14px;border:1.5px dashed var(--border-strong);border-radius:12px;background:none;color:var(--muted);font-size:14px;font-weight:600;cursor:pointer;}
+        .cb-addcontent:hover{border-color:var(--bl);color:var(--bl);background:var(--bl-soft);}
+        .cb-addcontent svg{width:17px;height:17px;}
+        .cb-canvas-empty{text-align:center;padding:70px 20px;color:var(--faint);}
+        .cb-canvas-empty svg{width:46px;height:46px;opacity:.5;margin-bottom:14px;}
+        .cb-canvas-empty h3{font-size:17px;color:var(--text);margin:0 0 6px;font-weight:600;}
+        .cb-canvas-empty p{font-size:13.5px;margin:0 0 18px;}
+        .cb-chapter-empty{border:1.5px dashed var(--border);border-radius:12px;padding:34px 20px;text-align:center;color:var(--faint);font-size:13.5px;}
+        /* properties */
+        .cb-props-head{padding:16px 16px 10px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);}
+        .cb-props-body{padding:0 16px 24px;}
+        .cb-props-body .cb-field-lbl{margin-top:14px;}
+        .cb-props-body .cb-field-lbl:first-child{margin-top:0;}
+        .cb-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--border);}
+        .cb-toggle-row:first-of-type{margin-top:16px;}
+        .cb-toggle-txt b{display:block;font-size:13px;color:var(--text);font-weight:600;}
+        .cb-toggle-txt span{font-size:11.5px;color:var(--faint);}
+        .cb-switch{position:relative;width:38px;height:22px;flex-shrink:0;}
+        .cb-switch input{opacity:0;width:0;height:0;position:absolute;}
+        .cb-switch .cb-slider{position:absolute;inset:0;background:var(--border-strong);border-radius:999px;transition:.15s;cursor:pointer;}
+        .cb-switch .cb-slider:before{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.15s;box-shadow:0 1px 2px rgba(0,0,0,.25);}
+        .cb-switch input:checked+.cb-slider{background:var(--bl);}
+        .cb-switch input:checked+.cb-slider:before{transform:translateX(16px);}
+        .cb-props-select{width:100%;font-size:13.5px;padding:9px 11px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);}
+        .cb-danger-btn{margin-top:20px;width:100%;padding:9px;border:1px solid #F0C9C9;background:#FCEDED;color:#C13636;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;}
+        .cb-danger-btn:hover{background:#F8DEDE;}
+        .cb-cover-drop{margin-top:6px;border:1px dashed var(--border-strong);border-radius:9px;padding:14px;text-align:center;color:var(--muted);font-size:12.5px;cursor:pointer;}
+        .cb-cover-drop:hover{border-color:var(--bl);color:var(--bl);}
+        .cb-cover-thumb{margin-top:8px;border-radius:8px;overflow:hidden;position:relative;}
+        .cb-cover-thumb img{width:100%;display:block;}
+        .cb-cover-thumb button{position:absolute;top:6px;right:6px;width:24px;height:24px;border:0;background:rgba(0,0,0,.55);color:#fff;border-radius:6px;cursor:pointer;}
+        /* step-1 modal */
+        .nc2{--bl:#116ACC;--bl-soft:#EAF2FC;max-width:480px;}
+        .nc2-title{margin:0 0 4px;font-size:20px;letter-spacing:-.01em;}
+        .nc2-sub{margin:0 0 18px;color:var(--muted);font-size:13px;}
+        .nc2-req{color:#D14343;}
+        .nc2-opt{color:var(--faint);font-weight:400;text-transform:none;letter-spacing:0;}
+        .nc2-import{display:flex;align-items:center;gap:8px;margin-bottom:14px;padding:9px 11px;background:var(--bl-soft);color:#0F5DB4;border-radius:8px;font-size:12.5px;}
+        .nc2-drop{border:1.5px dashed var(--border-strong);border-radius:11px;padding:22px;text-align:center;cursor:pointer;transition:.12s;}
+        .nc2-drop:hover,.nc2-drop.drag{border-color:var(--bl);background:var(--bl-soft);}
+        .nc2-drop-empty{color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:5px;}
+        .nc2-drop-empty svg{color:var(--bl);}
+        .nc2-drop-main{font-size:13px;}.nc2-drop-main b{color:var(--bl);}
+        .nc2-hint{font-size:11.5px;color:var(--faint);}
+        .nc2-drop-preview{position:relative;}
+        .nc2-drop-preview img{max-width:100%;max-height:150px;border-radius:8px;display:block;margin:0 auto;}
+        .nc2-cover-remove{position:absolute;top:-8px;right:-8px;width:26px;height:26px;border:0;background:#182233;color:#fff;border-radius:50%;cursor:pointer;font-size:16px;line-height:1;}
+        /* grid block picker */
+        .bp{--bl:#116ACC;--bl-soft:#EAF2FC;max-width:560px;}
+        .bp-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;}
+        .bp-head h3{margin:0 0 3px;font-size:17px;}
+        .bp-sub{margin:0;color:var(--muted);font-size:12.5px;}
+        .bp-close{width:30px;height:30px;border:0;background:none;font-size:20px;color:var(--faint);cursor:pointer;border-radius:7px;}
+        .bp-close:hover{background:var(--surface-2);color:var(--text);}
+        .bp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+        .bp-tile{display:flex;flex-direction:column;align-items:center;gap:7px;padding:16px 8px;border:1px solid var(--border);border-radius:11px;background:var(--surface);cursor:pointer;text-align:center;transition:.12s;}
+        .bp-tile:hover{border-color:var(--bl);background:var(--bl-soft);transform:translateY(-1px);}
+        .bp-tile-ic{width:34px;height:34px;border-radius:9px;background:var(--bl-soft);color:var(--bl);display:grid;place-items:center;}
+        .bp-tile-ic svg{width:18px;height:18px;}
+        .bp-tile:hover .bp-tile-ic{background:var(--bl);color:#fff;}
+        .bp-tile-name{font-size:12.5px;font-weight:600;color:var(--text);}
+        @media (max-width:1180px){#courseBuilder{inset:0;} .cb-panes{grid-template-columns:240px minmax(0,1fr) 270px;}}
+        @media (max-width:900px){.cb-panes{grid-template-columns:210px minmax(0,1fr);} .cb-right{display:none;} .bp-grid{grid-template-columns:repeat(3,1fr);}}
+        @media (max-width:560px){.bp-grid{grid-template-columns:repeat(2,1fr);}}
+        .tr-card{position:relative;}
+        .tr-draft{position:absolute;top:8px;left:8px;z-index:2;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 7px;border-radius:5px;background:#FDF3D7;color:#9A7A15;}
+        </style>
+
+        <!-- Step 1 of creating a course: name + cover, then open the builder -->
+        <div id="newCourseModal" class="card hidden nc2">
+          <h2 class="nc2-title" id="nc2Heading">Create a New Course</h2>
+          <p class="nc2-sub">Give your course a name to get started — you can change everything later.</p>
+          <div id="nc2Notice"></div>
+          <div id="nc2ImportRow" class="hidden nc2-import">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 3v5h5M8 13h8M8 17h5M9 8h1"/><path d="M6 3h9l5 5v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/></svg>
-            <span>Imported from <b id="nc_fileName"></b> — the file itself isn't stored.</span>
+            <span>Imported from <b id="nc2FileName"></b> — the text is added as your first chapter; the file itself isn't stored.</span>
           </div>
-          <label for="nc_name">Name</label>
-          <input type="text" id="nc_name" placeholder="e.g. Workplace Safety Essentials">
-          <label for="nc_desc">Short description</label>
-          <textarea id="nc_desc" placeholder="One or two lines shown on the course card"></textarea>
-          <label for="nc_category">Category</label>
-          <select id="nc_category"></select>
-          <div id="nc_newCatRow" class="hidden" style="margin-top:8px;">
-            <label for="nc_newCat">New category name</label>
-            <input type="text" id="nc_newCat" placeholder="e.g. Sales Enablement">
+          <label for="nc2_title">Course Title <span class="nc2-req">*</span></label>
+          <input type="text" id="nc2_title" placeholder="e.g. Workplace Safety Essentials" autocomplete="off">
+          <label for="nc2_desc">Short Description</label>
+          <textarea id="nc2_desc" placeholder="One or two lines shown on the course card (optional)"></textarea>
+          <label>Cover Image <span class="nc2-opt">optional</span></label>
+          <div id="nc2Drop" class="nc2-drop" tabindex="0" role="button" aria-label="Upload cover image">
+            <div id="nc2DropEmpty" class="nc2-drop-empty">
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+              <div class="nc2-drop-main"><b>Click to upload</b> or drag &amp; drop</div>
+              <div class="nc2-hint">PNG or JPG — resized automatically</div>
+            </div>
+            <div id="nc2DropPreview" class="nc2-drop-preview hidden">
+              <img id="nc2CoverImg" alt="Cover preview">
+              <button type="button" id="nc2CoverRemove" class="nc2-cover-remove" title="Remove cover" aria-label="Remove cover">×</button>
+            </div>
           </div>
-          <label style="margin-top:14px;">Presentation type</label>
-          <div class="pres-options">
-            <label class="pres-opt">
-              <input type="radio" name="nc_pres" value="slideshow" checked>
-              <span class="pres-body"><span class="pres-title">Slideshow</span><span class="pres-desc">Activities are presented sequentially. Learners play every activity individually before moving to the next.</span></span>
-            </label>
-            <label class="pres-opt">
-              <input type="radio" name="nc_pres" value="single_page">
-              <span class="pres-body"><span class="pres-title">Single Page</span><span class="pres-desc">Activities are presented as a group. Learners play every activity in a single, scrolling view.</span></span>
-            </label>
-          </div>
-          <div class="head-actions" style="justify-content:flex-end;margin-top:16px;">
-            <button class="ghost" id="ncCancel">Cancel</button>
-            <button class="primary" id="ncContinue">Continue →</button>
+          <input type="file" id="nc2_cover" accept="image/*" class="hidden">
+          <div class="head-actions" style="justify-content:flex-end;margin-top:18px;">
+            <button class="ghost" id="nc2Cancel">Cancel</button>
+            <button class="primary" id="nc2Start">Start Creating →</button>
           </div>
         </div>
 
@@ -3029,7 +3178,7 @@ function gFor(id){ let h=0; for (let i=0;i<String(id).length;i++) h=(h*31 + Stri
 // Load this org's courses from the API into the view.
 async function refreshCourses(){
   const list = await cList();
-  TRAININGS = list.map(c => ({ id:c.id, name:c.title, desc:c.summary, category:c.category, content:c.content||'', presentation:c.presentation||'slideshow', updatedAt:c.updatedAt, g:gFor(c.id) }));
+  TRAININGS = list.map(c => ({ id:c.id, name:c.title, desc:c.summary, category:c.category, content:c.content||'', presentation:c.presentation||'slideshow', status:c.status||'published', image:courseCover(c.content||''), updatedAt:c.updatedAt, g:gFor(c.id) }));
   CATEGORIES = [...new Set(TRAININGS.map(t => t.category).filter(Boolean))];
   renderTrainings();
 }
@@ -3045,6 +3194,7 @@ function trCategoryOrder(){
 function trCardHTML(t){
   return '<div class="tr-card'+(SEL_TR.has(t.id)?' sel':'')+'" data-id="'+t.id+'" style="--tr-bg:'+(t.image?("url('"+t.image+"')"):TR_GRADS[t.g%TR_GRADS.length])+';">'+
     '<input type="checkbox" class="tr-check" data-id="'+t.id+'"'+(SEL_TR.has(t.id)?' checked':'')+' aria-label="Select">'+
+    (t.status && t.status!=='published' ? '<span class="tr-draft">Draft</span>' : '')+
     '<div class="tr-body"><div class="tr-name">'+pEsc(t.name)+'</div><div class="tr-desc">'+pEsc(t.desc)+'</div></div></div>';
 }
 function renderTrainings(){
@@ -3149,167 +3299,105 @@ document.getElementById('trDelete').addEventListener('click', async () => {
 let courseDraft = null;   // { id, name, desc, category, content }
 let pendingImport = null; // filename of a parsed upload (shown as a note), or null
 
-// Category dropdown (existing categories + a "create new" option). `prefix` is
-// 'ce' (the editor) or 'nc' (the new-course popup) — both share the markup.
-function fillCat(prefix, selected){
-  const sel = document.getElementById(prefix+'_category');
-  sel.innerHTML = CATEGORIES.map(c => '<option value="'+pEsc(c)+'"'+(c===selected?' selected':'')+'>'+pEsc(c)+'</option>').join('')
-    + '<option value="__new__">+ Create new category…</option>';
-  if (selected && !CATEGORIES.includes(selected)) sel.value = CATEGORIES[0] || '__new__';
-  toggleNewCat(prefix);
-}
-function toggleNewCat(prefix){
-  const isNew = document.getElementById(prefix+'_category').value === '__new__';
-  document.getElementById(prefix+'_newCatRow').classList.toggle('hidden', !isNew);
-  if (isNew) setTimeout(() => document.getElementById(prefix+'_newCat').focus(), 20);
-}
-document.getElementById('nc_category').addEventListener('change', () => toggleNewCat('nc'));
-function readCat(prefix){
-  let c = document.getElementById(prefix+'_category').value;
-  return c === '__new__' ? document.getElementById(prefix+'_newCat').value.trim() : c;
-}
-
-/* ---------- Course blocks (sections & activities) ----------
-   A course body is an ordered list of blocks, stored as JSON in `content`.
-   Legacy courses (a single HTML string) load as one Section. */
-const BLOCK_ICONS = {
-  section:'<path d="M4 6h16M4 12h16M4 18h10"/>',
-  document:'<path d="M14 3v5h5"/><path d="M6 3h9l5 5v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/>',
-  audio:'<path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="2.6"/><circle cx="16" cy="16" r="2.6"/>',
+/* ---------- Course model: chapters → content blocks ----------
+   Stored as JSON in `content`: { v:2, cover, chapters:[ {id,title,description,
+   freePreview, visible, blocks:[ {id,type,html,url,text,label,caption} ] } ] }.
+   Legacy courses (a flat blocks array, or a plain HTML string) load as a single
+   chapter automatically — nothing has to be migrated. */
+const CB_ICONS = {
+  text:'<path d="M4 6h16M4 12h16M4 18h11"/>',
+  heading:'<path d="M6 4v16M18 4v16M6 12h12"/>',
+  image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>',
   video:'<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M10 9.5l5 2.5-5 2.5z"/>',
+  audio:'<path d="M9 18V6l10-2v12"/><circle cx="6" cy="18" r="2.4"/><circle cx="16" cy="16" r="2.4"/>',
+  pdf:'<path d="M14 3v5h5"/><path d="M6 3h9l5 5v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/><path d="M9 12.5h1.4a1.1 1.1 0 0 1 0 2.2H9zM9 12.5v4"/>',
+  presentation:'<rect x="3" y="4" width="18" height="12" rx="1.5"/><path d="M12 16v4M8 20h8"/>',
+  link:'<path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/>',
+  embed:'<path d="M8 9l-4 3 4 3M16 9l4 3-4 3M14 6l-4 12"/>',
   quiz:'<circle cx="12" cy="12" r="9"/><path d="M9.6 9.2a2.4 2.4 0 1 1 3.3 2.2c-.7.4-1 .9-1 1.6M12 16.5h.01"/>',
-  webinar:'<rect x="2.5" y="6.5" width="13" height="11" rx="2"/><path d="M15.5 10l6-3v10l-6-3z"/>',
+  assignment:'<path d="M9 3h6a1 1 0 0 1 1 1v1h1a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h1V4a1 1 0 0 1 1-1z"/><path d="M9 13l2 2 4-4"/>',
 };
-const BLOCK_META = {
-  section:  { label:'Section',  rich:true },
-  document: { label:'Document' }, // link (viewer) + optional uploaded/extracted text
-  audio:    { label:'Audio link',   media:'audio', ph:'https://… (MP3/WAV link, SoundCloud, Spotify)' },
-  video:    { label:'Video link',   media:'video', ph:'https://… (YouTube, Vimeo, Loom, Drive, MP4)' },
-  quiz:     { label:'Quiz',         url:true, ph:'Link to a quiz or test' },
-  webinar:  { label:'Webinar link', url:true, ph:'https://… (Zoom, Meet, Teams)' },
+const CB_BLOCKS = {
+  text:        { label:'Text',         kind:'rich',  ph:'Write something, or type / for options…' },
+  heading:     { label:'Heading',      kind:'heading' },
+  image:       { label:'Image',        kind:'image' },
+  video:       { label:'Video',        kind:'media', embed:'video',    ph:'https://… (YouTube, Vimeo, Loom, Drive, MP4)' },
+  audio:       { label:'Audio',        kind:'media', embed:'audio',    ph:'https://… (MP3/WAV link, SoundCloud, Spotify)' },
+  pdf:         { label:'PDF',          kind:'media', embed:'document', ph:'Paste a PDF link (or Google Drive)…' },
+  presentation:{ label:'Presentation', kind:'media', embed:'document', ph:'Paste a slides link (Google Slides, Office, PDF)…' },
+  link:        { label:'Link',         kind:'link',  ph:'https://…' },
+  embed:       { label:'Embed',        kind:'embed', ph:'Paste embed code or an <iframe>…' },
+  quiz:        { label:'Quiz',         kind:'link',  ph:'Link to a quiz or test' },
+  assignment:  { label:'Assignment',   kind:'rich',  ph:'Describe the task / instructions…' },
 };
-const ADDBAR = [
-  ['section','Add section'], ['document','Add document (link or upload)'],
-  ['audio','Add audio link'], ['video','Add video link'], ['quiz','Add quiz'], ['webinar','Add webinar link'],
-];
-let ceBlocks = [];
-function blockIcon(type){ return '<svg class="ce-ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+(BLOCK_ICONS[type]||BLOCK_ICONS.section)+'</svg>'; }
-function blockId(){ return 'b'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
-function parseBlocks(content){
-  if (!content) return [];
-  try { const j = JSON.parse(content); if (Array.isArray(j)) return j.map(b => ({ id:b.id||blockId(), type:BLOCK_META[b.type]?b.type:'section', title:b.title||'', html:b.html||'', url:b.url||'' })); } catch(_){}
-  return [{ id:blockId(), type:'section', title:'', html:String(content), url:'' }];
+const CB_ORDER = ['text','heading','image','video','audio','pdf','presentation','link','embed','quiz','assignment'];
+const CB_MINI = '<button type="button" data-cmd="bold" title="Bold"><b>B</b></button>'+
+  '<button type="button" data-cmd="italic" title="Italic"><i>I</i></button>'+
+  '<button type="button" data-cmd="underline" title="Underline"><u>U</u></button>'+
+  '<button type="button" data-fb="H3" title="Heading">H</button>'+
+  '<button type="button" data-cmd="insertUnorderedList" title="Bulleted list">•</button>'+
+  '<button type="button" data-cmd="insertOrderedList" title="Numbered list">1.</button>'+
+  '<button type="button" data-lk="1" title="Insert link">↗</button>';
+function cbIcon(t, cls){ return '<svg'+(cls?' class="'+cls+'"':'')+' viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">'+(CB_ICONS[t]||CB_ICONS.text)+'</svg>'; }
+function newId(p){ return (p||'x')+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function cbCssUrl(u){ return "'"+String(u).replace(/'/g,'%27')+"'"; }
+
+function normBlock(b){
+  b = b || {};
+  const type = CB_BLOCKS[b.type] ? b.type : 'text';
+  return { id:b.id||newId('b'), type, html:b.html||'', url:b.url||'', text:b.text||'', label:b.label||'', caption:b.caption||'' };
 }
-function renderAddBar(){
-  document.getElementById('ceAddBar').innerHTML = ADDBAR.map(([t,label]) =>
-    '<button type="button" data-add="'+t+'" title="'+label+'" aria-label="'+label+'">'+blockIcon(t)+'</button>').join('');
+function mkChapter(title, blocks){ return { id:newId('c'), title:title||'', description:'', freePreview:false, visible:true, blocks:blocks||[] }; }
+function normChapter(c){
+  c = c || {};
+  return { id:c.id||newId('c'), title:c.title||'', description:c.description||'', freePreview:!!c.freePreview, visible:c.visible!==false, blocks:(c.blocks||[]).map(normBlock) };
 }
-// The body of one block in the editor (varies by type).
-function blockBodyHtml(b){
-  const m = BLOCK_META[b.type] || BLOCK_META.section;
-  if (m.rich) return '<div class="ce-block-content" contenteditable="true" data-placeholder="Type the content here…">'+(b.html||'')+'</div>';
-  if (b.type === 'document'){
-    const preview = b.url ? docEmbed(b.url) : (b.html ? '<div class="cd-body cd-read ce-doc-text">'+b.html+'</div>' : '');
-    return '<input class="ce-block-url" type="url" placeholder="Paste a document link (PDF, Google Doc/Drive, Office)…" value="'+pEsc(b.url||'')+'">'+
-      '<div class="ce-doc-import"><button type="button" class="ghost small" data-docup="'+b.id+'">Upload a file to extract its text</button></div>'+
-      '<div class="ce-embed">'+preview+'</div>';
+// Convert a legacy flat block into the new model (a section's title becomes a heading).
+function oldToBlocks(b){
+  const map = { section:'text', document:'pdf', audio:'audio', video:'video', quiz:'quiz', webinar:'link' };
+  const type = map[b.type] || 'text', isLink = (type==='link'||type==='quiz'), arr = [];
+  if (b.title && b.title.trim() && !isLink) arr.push(normBlock({ type:'heading', text:b.title.trim() }));
+  arr.push(normBlock({ type, html:b.html||'', url:b.url||'', label:isLink?(b.title||''):'' }));
+  return arr;
+}
+function parseCourseContent(content){
+  const out = { cover:'', chapters:[] };
+  if (content == null || content === ''){ out.chapters = [mkChapter('Chapter 1', [])]; return out; }
+  let j = null; try { j = JSON.parse(content); } catch(_){ }
+  if (j && !Array.isArray(j) && typeof j === 'object' && Array.isArray(j.chapters)){
+    out.cover = j.cover || '';
+    out.chapters = j.chapters.map(normChapter);
+  } else if (Array.isArray(j)){
+    out.chapters = [ mkChapter('Chapter 1', j.flatMap(oldToBlocks)) ];
+  } else {
+    out.chapters = [ mkChapter('Chapter 1', [ normBlock({ type:'text', html:String(content) }) ]) ];
   }
-  // audio / video (live player) and quiz / webinar (link)
-  const embed = (m.media && b.url) ? mediaEmbed(b.type, b.url) : '';
-  return '<input class="ce-block-url" type="url" placeholder="'+pEsc(m.ph)+'" value="'+pEsc(b.url||'')+'">'+
-    (m.media ? '<div class="ce-embed">'+embed+'</div>' : '');
+  if (!out.chapters.length) out.chapters = [mkChapter('Chapter 1', [])];
+  return out;
 }
-function renderBlocks(){
-  document.getElementById('ceBlocks').innerHTML = ceBlocks.map(b => {
-    const m = BLOCK_META[b.type] || BLOCK_META.section;
-    return '<div class="ce-block" data-id="'+b.id+'" data-type="'+b.type+'">'+
-      '<div class="ce-block-head"><span class="ce-drag" draggable="true" title="Drag to reorder">⠿</span>'+
-      '<span class="ce-block-type">'+blockIcon(b.type)+pEsc(m.label)+'</span>'+
-      '<button type="button" class="ce-block-del" title="Remove" data-del="'+b.id+'">×</button></div>'+
-      '<div class="ce-block-body"><input class="ce-block-title" placeholder="'+pEsc(m.label)+' title" value="'+pEsc(b.title||'')+'">'+blockBodyHtml(b)+'</div></div>';
-  }).join('');
-  document.getElementById('ceEmpty').classList.toggle('hidden', ceBlocks.length>0);
-}
-function syncBlocksFromDOM(){
-  document.querySelectorAll('#ceBlocks .ce-block').forEach(el => {
-    const b = ceBlocks.find(x => x.id === el.dataset.id); if (!b) return;
-    const t = el.querySelector('.ce-block-title'); if (t) b.title = t.value;
-    const c = el.querySelector('.ce-block-content'); if (c) b.html = c.innerHTML;
-    const u = el.querySelector('.ce-block-url'); if (u) b.url = u.value.trim();
+function courseCover(content){ try { const j = JSON.parse(content); if (j && j.cover) return j.cover; } catch(_){ } return ''; }
+
+// Downscale an image file to a JPEG data URL (keeps the DB row small — no R2 needed).
+function imageToDataUrl(file, maxDim){
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader();
+    fr.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width, h = img.height; const m = maxDim || 1280;
+        if (w > m || h > m){ const s = Math.min(m/w, m/h); w = Math.round(w*s); h = Math.round(h*s); }
+        const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        cv.getContext('2d').drawImage(img, 0, 0, w, h);
+        try { resolve(cv.toDataURL('image/jpeg', 0.82)); } catch(e){ reject(new Error('That image could not be processed.')); }
+      };
+      img.onerror = () => reject(new Error('That image could not be read.'));
+      img.src = fr.result;
+    };
+    fr.onerror = () => reject(new Error('That image could not be read.'));
+    fr.readAsDataURL(file);
   });
 }
-function addBlock(type, seed){
-  syncBlocksFromDOM();
-  ceBlocks.push({ id:blockId(), type, title:(seed&&seed.title)||'', html:(seed&&seed.html)||'', url:(seed&&seed.url)||'' });
-  const newId = ceBlocks[ceBlocks.length-1].id;
-  renderBlocks();
-  const el = document.querySelector('.ce-block[data-id="'+newId+'"]');
-  if (el){ el.scrollIntoView({behavior:'smooth',block:'center'}); const f=el.querySelector('.ce-block-title'); if(f) setTimeout(()=>f.focus(),30); }
-}
-document.getElementById('ceAddBar').addEventListener('click', (e) => {
-  const btn = e.target.closest('button[data-add]'); if(!btn) return;
-  addBlock(btn.dataset.add);
-});
-// Live media player/viewer as a URL is entered (fires on blur / Enter).
-document.getElementById('ceBlocks').addEventListener('change', (e) => {
-  const inp = e.target.closest('.ce-block-url'); if(!inp) return;
-  const blk = inp.closest('.ce-block'), embed = blk.querySelector('.ce-embed'); if(!embed) return;
-  const url = inp.value.trim();
-  embed.innerHTML = url ? mediaEmbed(blk.dataset.type, url) : '';
-});
-// Document block: "extract text" upload — parse a file into that block (file discarded).
-let docTargetId = null;
-document.getElementById('ceBlocks').addEventListener('click', (e) => {
-  const up = e.target.closest('[data-docup]'); if(!up) return;
-  docTargetId = up.dataset.docup; document.getElementById('ceDocInput').click();
-});
-document.getElementById('ceDocInput').addEventListener('change', async (e) => {
-  const f = e.target.files && e.target.files[0]; e.target.value=''; if(!f || !docTargetId) return;
-  toast('Reading “'+f.name+'”…');
-  try {
-    const html = await parseCourseFile(f);
-    syncBlocksFromDOM();
-    const b = ceBlocks.find(x => x.id === docTargetId);
-    if (b){ b.html = html; b.url = ''; if(!b.title) b.title = f.name.replace(/\.[^.]+$/,''); }
-    renderBlocks();
-  } catch(err){ toast(err.message || 'Could not read that file.', 'error'); }
-  finally { docTargetId = null; }
-});
-document.getElementById('ceBlocks').addEventListener('click', (e) => {
-  const del = e.target.closest('[data-del]'); if(!del) return;
-  syncBlocksFromDOM();
-  ceBlocks = ceBlocks.filter(b => b.id !== del.dataset.del);
-  renderBlocks();
-});
-// Drag to reorder (grab the ⠿ handle)
-let dragId = null;
-document.getElementById('ceBlocks').addEventListener('dragstart', (e) => {
-  const h = e.target.closest('.ce-drag'); if(!h){ e.preventDefault(); return; }
-  const blk = h.closest('.ce-block'); dragId = blk.dataset.id; blk.classList.add('dragging');
-  e.dataTransfer.effectAllowed='move'; try{ e.dataTransfer.setData('text/plain', dragId); }catch(_){}
-});
-document.getElementById('ceBlocks').addEventListener('dragend', () => {
-  dragId=null; document.querySelectorAll('#ceBlocks .ce-block').forEach(x=>x.classList.remove('dragging','drop-before'));
-});
-document.getElementById('ceBlocks').addEventListener('dragover', (e) => {
-  e.preventDefault();
-  document.querySelectorAll('#ceBlocks .ce-block').forEach(x=>x.classList.remove('drop-before'));
-  const over = e.target.closest('.ce-block');
-  if (over && over.dataset.id !== dragId) over.classList.add('drop-before');
-});
-document.getElementById('ceBlocks').addEventListener('drop', (e) => {
-  e.preventDefault(); if(!dragId) return;
-  syncBlocksFromDOM();
-  const over = e.target.closest('.ce-block');
-  const from = ceBlocks.findIndex(b => b.id === dragId); if(from<0) return;
-  const [moved] = ceBlocks.splice(from,1);
-  if (over && over.dataset.id !== dragId){ const to = ceBlocks.findIndex(b => b.id === over.dataset.id); ceBlocks.splice(to<0?ceBlocks.length:to, 0, moved); }
-  else ceBlocks.push(moved);
-  renderBlocks();
-});
-renderAddBar();
-
-// ---- Media embeds (players & viewers) — shared by editor + preview ----
+// ---- Media embeds (players & viewers) — shared by builder + preview ----
 function iframeEmbed(src, ratio){
   return '<div class="media-frame" style="position:relative;padding-top:'+(ratio||56.25)+'%;background:#000;">'+
     '<iframe src="'+pEsc(src)+'" style="position:absolute;inset:0;width:100%;height:100%;border:0;" allow="autoplay; fullscreen; picture-in-picture; encrypted-media" allowfullscreen loading="lazy"></iframe></div>';
@@ -3343,174 +3431,461 @@ function docEmbed(url){
 }
 function mediaEmbed(type, url){ return type==='video'?videoEmbed(url):type==='audio'?audioEmbed(url):type==='document'?docEmbed(url):''; }
 function linkHtml(url,label){ return url ? '<a href="'+pEsc(url)+'" target="_blank" rel="noopener">'+pEsc(label||url)+'</a>' : '<span style="color:var(--faint);">(no link yet)</span>'; }
-function renderBlocksReadonly(content){
-  const blocks = parseBlocks(content);
-  if(!blocks.length) return '<p style="color:var(--faint);">No content yet.</p>';
-  return blocks.map(b => {
-    const m = BLOCK_META[b.type]||BLOCK_META.section;
-    let inner;
-    if (m.rich) inner = b.html || '<p style="color:var(--faint);">(empty)</p>';
-    else if (b.type==='video') inner = b.url ? videoEmbed(b.url) : linkHtml('');
-    else if (b.type==='audio') inner = b.url ? audioEmbed(b.url) : linkHtml('');
-    else if (b.type==='document') inner = b.url ? docEmbed(b.url) : (b.html || linkHtml(''));
-    else inner = linkHtml(b.url, b.type==='quiz'?'Open quiz ↗':b.type==='webinar'?'Join webinar ↗':'Open ↗');
-    const heading = b.title || (b.type!=='section' ? m.label : '');
-    return '<section style="margin:0 0 26px;">'+(heading?'<h3 style="font-size:15.5px;margin:0 0 9px;display:flex;align-items:center;gap:7px;">'+blockIcon(b.type)+pEsc(heading)+'</h3>':'')+inner+'</section>';
+// Read-only render of one content block (used by the course preview).
+function cbBlockReadHtml(b){
+  if (b.type==='heading') return b.text ? '<h3 style="font-size:18px;margin:22px 0 10px;letter-spacing:-.01em;">'+pEsc(b.text)+'</h3>' : '';
+  if (b.type==='text') return b.html ? '<div style="margin:0 0 14px;line-height:1.6;">'+b.html+'</div>' : '';
+  if (b.type==='assignment') return '<div style="margin:0 0 16px;border-left:3px solid var(--accent);background:var(--surface-2);padding:12px 14px;border-radius:0 8px 8px 0;"><div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);margin-bottom:6px;">Assignment</div>'+(b.html||'<span style="color:var(--faint);">(no instructions)</span>')+'</div>';
+  if (b.type==='image') return b.url ? '<figure style="margin:14px 0;"><img src="'+pEsc(b.url)+'" style="max-width:100%;border-radius:8px;display:block;">'+(b.caption?'<figcaption style="font-size:12px;color:var(--muted);margin-top:6px;">'+pEsc(b.caption)+'</figcaption>':'')+'</figure>' : '';
+  if (b.type==='video') return b.url ? '<div style="margin:14px 0;">'+videoEmbed(b.url)+'</div>' : '';
+  if (b.type==='audio') return b.url ? '<div style="margin:14px 0;">'+audioEmbed(b.url)+'</div>' : '';
+  if (b.type==='pdf' || b.type==='presentation') return b.url ? '<div style="margin:14px 0;">'+docEmbed(b.url)+'</div>' : '';
+  if (b.type==='embed') return b.html ? '<div style="margin:14px 0;">'+b.html+'</div>' : '';
+  if (b.type==='link') return '<p style="margin:12px 0;">'+linkHtml(b.url, b.label||'Open link ↗')+'</p>';
+  if (b.type==='quiz') return '<p style="margin:12px 0;">'+linkHtml(b.url, b.label||'Open quiz ↗')+'</p>';
+  return '';
+}
+function renderCourseReadonly(content){
+  const chs = parseCourseContent(content).chapters;
+  const has = chs.some(c => c.blocks.length || c.title || c.description);
+  if (!has) return '<p style="color:var(--faint);">No content yet.</p>';
+  return chs.map((c,i) => '<section style="margin:0 0 32px;">'+
+    '<h2 style="font-size:20px;margin:0 0 4px;letter-spacing:-.01em;">'+(pEsc(c.title)||('Chapter '+(i+1)))+'</h2>'+
+    (c.description ? '<p class="sub" style="margin:0 0 14px;">'+pEsc(c.description)+'</p>' : '<div style="height:10px;"></div>')+
+    (c.blocks.map(cbBlockReadHtml).join('') || '<p style="color:var(--faint);font-size:13px;">No content in this chapter.</p>')+
+  '</section>').join('');
+}
+
+/* ================= Course builder engine ================= */
+let CB_SELCH = null, CB_SELBK = null, CB_PROPSMODE = 'chapter';
+let cbSaveTimer = null, cbSaving = false, cbImgTarget = null, previewCourse = null;
+function curChapter(){ return courseDraft ? courseDraft.chapters.find(c => c.id === CB_SELCH) : null; }
+function cbBlockIn(c, id){ return c ? c.blocks.find(x => x.id === id) : null; }
+function cbFindBlockGlobal(id){ if(!courseDraft) return null; for (const c of courseDraft.chapters){ const b = c.blocks.find(x => x.id === id); if (b) return b; } return null; }
+
+/* ---------- view switching ---------- */
+function cbShowView(which){
+  document.getElementById('coursesListView').classList.toggle('hidden', which !== 'list');
+  document.getElementById('coursePreview').classList.toggle('hidden', which !== 'preview');
+  document.getElementById('courseBuilder').classList.toggle('hidden', which !== 'builder');
+}
+function showCourseList(){ cbShowView('list'); }
+function closeCourseDoc(){ showCourseList(); } // used by the sidebar nav handler
+function showCoursePreview(t){
+  previewCourse = t;
+  const draft = t.status && t.status !== 'published';
+  document.getElementById('cpCat').textContent = [t.category || '', (t.presentation==='single_page'?'Single page':'Slideshow'), (draft?'Draft':'')].filter(Boolean).join(' · ');
+  document.getElementById('cpTitle').textContent = t.name || '';
+  document.getElementById('cpDesc').textContent = t.desc || '';
+  document.getElementById('cpBody').innerHTML = renderCourseReadonly(t.content);
+  cbShowView('preview'); window.scrollTo(0, 0);
+}
+
+/* ---------- open the builder ---------- */
+function openCourseBuilder(course){
+  const parsed = parseCourseContent(course.content);
+  courseDraft = { id:course.id, name:course.name||'', desc:course.desc||'', category:course.category||'',
+    presentation:course.presentation||'slideshow', cover:parsed.cover||'', status:course.status||'draft', chapters:parsed.chapters };
+  CB_PROPSMODE = 'chapter'; cbOpen(true);
+}
+async function cbStartNew(name, desc, cover, importHtml){
+  const first = mkChapter('Chapter 1', importHtml ? [ normBlock({ type:'text', html:importHtml }) ] : []);
+  courseDraft = { id:null, name, desc, category:'', presentation:'slideshow', cover:cover||'', status:'draft', chapters:[first] };
+  CB_PROPSMODE = 'chapter'; cbOpen(false);
+  await cbSave(false); // create immediately so autosave has an id
+}
+function cbOpen(existing){
+  CB_SELCH = courseDraft.chapters[0] ? courseDraft.chapters[0].id : null;
+  CB_SELBK = null;
+  document.getElementById('cbNotice').innerHTML = '';
+  document.getElementById('cbTitle').value = courseDraft.name || '';
+  cbRenderStatus();
+  cbSetSaved(existing ? 'Saved' : '');
+  cbRenderChapters(); cbRenderCanvas(); cbRenderProps();
+  cbShowView('builder');
+}
+function cbRenderStatus(){
+  const pub = courseDraft.status === 'published';
+  const b = document.getElementById('cbStatus');
+  b.textContent = pub ? 'Published' : 'Draft';
+  b.className = 'cb-badge ' + (pub ? 'cb-badge-published' : 'cb-badge-draft');
+  document.getElementById('cbPublish').textContent = pub ? 'Unpublish' : 'Publish';
+}
+function cbSetSaved(text, saving){ const el = document.getElementById('cbSaved'); el.textContent = text || ''; el.classList.toggle('saving', !!saving); }
+function cbSavedStamp(){ return 'Saved ' + new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' }); }
+
+/* ---------- left pane: chapters ---------- */
+function cbBlockLabel(b){
+  if (b.type==='heading') return b.text || 'Heading';
+  if (b.type==='text' || b.type==='assignment'){ const t = (b.html||'').replace(/<[^>]+>/g,' ').replace(/&[^;]+;/g,' ').replace(/\s+/g,' ').trim(); return t ? (t.length>28 ? t.slice(0,28)+'…' : t) : CB_BLOCKS[b.type].label; }
+  return b.label || CB_BLOCKS[b.type].label;
+}
+function cbRenderChapters(){
+  const wrap = document.getElementById('cbChapters');
+  if (!courseDraft.chapters.length){ wrap.innerHTML = '<div class="cb-ch-empty" style="padding:12px 10px;">No chapters yet.</div>'; return; }
+  wrap.innerHTML = courseDraft.chapters.map((c,i) => {
+    const sel = c.id === CB_SELCH;
+    const blocks = c.blocks.length
+      ? c.blocks.map(b => '<div class="cb-ch-bk'+(b.id===CB_SELBK?' sel':'')+'" data-ch="'+c.id+'" data-bk="'+b.id+'">'+cbIcon(b.type)+'<span>'+pEsc(cbBlockLabel(b))+'</span></div>').join('')
+      : '<div class="cb-ch-empty">No content yet</div>';
+    return '<div class="cb-chapter'+(sel?' sel open':'')+'" data-ch="'+c.id+'">'+
+      '<div class="cb-ch-row" data-ch="'+c.id+'">'+
+        '<span class="cb-ch-caret" data-caret="'+c.id+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span>'+
+        '<span class="cb-ch-num">'+(i+1)+'.</span>'+
+        '<span class="cb-ch-name">'+(c.title ? pEsc(c.title) : '<span style="color:var(--faint);font-weight:500;">Untitled chapter</span>')+'</span>'+
+        (c.visible ? '' : '<span class="cb-ch-count" title="Hidden from learners">🚫</span>')+
+        '<span class="cb-ch-count">'+c.blocks.length+'</span>'+
+        '<span class="cb-ch-drag" draggable="true" data-chdrag="'+c.id+'" title="Drag to reorder">⠿</span>'+
+      '</div>'+
+      '<div class="cb-ch-blocks">'+blocks+'</div>'+
+    '</div>';
   }).join('');
 }
-
-/* ---------- List / preview / edit view switching ---------- */
-function showCourseList(){
-  document.getElementById('courseEdit').classList.add('hidden');
-  document.getElementById('coursePreview').classList.add('hidden');
-  document.getElementById('coursesListView').classList.remove('hidden');
-}
-function closeCourseDoc(){ showCourseList(); } // used by the sidebar nav handler
-// Read-only preview of a course; the pencil switches to editing.
-function showCoursePreview(t){
-  courseDraft = { id:t.id, name:t.name, desc:t.desc||'', category:t.category||'', content:t.content||'', presentation:t.presentation||'slideshow' };
-  document.getElementById('cpCat').textContent = (courseDraft.category || '') + (courseDraft.presentation==='single_page' ? ' · Single page' : ' · Slideshow');
-  document.getElementById('cpTitle').textContent = courseDraft.name;
-  document.getElementById('cpDesc').textContent = courseDraft.desc || '';
-  document.getElementById('cpBody').innerHTML = renderBlocksReadonly(courseDraft.content);
-  document.getElementById('coursesListView').classList.add('hidden');
-  document.getElementById('courseEdit').classList.add('hidden');
-  document.getElementById('coursePreview').classList.remove('hidden');
-  window.scrollTo(0, 0);
-}
-// Full editor: a compact title bar (details edited via the popup) + blocks.
-function updateEditorHeader(){
-  document.getElementById('ceHeading').textContent = courseDraft.name || 'Untitled course';
-  const presLabel = courseDraft.presentation === 'single_page' ? 'Single page' : 'Slideshow';
-  document.getElementById('ceSub').textContent = [courseDraft.category, presLabel].filter(Boolean).join('  ·  ');
-}
-function showCourseEdit(){
-  document.getElementById('cdNotice').innerHTML = '';
-  updateEditorHeader();
-  ceBlocks = parseBlocks(courseDraft.content);
-  if (!ceBlocks.length) ceBlocks = [{ id:blockId(), type:'section', title:'', html:'', url:'' }];
-  renderBlocks();
-  document.getElementById('coursesListView').classList.add('hidden');
-  document.getElementById('coursePreview').classList.add('hidden');
-  document.getElementById('courseEdit').classList.remove('hidden');
-  window.scrollTo(0, 0);
+function cbUpdateChapterName(c){
+  const el = document.querySelector('.cb-chapter[data-ch="'+c.id+'"] .cb-ch-name');
+  if (el) el.innerHTML = c.title ? pEsc(c.title) : '<span style="color:var(--faint);font-weight:500;">Untitled chapter</span>';
 }
 
-// The details popup (name / description / category / presentation). Two modes:
-// 'create' → Continue opens the editor; 'edit' → Save updates the open course.
-let pendingContent = null; // parsed HTML waiting to become a new course's content
-let popupMode = 'create';
-function fillDetailsPopup(name, desc, category, presentation, importName){
-  document.getElementById('ncNotice').innerHTML = '';
-  document.getElementById('nc_name').value = name || '';
-  document.getElementById('nc_desc').value = desc || '';
-  document.getElementById('nc_newCat').value = '';
-  fillCat('nc', category || (CATEGORIES[0] || '__new__'));
-  const p = document.querySelector('input[name="nc_pres"][value="'+(presentation||'slideshow')+'"]'); if (p) p.checked = true;
-  const importRow = document.getElementById('nc_importRow');
-  if (importName){ document.getElementById('nc_fileName').textContent = importName; importRow.classList.remove('hidden'); }
-  else importRow.classList.add('hidden');
-  openSheet(document.getElementById('newCoursePopup'));
+/* ---------- center: canvas ---------- */
+const CB_PLUS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>';
+function cbRenderCanvas(){
+  const canvas = document.getElementById('cbCanvas');
+  const c = curChapter();
+  if (!c){ canvas.innerHTML = '<div class="cb-canvas-inner"><div class="cb-canvas-empty">'+cbIcon('text')+'<h3>Build your course</h3><p>Add a chapter on the left to get started.</p></div></div>'; return; }
+  const cover = courseDraft.cover ? '<div class="cb-cover-band" style="background-image:url('+cbCssUrl(courseDraft.cover)+')"></div>' : '';
+  const blocks = c.blocks.length
+    ? '<div class="cb-blocks">'+c.blocks.map(cbBlockCardHtml).join('')+'</div>'
+    : '<div class="cb-chapter-empty">This chapter is empty · Add content using the button below.</div>';
+  canvas.innerHTML = '<div class="cb-canvas-inner">'+cover+
+    '<input class="cb-ch-title-in" id="cbChTitle" placeholder="Chapter title" value="'+pEsc(c.title)+'">'+
+    '<textarea class="cb-ch-desc-in" id="cbChDesc" rows="1" placeholder="Add a short description (optional)">'+pEsc(c.description)+'</textarea>'+
+    blocks+
+    '<button class="cb-addcontent" id="cbAddContent">'+CB_PLUS+' Add Content</button>'+
+  '</div>';
+  const d = document.getElementById('cbChDesc'); if (d){ d.style.height='auto'; d.style.height = Math.min(d.scrollHeight, 160)+'px'; }
 }
-function openNewCoursePopup(importName, importHtml){
-  const stripExt = n => n.replace(/\.[^.]+$/, '');
-  popupMode = 'create';
-  pendingImport = importName || null;
-  pendingContent = importHtml || null;
-  document.getElementById('ncTitle').textContent = importName ? 'New course from file' : 'New course';
-  document.getElementById('ncContinue').textContent = 'Continue →';
-  fillDetailsPopup(importName ? stripExt(importName) : '', '', '', 'slideshow', pendingImport);
+function cbBlockCardHtml(b){
+  const m = CB_BLOCKS[b.type];
+  return '<div class="cb-block'+(b.id===CB_SELBK?' sel':'')+'" data-bk="'+b.id+'" data-type="'+b.type+'">'+
+    '<div class="cb-block-head">'+
+      '<span class="cb-bk-drag" draggable="true" data-bkdrag="'+b.id+'" title="Drag to reorder">⠿</span>'+
+      cbIcon(b.type,'cb-bk-ic')+
+      '<span class="cb-bk-label">'+pEsc(m.label)+'</span>'+
+      '<button class="cb-bk-del" data-bkdel="'+b.id+'" title="Remove block">×</button>'+
+    '</div>'+
+    '<div class="cb-block-body">'+cbBlockBodyHtml(b)+'</div>'+
+  '</div>';
 }
-function openEditDetailsPopup(){
-  popupMode = 'edit';
-  document.getElementById('ncTitle').textContent = 'Course details';
-  document.getElementById('ncContinue').textContent = 'Save details';
-  fillDetailsPopup(courseDraft.name, courseDraft.desc, courseDraft.category, courseDraft.presentation, null);
+function cbBlockBodyHtml(b){
+  const m = CB_BLOCKS[b.type];
+  if (m.kind === 'rich'){
+    return '<div class="cb-mini" style="margin:-14px -14px 12px;" data-mini="'+b.id+'">'+CB_MINI+'</div>'+
+      '<div class="cb-rich" contenteditable="true" data-ph="'+pEsc(m.ph)+'" data-rich="'+b.id+'">'+(b.html||'')+'</div>';
+  }
+  if (b.type === 'heading') return '<input class="cb-heading-in" data-heading="'+b.id+'" placeholder="Heading text" value="'+pEsc(b.text)+'">';
+  if (b.type === 'image') return '<input class="cb-input" type="url" data-url="'+b.id+'" placeholder="Image URL — or upload below" value="'+pEsc(b.url)+'">'+
+    '<button class="cb-upload-btn" data-imgup="'+b.id+'">⬆ Upload an image</button>'+
+    '<input class="cb-input" data-caption="'+b.id+'" placeholder="Caption (optional)" value="'+pEsc(b.caption)+'" style="margin-top:8px;">'+
+    '<div class="cb-img-prev" data-prev="'+b.id+'">'+(b.url?'<img src="'+pEsc(b.url)+'" alt="">':'')+'</div>';
+  if (m.kind === 'media') return '<input class="cb-input" type="url" data-url="'+b.id+'" placeholder="'+pEsc(m.ph)+'" value="'+pEsc(b.url)+'">'+
+    '<div class="cb-embed-prev" data-prev="'+b.id+'">'+(b.url?mediaEmbed(m.embed,b.url):'')+'</div>';
+  if (m.kind === 'link') return '<label class="cb-field-lbl">Link text</label><input class="cb-input" data-label="'+b.id+'" placeholder="e.g. Download the handbook" value="'+pEsc(b.label)+'">'+
+    '<label class="cb-field-lbl" style="margin-top:8px;">URL</label><input class="cb-input" type="url" data-url="'+b.id+'" placeholder="'+pEsc(m.ph)+'" value="'+pEsc(b.url)+'">';
+  if (b.type === 'embed') return '<textarea class="cb-input" data-embed="'+b.id+'" rows="3" placeholder="'+pEsc(m.ph)+'">'+pEsc(b.html)+'</textarea>'+
+    '<div class="cb-embed-prev" data-prev="'+b.id+'">'+(b.html||'')+'</div>';
+  return '';
 }
 
-/* ---------- New-course dropdown (Create manually / Upload) ---------- */
+/* ---------- right: properties ---------- */
+function cbRenderProps(){
+  const el = document.getElementById('cbProps');
+  if (CB_PROPSMODE === 'course'){ el.innerHTML = cbCoursePropsHtml(); return; }
+  if (CB_PROPSMODE === 'block' && CB_SELBK){ const b = cbFindBlockGlobal(CB_SELBK); if (b){ el.innerHTML = cbBlockPropsHtml(b); return; } }
+  const c = curChapter();
+  el.innerHTML = c ? cbChapterPropsHtml(c) : cbCoursePropsHtml();
+}
+function cbChapterPropsHtml(c){
+  return '<div class="cb-props-head">Chapter</div><div class="cb-props-body">'+
+    '<label class="cb-field-lbl">Title</label><input class="cb-input" id="cpChTitle" value="'+pEsc(c.title)+'" placeholder="Chapter title">'+
+    '<label class="cb-field-lbl">Description</label><textarea class="cb-input" id="cpChDesc" rows="3" placeholder="Optional">'+pEsc(c.description)+'</textarea>'+
+    '<div class="cb-toggle-row"><span class="cb-toggle-txt"><b>Free preview</b><span>Anyone can view this chapter</span></span><label class="cb-switch"><input type="checkbox" id="cpChFree"'+(c.freePreview?' checked':'')+'><span class="cb-slider"></span></label></div>'+
+    '<div class="cb-toggle-row"><span class="cb-toggle-txt"><b>Visible</b><span>Show this chapter to learners</span></span><label class="cb-switch"><input type="checkbox" id="cpChVis"'+(c.visible?' checked':'')+'><span class="cb-slider"></span></label></div>'+
+    '<button class="cb-danger-btn" id="cpChDel">Delete chapter</button>'+
+  '</div>';
+}
+function cbBlockPropsHtml(b){
+  let extra = '';
+  if (b.type === 'image') extra = '<label class="cb-field-lbl">Caption</label><input class="cb-input" id="cpBkCaption" value="'+pEsc(b.caption)+'">';
+  else if (b.type === 'link' || b.type === 'quiz') extra = '<label class="cb-field-lbl">Link text</label><input class="cb-input" id="cpBkLabel" value="'+pEsc(b.label)+'">';
+  return '<div class="cb-props-head">Block · '+pEsc(CB_BLOCKS[b.type].label)+'</div><div class="cb-props-body">'+
+    extra + '<p style="font-size:12px;color:var(--faint);margin:14px 0 0;">Edit the content in the main panel.</p>'+
+    '<button class="cb-danger-btn" id="cpBkDel">Delete block</button>'+
+  '</div>';
+}
+function cbCoursePropsHtml(){
+  const cur = courseDraft.category || '';
+  const custom = cur && !CATEGORIES.includes(cur);
+  let opts = (cur ? '' : '<option value="" selected disabled>Choose a category…</option>') +
+    CATEGORIES.map(c => '<option value="'+pEsc(c)+'"'+(c===cur?' selected':'')+'>'+pEsc(c)+'</option>').join('') +
+    '<option value="__new__"'+(custom?' selected':'')+'>+ New category…</option>';
+  const cover = courseDraft.cover
+    ? '<div class="cb-cover-thumb"><img src="'+pEsc(courseDraft.cover)+'"><button id="cpCoCoverRemove" title="Remove">×</button></div>'
+    : '<div class="cb-cover-drop" id="cpCoCoverDrop">Click to upload a cover image</div>';
+  return '<div class="cb-props-head">Course settings</div><div class="cb-props-body">'+
+    '<label class="cb-field-lbl">Title</label><input class="cb-input" id="cpCoTitle" value="'+pEsc(courseDraft.name)+'">'+
+    '<label class="cb-field-lbl">Short description</label><textarea class="cb-input" id="cpCoDesc" rows="3">'+pEsc(courseDraft.desc)+'</textarea>'+
+    '<label class="cb-field-lbl">Category</label><select class="cb-props-select" id="cpCoCat">'+opts+'</select>'+
+    '<input class="cb-input" id="cpCoNewCat" placeholder="New category name" value="'+(custom?pEsc(cur):'')+'" style="margin-top:8px;display:'+(custom?'block':'none')+';">'+
+    '<label class="cb-field-lbl">Presentation</label><select class="cb-props-select" id="cpCoPres"><option value="slideshow"'+(courseDraft.presentation!=='single_page'?' selected':'')+'>Slideshow</option><option value="single_page"'+(courseDraft.presentation==='single_page'?' selected':'')+'>Single page</option></select>'+
+    '<label class="cb-field-lbl">Cover image</label>'+cover+
+  '</div>';
+}
+
+/* ---------- chapter & block operations ---------- */
+function cbAddChapter(){
+  const c = mkChapter('Chapter '+(courseDraft.chapters.length+1), []);
+  courseDraft.chapters.push(c);
+  CB_SELCH = c.id; CB_SELBK = null; CB_PROPSMODE = 'chapter';
+  cbRenderChapters(); cbRenderCanvas(); cbRenderProps(); scheduleSave();
+  setTimeout(() => { const el = document.getElementById('cbChTitle'); if (el){ el.focus(); el.select(); } }, 40);
+}
+function cbSelectChapter(id){ CB_SELCH = id; CB_SELBK = null; CB_PROPSMODE = 'chapter'; cbRenderChapters(); cbRenderCanvas(); cbRenderProps(); }
+function cbDeleteChapter(id){
+  if (courseDraft.chapters.length <= 1){ toast('A course needs at least one chapter.','error'); return; }
+  if (!confirm('Delete this chapter and everything in it?')) return;
+  courseDraft.chapters = courseDraft.chapters.filter(c => c.id !== id);
+  if (CB_SELCH === id) CB_SELCH = courseDraft.chapters[0].id;
+  CB_SELBK = null; CB_PROPSMODE = 'chapter';
+  cbRenderChapters(); cbRenderCanvas(); cbRenderProps(); scheduleSave();
+}
+function cbAddBlock(type){
+  const c = curChapter(); if (!c) return;
+  const b = normBlock({ type });
+  c.blocks.push(b); CB_SELBK = b.id;
+  cbRenderCanvas(); cbRenderChapters(); cbRenderProps(); scheduleSave();
+  setTimeout(() => { const el = document.querySelector('.cb-block[data-bk="'+b.id+'"]'); if (el){ el.scrollIntoView({behavior:'smooth',block:'center'}); const f = el.querySelector('[contenteditable],[data-heading],.cb-input'); if (f) f.focus(); } }, 40);
+}
+function cbDeleteBlock(id){
+  const c = curChapter(); if (!c) return;
+  c.blocks = c.blocks.filter(b => b.id !== id);
+  if (CB_SELBK === id){ CB_SELBK = null; CB_PROPSMODE = 'chapter'; }
+  cbRenderCanvas(); cbRenderChapters(); cbRenderProps(); scheduleSave();
+}
+function cbSelectBlock(id){
+  CB_SELBK = id; CB_PROPSMODE = 'block';
+  document.querySelectorAll('#cbCanvas .cb-block').forEach(el => el.classList.toggle('sel', el.dataset.bk === id));
+  document.querySelectorAll('#cbChapters .cb-ch-bk').forEach(el => el.classList.toggle('sel', el.dataset.bk === id));
+  cbRenderProps();
+}
+
+/* ---------- autosave ---------- */
+function scheduleSave(){ cbSetSaved('Saving…', true); clearTimeout(cbSaveTimer); cbSaveTimer = setTimeout(() => cbSave(false), 900); }
+async function cbSave(explicit, opts){
+  opts = opts || {};
+  if (!courseDraft) return;
+  if (cbSaving){ if (!explicit) scheduleSave(); return; }
+  const status = opts.status || courseDraft.status || 'draft';
+  const content = JSON.stringify({ v:2, cover:courseDraft.cover||'', chapters:courseDraft.chapters });
+  const payload = { title:(courseDraft.name||'').trim() || 'Untitled course', summary:courseDraft.desc||'',
+    category:courseDraft.category || 'General', content, presentation:courseDraft.presentation||'slideshow', status };
+  cbSaving = true; cbSetSaved('Saving…', true);
+  let d; try { d = courseDraft.id ? await cUpdate(courseDraft.id, payload) : await cCreate(payload); }
+  catch(_){ d = { ok:false, error:'network' }; }
+  cbSaving = false;
+  if (!d || !d.ok){ cbSetSaved('Not saved'); if (explicit) toast('Could not save: '+((d&&d.error)||'error'),'error'); return; }
+  if (!courseDraft.id && d.id) courseDraft.id = d.id;
+  courseDraft.status = status;
+  cbSetSaved(cbSavedStamp()); cbRenderStatus();
+}
+
+/* ---------- grid block picker ---------- */
+function cbOpenPicker(){
+  document.getElementById('bpGrid').innerHTML = CB_ORDER.map(t => {
+    const m = CB_BLOCKS[t];
+    return '<button class="bp-tile" data-add="'+t+'"><span class="bp-tile-ic">'+cbIcon(t)+'</span><span class="bp-tile-name">'+pEsc(m.label)+'</span></button>';
+  }).join('');
+  openSheet(document.getElementById('blockPicker'));
+}
+
+/* ---------- wiring: top bar ---------- */
+document.getElementById('cbBack').addEventListener('click', async () => { clearTimeout(cbSaveTimer); await cbSave(false); showCourseList(); await refreshCourses(); });
+document.getElementById('cbTitle').addEventListener('input', (e) => { courseDraft.name = e.target.value; scheduleSave(); });
+document.getElementById('cbAddChapter').addEventListener('click', cbAddChapter);
+document.getElementById('cbPreview').addEventListener('click', async () => {
+  clearTimeout(cbSaveTimer); await cbSave(false);
+  const content = JSON.stringify({ v:2, cover:courseDraft.cover||'', chapters:courseDraft.chapters });
+  showCoursePreview({ id:courseDraft.id, name:courseDraft.name, desc:courseDraft.desc, category:courseDraft.category, content, presentation:courseDraft.presentation, status:courseDraft.status });
+});
+document.getElementById('cbPublish').addEventListener('click', async () => {
+  const to = courseDraft.status === 'published' ? 'draft' : 'published';
+  await cbSave(true, { status:to });
+  toast(to==='published' ? 'Course published' : 'Moved back to draft', 'success');
+});
+document.getElementById('cbMore').addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('cbMoreMenu').classList.toggle('hidden'); });
+document.addEventListener('click', () => document.getElementById('cbMoreMenu').classList.add('hidden'));
+document.getElementById('cbMoreMenu').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  if (b.dataset.act === 'settings'){ CB_PROPSMODE = 'course'; CB_SELBK = null; document.querySelectorAll('#cbCanvas .cb-block, #cbChapters .cb-ch-bk').forEach(el=>el.classList.remove('sel')); cbRenderProps(); }
+  else if (b.dataset.act === 'delete'){
+    if (!confirm('Delete this course permanently?')) return;
+    if (courseDraft.id){ const d = await lmsApi('/api/courses/'+courseDraft.id, { method:'DELETE' }); if (!d.ok){ toast('Could not delete','error'); return; } }
+    toast('Course deleted','success'); showCourseList(); await refreshCourses();
+  }
+});
+
+/* ---------- wiring: left pane ---------- */
+document.getElementById('cbChapters').addEventListener('click', (e) => {
+  const caret = e.target.closest('[data-caret]');
+  if (caret){ e.stopPropagation(); caret.closest('.cb-chapter').classList.toggle('open'); return; }
+  const bk = e.target.closest('.cb-ch-bk');
+  if (bk){ cbSelectChapter(bk.dataset.ch); cbSelectBlock(bk.dataset.bk); const el = document.querySelector('.cb-block[data-bk="'+bk.dataset.bk+'"]'); if (el) el.scrollIntoView({behavior:'smooth',block:'center'}); return; }
+  const row = e.target.closest('.cb-ch-row');
+  if (row) cbSelectChapter(row.dataset.ch);
+});
+let cbDragCh = null;
+document.getElementById('cbChapters').addEventListener('dragstart', (e) => { const h = e.target.closest('[data-chdrag]'); if (!h) return; cbDragCh = h.getAttribute('data-chdrag'); h.closest('.cb-chapter').classList.add('dragging'); e.dataTransfer.effectAllowed='move'; try{ e.dataTransfer.setData('text/plain', cbDragCh); }catch(_){} });
+document.getElementById('cbChapters').addEventListener('dragend', () => { cbDragCh = null; document.querySelectorAll('#cbChapters .cb-chapter').forEach(x => x.classList.remove('dragging','drop-before')); });
+document.getElementById('cbChapters').addEventListener('dragover', (e) => { if (!cbDragCh) return; e.preventDefault(); document.querySelectorAll('#cbChapters .cb-chapter').forEach(x => x.classList.remove('drop-before')); const over = e.target.closest('.cb-chapter'); if (over && over.dataset.ch !== cbDragCh) over.classList.add('drop-before'); });
+document.getElementById('cbChapters').addEventListener('drop', (e) => { if (!cbDragCh) return; e.preventDefault(); const over = e.target.closest('.cb-chapter'); const from = courseDraft.chapters.findIndex(c => c.id === cbDragCh); if (from < 0) return; const [m] = courseDraft.chapters.splice(from,1); if (over && over.dataset.ch !== cbDragCh){ const to = courseDraft.chapters.findIndex(c => c.id === over.dataset.ch); courseDraft.chapters.splice(to<0?courseDraft.chapters.length:to, 0, m); } else courseDraft.chapters.push(m); cbRenderChapters(); scheduleSave(); });
+
+/* ---------- wiring: canvas ---------- */
+document.getElementById('cbCanvas').addEventListener('input', (e) => {
+  const t = e.target, c = curChapter(); if (!c) return;
+  if (t.id === 'cbChTitle'){ c.title = t.value; cbUpdateChapterName(c); scheduleSave(); return; }
+  if (t.id === 'cbChDesc'){ c.description = t.value; t.style.height='auto'; t.style.height = Math.min(t.scrollHeight,160)+'px'; scheduleSave(); return; }
+  let b;
+  if (t.dataset.heading){ b = cbBlockIn(c,t.dataset.heading); if (b){ b.text = t.value; scheduleSave(); } return; }
+  if (t.dataset.rich){ b = cbBlockIn(c,t.dataset.rich); if (b){ b.html = t.innerHTML; scheduleSave(); } return; }
+  if (t.dataset.url){ b = cbBlockIn(c,t.dataset.url); if (b){ b.url = t.value.trim(); scheduleSave(); } return; }
+  if (t.dataset.label){ b = cbBlockIn(c,t.dataset.label); if (b){ b.label = t.value; scheduleSave(); } return; }
+  if (t.dataset.caption){ b = cbBlockIn(c,t.dataset.caption); if (b){ b.caption = t.value; scheduleSave(); } return; }
+  if (t.dataset.embed){ b = cbBlockIn(c,t.dataset.embed); if (b){ b.html = t.value; scheduleSave(); } return; }
+});
+document.getElementById('cbCanvas').addEventListener('change', (e) => {
+  const t = e.target, c = curChapter(); if (!c) return;
+  const id = t.dataset.url || t.dataset.embed; if (!id) return;
+  const b = cbBlockIn(c,id); if (!b) return;
+  const prev = document.querySelector('.cb-block[data-bk="'+id+'"] [data-prev="'+id+'"]'); if (!prev) return;
+  if (b.type === 'image') prev.innerHTML = b.url ? '<img src="'+pEsc(b.url)+'" alt="">' : '';
+  else if (b.type === 'embed') prev.innerHTML = b.html || '';
+  else prev.innerHTML = b.url ? mediaEmbed(CB_BLOCKS[b.type].embed, b.url) : '';
+});
+document.getElementById('cbCanvas').addEventListener('mousedown', (e) => { if (e.target.closest('.cb-mini button')) e.preventDefault(); });
+document.getElementById('cbCanvas').addEventListener('click', (e) => {
+  const mb = e.target.closest('.cb-mini button');
+  if (mb){
+    if (mb.dataset.cmd) document.execCommand(mb.dataset.cmd, false, null);
+    else if (mb.dataset.fb) document.execCommand('formatBlock', false, mb.dataset.fb);
+    else if (mb.dataset.lk){ const u = prompt('Link URL:'); if (u) document.execCommand('createLink', false, u); }
+    const rich = mb.closest('.cb-block').querySelector('[data-rich]');
+    if (rich){ const b = cbBlockIn(curChapter(), rich.dataset.rich); if (b){ b.html = rich.innerHTML; scheduleSave(); } }
+    return;
+  }
+  if (e.target.closest('#cbAddContent')){ cbOpenPicker(); return; }
+  const up = e.target.closest('[data-imgup]'); if (up){ cbImgTarget = up.dataset.imgup; document.getElementById('cbImgInput').click(); return; }
+  const del = e.target.closest('[data-bkdel]'); if (del){ cbDeleteBlock(del.dataset.bkdel); return; }
+  const head = e.target.closest('.cb-block-head'); if (head && !e.target.closest('.cb-bk-del')){ cbSelectBlock(head.closest('.cb-block').dataset.bk); }
+});
+let cbDragBk = null;
+document.getElementById('cbCanvas').addEventListener('dragstart', (e) => { const h = e.target.closest('[data-bkdrag]'); if (!h) return; cbDragBk = h.getAttribute('data-bkdrag'); h.closest('.cb-block').classList.add('dragging'); e.dataTransfer.effectAllowed='move'; try{ e.dataTransfer.setData('text/plain', cbDragBk); }catch(_){} });
+document.getElementById('cbCanvas').addEventListener('dragend', () => { cbDragBk = null; document.querySelectorAll('#cbCanvas .cb-block').forEach(x => x.classList.remove('dragging','drop-before')); });
+document.getElementById('cbCanvas').addEventListener('dragover', (e) => { if (!cbDragBk) return; e.preventDefault(); document.querySelectorAll('#cbCanvas .cb-block').forEach(x => x.classList.remove('drop-before')); const over = e.target.closest('.cb-block'); if (over && over.dataset.bk !== cbDragBk) over.classList.add('drop-before'); });
+document.getElementById('cbCanvas').addEventListener('drop', (e) => { if (!cbDragBk) return; e.preventDefault(); const c = curChapter(); if (!c) return; const over = e.target.closest('.cb-block'); const from = c.blocks.findIndex(b => b.id === cbDragBk); if (from < 0) return; const [m] = c.blocks.splice(from,1); if (over && over.dataset.bk !== cbDragBk){ const to = c.blocks.findIndex(b => b.id === over.dataset.bk); c.blocks.splice(to<0?c.blocks.length:to, 0, m); } else c.blocks.push(m); cbRenderCanvas(); cbRenderChapters(); scheduleSave(); });
+
+/* ---------- wiring: properties ---------- */
+document.getElementById('cbProps').addEventListener('input', (e) => {
+  const t = e.target, c = curChapter();
+  if (t.id === 'cpChTitle' && c){ c.title = t.value; cbUpdateChapterName(c); const ci = document.getElementById('cbChTitle'); if (ci) ci.value = t.value; scheduleSave(); }
+  else if (t.id === 'cpChDesc' && c){ c.description = t.value; const cd = document.getElementById('cbChDesc'); if (cd){ cd.value = t.value; cd.style.height='auto'; cd.style.height=Math.min(cd.scrollHeight,160)+'px'; } scheduleSave(); }
+  else if (t.id === 'cpBkCaption'){ const b = cbFindBlockGlobal(CB_SELBK); if (b){ b.caption = t.value; const p = document.querySelector('[data-caption="'+b.id+'"]'); if (p) p.value = t.value; scheduleSave(); } }
+  else if (t.id === 'cpBkLabel'){ const b = cbFindBlockGlobal(CB_SELBK); if (b){ b.label = t.value; const p = document.querySelector('[data-label="'+b.id+'"]'); if (p) p.value = t.value; scheduleSave(); } }
+  else if (t.id === 'cpCoTitle'){ courseDraft.name = t.value; document.getElementById('cbTitle').value = t.value; scheduleSave(); }
+  else if (t.id === 'cpCoDesc'){ courseDraft.desc = t.value; scheduleSave(); }
+  else if (t.id === 'cpCoNewCat'){ courseDraft.category = t.value.trim(); scheduleSave(); }
+});
+document.getElementById('cbProps').addEventListener('change', (e) => {
+  const t = e.target, c = curChapter();
+  if (t.id === 'cpChFree' && c){ c.freePreview = t.checked; scheduleSave(); }
+  else if (t.id === 'cpChVis' && c){ c.visible = t.checked; cbRenderChapters(); scheduleSave(); }
+  else if (t.id === 'cpCoPres'){ courseDraft.presentation = t.value; scheduleSave(); }
+  else if (t.id === 'cpCoCat'){
+    if (t.value === '__new__'){ const n = document.getElementById('cpCoNewCat'); if (n){ n.style.display='block'; n.focus(); } courseDraft.category = (document.getElementById('cpCoNewCat').value||'').trim(); }
+    else { courseDraft.category = t.value; const n = document.getElementById('cpCoNewCat'); if (n) n.style.display='none'; scheduleSave(); }
+  }
+});
+document.getElementById('cbProps').addEventListener('click', (e) => {
+  if (e.target.id === 'cpChDel'){ cbDeleteChapter(CB_SELCH); return; }
+  if (e.target.id === 'cpBkDel'){ cbDeleteBlock(CB_SELBK); return; }
+  if (e.target.id === 'cpCoCoverDrop'){ cbImgTarget = '__cover__'; document.getElementById('cbImgInput').click(); return; }
+  if (e.target.id === 'cpCoCoverRemove'){ courseDraft.cover = ''; cbRenderProps(); cbRenderCanvas(); scheduleSave(); return; }
+});
+
+/* ---------- image upload (blocks + cover) ---------- */
+document.getElementById('cbImgInput').addEventListener('change', async (e) => {
+  const f = e.target.files && e.target.files[0]; e.target.value = ''; const target = cbImgTarget; cbImgTarget = null;
+  if (!f || !target) return;
+  toast('Processing image…');
+  try {
+    const url = await imageToDataUrl(f, 1280);
+    if (target === '__cover__'){ courseDraft.cover = url; cbRenderProps(); cbRenderCanvas(); }
+    else { const b = cbFindBlockGlobal(target); if (b){ b.url = url; cbRenderCanvas(); } }
+    scheduleSave();
+  } catch(err){ toast(err.message || 'Could not read image','error'); }
+});
+
+/* ---------- grid picker + preview back ---------- */
+document.getElementById('bpGrid').addEventListener('click', (e) => { const t = e.target.closest('[data-add]'); if (!t) return; closeSheet(document.getElementById('blockPicker')); cbAddBlock(t.dataset.add); });
+document.getElementById('bpClose').addEventListener('click', () => closeSheet(document.getElementById('blockPicker')));
+document.getElementById('cpBack').addEventListener('click', showCourseList);
+document.getElementById('cpEdit').addEventListener('click', () => { if (previewCourse) openCourseBuilder(previewCourse); });
+
+/* ---------- New-course dropdown + step-1 modal ---------- */
 (function(){
   const menu = document.getElementById('trNewMenu');
   document.getElementById('btnNewTraining').addEventListener('click', (e) => { e.stopPropagation(); menu.classList.toggle('hidden'); });
   menu.addEventListener('click', () => menu.classList.add('hidden'));
   document.addEventListener('click', (e) => { if (!e.target.closest('.dropdown')) menu.classList.add('hidden'); });
 })();
-document.getElementById('btnTrCreateNew').addEventListener('click', () => openNewCoursePopup());
+let nc2Cover = '', nc2ImportHtml = null;
+function openCreateModal(importName, importHtml){
+  nc2Cover = ''; nc2ImportHtml = importHtml || null;
+  document.getElementById('nc2Notice').innerHTML = '';
+  document.getElementById('nc2_title').value = importName ? importName.replace(/\.[^.]+$/,'') : '';
+  document.getElementById('nc2_desc').value = '';
+  document.getElementById('nc2DropPreview').classList.add('hidden');
+  document.getElementById('nc2DropEmpty').classList.remove('hidden');
+  const ir = document.getElementById('nc2ImportRow');
+  if (importName){ document.getElementById('nc2FileName').textContent = importName; ir.classList.remove('hidden'); } else ir.classList.add('hidden');
+  openSheet(document.getElementById('newCourseModal'));
+  setTimeout(() => document.getElementById('nc2_title').focus(), 50);
+}
+document.getElementById('btnTrCreateNew').addEventListener('click', () => openCreateModal());
 document.getElementById('btnTrUpload').addEventListener('click', () => document.getElementById('trFileInput').click());
 document.getElementById('trFileInput').addEventListener('change', async (e) => {
-  const f = e.target.files && e.target.files[0];
-  e.target.value = ''; // allow re-picking the same file later
-  if (!f) return;
+  const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
   toast('Reading “'+f.name+'”…');
-  try {
-    const html = await parseCourseFile(f);   // parse in the browser…
-    openNewCoursePopup(f.name, html);         // …the file is discarded (never uploaded)
-  } catch(err){ toast(err.message || 'Could not read that file.', 'error'); }
+  try { const html = await parseCourseFile(f); openCreateModal(f.name, html); }
+  catch(err){ toast(err.message || 'Could not read that file.','error'); }
 });
-document.getElementById('ceEditDetails').addEventListener('click', openEditDetailsPopup);
-document.getElementById('ncCancel').addEventListener('click', () => closeSheet(document.getElementById('newCoursePopup')));
-document.getElementById('ncContinue').addEventListener('click', () => {
-  const notice = document.getElementById('ncNotice');
-  const name = document.getElementById('nc_name').value.trim();
-  const desc = document.getElementById('nc_desc').value.trim();
-  const category = readCat('nc');
-  if (!name){ notice.innerHTML = '<div class="notice error">A name is required.</div>'; return; }
-  if (!category){ notice.innerHTML = '<div class="notice error">Pick a category or enter a new one.</div>'; return; }
-  const presEl = document.querySelector('input[name="nc_pres"]:checked');
-  const presentation = presEl ? presEl.value : 'slideshow';
-  closeSheet(document.getElementById('newCoursePopup'));
-  if (popupMode === 'edit' && courseDraft){
-    courseDraft.name = name; courseDraft.desc = desc; courseDraft.category = category; courseDraft.presentation = presentation;
-    updateEditorHeader();
-  } else {
-    courseDraft = { id:null, name, desc, category, content: pendingContent || '', presentation };
-    showCourseEdit();
-  }
-});
-
-/* ---------- Preview ⇄ edit + toolbar + save ---------- */
-document.getElementById('cpEdit').addEventListener('click', () => { pendingImport = null; showCourseEdit(); });
-document.getElementById('cpBack').addEventListener('click', showCourseList);
-document.getElementById('ceBack').addEventListener('click', () => { if (courseDraft && courseDraft.id) showCoursePreview(courseDraft); else showCourseList(); });
-// Track the last selection inside a block, so font/size/colour (which steal
-// focus) can be applied back to it.
-let savedRange = null;
-document.addEventListener('selectionchange', () => {
-  const sel = window.getSelection();
-  if (!sel || !sel.rangeCount) return;
-  const n = sel.anchorNode, el = n && (n.nodeType === 1 ? n : n.parentElement);
-  if (el && el.closest && el.closest('.ce-block-content')) savedRange = sel.getRangeAt(0).cloneRange();
-});
-function restoreRange(){ if (savedRange){ const s = window.getSelection(); s.removeAllRanges(); s.addRange(savedRange); } }
-// Toolbar buttons: mousedown-preventDefault keeps the selection; commands apply
-// to the section/document block that currently has focus.
-document.getElementById('cdToolbar').addEventListener('mousedown', (e) => { if (e.target.closest('button')) e.preventDefault(); });
-document.getElementById('cdToolbar').addEventListener('click', (e) => {
-  const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.cmd) document.execCommand(b.dataset.cmd, false, null);
-  else if (b.dataset.block) document.execCommand('formatBlock', false, b.dataset.block);
-  else if (b.dataset.align) document.execCommand(b.dataset.align, false, null);
-  else if (b.dataset.link){ const url = prompt('Link URL:'); if (url) document.execCommand('createLink', false, url); }
-});
-// Selects & colour restore the saved selection first (they take focus on click).
-document.getElementById('cdFont').addEventListener('change', (e) => { if (e.target.value){ restoreRange(); document.execCommand('fontName', false, e.target.value); } e.target.selectedIndex = 0; });
-document.getElementById('cdSize').addEventListener('change', (e) => { if (e.target.value){ restoreRange(); document.execCommand('fontSize', false, e.target.value); } e.target.selectedIndex = 0; });
-document.getElementById('cdColor').addEventListener('input', (e) => { restoreRange(); document.execCommand('foreColor', false, e.target.value); });
-// Save the whole course (details from the draft + block content), land on preview.
-document.getElementById('cdSave').addEventListener('click', async () => {
-  const notice = document.getElementById('cdNotice');
-  if (!courseDraft.name){ notice.innerHTML = '<div class="notice error">Add a course name via “Edit details” first.</div>'; return; }
-  if (!courseDraft.category){ notice.innerHTML = '<div class="notice error">Pick a category via “Edit details” first.</div>'; return; }
-  syncBlocksFromDOM();
-  const content = JSON.stringify(ceBlocks);
-  const payload = { title:courseDraft.name, summary:courseDraft.desc, category:courseDraft.category, content, presentation:courseDraft.presentation };
-  const d = courseDraft.id ? await cUpdate(courseDraft.id, payload) : await cCreate(payload);
-  if (!d.ok){ notice.innerHTML = '<div class="notice error">Could not save: '+(d.error||'error')+'</div>'; return; }
-  courseDraft = { ...courseDraft, id: courseDraft.id || d.id, content };
-  pendingImport = null;
-  toast('Saved “'+courseDraft.name+'”','success');
-  await refreshCourses();
-  showCoursePreview(courseDraft);
+async function nc2SetCover(f){
+  try { nc2Cover = await imageToDataUrl(f, 1280); document.getElementById('nc2CoverImg').src = nc2Cover; document.getElementById('nc2DropPreview').classList.remove('hidden'); document.getElementById('nc2DropEmpty').classList.add('hidden'); }
+  catch(err){ toast(err.message || 'Could not read image','error'); }
+}
+document.getElementById('nc2Drop').addEventListener('click', () => document.getElementById('nc2_cover').click());
+document.getElementById('nc2Drop').addEventListener('keydown', (e) => { if (e.key==='Enter'||e.key===' '){ e.preventDefault(); document.getElementById('nc2_cover').click(); } });
+['dragover','dragenter'].forEach(ev => document.getElementById('nc2Drop').addEventListener(ev, (e) => { e.preventDefault(); document.getElementById('nc2Drop').classList.add('drag'); }));
+['dragleave','drop'].forEach(ev => document.getElementById('nc2Drop').addEventListener(ev, (e) => { e.preventDefault(); document.getElementById('nc2Drop').classList.remove('drag'); }));
+document.getElementById('nc2Drop').addEventListener('drop', async (e) => { const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (f && /^image\//.test(f.type)) await nc2SetCover(f); });
+document.getElementById('nc2_cover').addEventListener('change', async (e) => { const f = e.target.files && e.target.files[0]; e.target.value = ''; if (f) await nc2SetCover(f); });
+document.getElementById('nc2CoverRemove').addEventListener('click', (e) => { e.stopPropagation(); nc2Cover = ''; document.getElementById('nc2DropPreview').classList.add('hidden'); document.getElementById('nc2DropEmpty').classList.remove('hidden'); });
+document.getElementById('nc2Cancel').addEventListener('click', () => closeSheet(document.getElementById('newCourseModal')));
+document.getElementById('nc2_title').addEventListener('keydown', (e) => { if (e.key==='Enter'){ e.preventDefault(); document.getElementById('nc2Start').click(); } });
+document.getElementById('nc2Start').addEventListener('click', async () => {
+  const name = document.getElementById('nc2_title').value.trim();
+  if (!name){ document.getElementById('nc2Notice').innerHTML = '<div class="notice error">A course title is required.</div>'; return; }
+  const desc = document.getElementById('nc2_desc').value.trim();
+  closeSheet(document.getElementById('newCourseModal'));
+  await cbStartNew(name, desc, nc2Cover, nc2ImportHtml);
 });
 
 /* ---------- File parsing (PDF / PPT / Word) — libraries loaded on demand ----

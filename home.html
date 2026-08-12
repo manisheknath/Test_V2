@@ -979,10 +979,38 @@ document.getElementById('tview-trainings').addEventListener('click', (e)=>{
 
 /* ---------- Full-screen course player ---------- */
 let CP_LESSONS=[], CP_IDX=0, CP_DONE=new Set(), CP_COURSE=null;
-const CP_KIND={section:'Reading',document:'Document',video:'Video',audio:'Audio',quiz:'Quiz',webinar:'Webinar'};
+const CP_KIND={chapter:'Chapter',section:'Reading',document:'Document',video:'Video',audio:'Audio',quiz:'Quiz',webinar:'Webinar'};
 function cpKey(cid){ return 'cpDone_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
-function cpLessonName(b,i){ return (b.title||'').trim() || ((b.type||'section')==='section' ? ('Lesson '+(i+1)) : (CP_KIND[b.type]||'Lesson')); }
+function cpLessonName(b,i){
+  if(b.type==='chapter') return (b.title||'').trim() || ('Chapter '+(i+1));
+  return (b.title||'').trim() || ((b.type||'section')==='section' ? ('Lesson '+(i+1)) : (CP_KIND[b.type]||'Lesson'));
+}
+function cpLessonMeta(b){
+  if(b.type==='chapter'){ const n=(b.blocks||[]).length; return n?(n+' item'+(n===1?'':'s')):'Empty'; }
+  return CP_KIND[b.type]||'Lesson';
+}
+// Render a single content block (new chapter-based courses).
+function cpNewBlockHtml(b){
+  const t=b.type;
+  if(t==='heading') return b.text?'<h2 style="font-size:20px;margin:22px 0 10px;font-weight:700;letter-spacing:-.01em;">'+esc(b.text)+'</h2>':'';
+  if(t==='text') return b.html?'<div style="margin:0 0 14px;line-height:1.65;">'+b.html+'</div>':'';
+  if(t==='assignment') return '<div style="border-left:3px solid var(--ds-primary,#116ACC);background:rgba(17,106,204,.06);padding:12px 14px;border-radius:0 8px 8px 0;margin:14px 0;"><div style="font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--ds-primary,#116ACC);margin-bottom:6px;">Assignment</div>'+(b.html||'<span style="opacity:.6;">(no instructions)</span>')+'</div>';
+  if(t==='image') return b.url?'<figure style="margin:14px 0;"><img src="'+esc(b.url)+'" style="max-width:100%;border-radius:8px;display:block;">'+(b.caption?'<figcaption style="font-size:12px;color:var(--ds-text-muted,#667);margin-top:6px;">'+esc(b.caption)+'</figcaption>':'')+'</figure>':'';
+  if(t==='video') return b.url?'<div style="margin:14px 0;">'+tdVideo(b.url)+'</div>':'';
+  if(t==='audio') return b.url?'<audio controls src="'+esc(b.url)+'" style="width:100%;margin:14px 0;"></audio>':'';
+  if(t==='pdf'||t==='presentation') return b.url?'<div style="margin:14px 0;">'+tdDoc(b.url)+'</div>':'';
+  if(t==='embed') return b.html?'<div style="margin:14px 0;">'+b.html+'</div>':'';
+  if(t==='link') return b.url?'<p style="margin:12px 0;"><a href="'+esc(b.url)+'" target="_blank" rel="noopener">'+esc(b.label||'Open link ↗')+'</a></p>':'';
+  if(t==='quiz') return b.url?'<p style="margin:12px 0;"><a href="'+esc(b.url)+'" target="_blank" rel="noopener">'+esc(b.label||'Open quiz ↗')+'</a></p>':'';
+  return '';
+}
+function cpChapterHtml(ch){
+  const body=(ch.blocks||[]).map(cpNewBlockHtml).join('');
+  return (ch.description?'<p style="color:var(--ds-text-muted,#667);font-size:14.5px;margin:0 0 16px;">'+esc(ch.description)+'</p>':'')+
+    (body||'<p style="color:var(--ds-text-faint);">This chapter has no content yet.</p>');
+}
 function cpBlockHtml(b){
+  if(b.type==='chapter') return cpChapterHtml(b);
   const t=b.type||'section'; let inner;
   if(t==='video') inner=b.url?tdVideo(b.url):'';
   else if(t==='audio') inner=b.url?('<audio controls src="'+esc(b.url)+'"></audio>'):'';
@@ -995,9 +1023,15 @@ async function openCourseFull(courseId){
   const d=await lmsGet('/api/my/courses/'+courseId);
   if(!d||!d.ok||!d.course){ toast&&toast('Could not open this course.','error'); return; }
   CP_COURSE=d.course;
-  let blocks=[]; try{ const j=JSON.parse(CP_COURSE.content||''); if(Array.isArray(j)) blocks=j; }catch(_){}
-  if(!blocks.length && CP_COURSE.content) blocks=[{type:'section',title:CP_COURSE.title,html:CP_COURSE.content}];
-  CP_LESSONS=blocks.length?blocks:[{type:'section',title:CP_COURSE.title||'Course',html:'<p>No content yet.</p>'}];
+  const raw=CP_COURSE.content||''; let lessons=[]; let j=null; try{ j=JSON.parse(raw); }catch(_){}
+  if(j && !Array.isArray(j) && j.chapters){                 // new chapter-based course → one lesson per (visible) chapter
+    lessons=(j.chapters||[]).filter(c=>c.visible!==false).map(c=>({type:'chapter',title:c.title,description:c.description,blocks:c.blocks||[]}));
+  } else if(Array.isArray(j)){                              // legacy flat blocks
+    lessons=j;
+  } else if(raw){                                           // legacy plain HTML
+    lessons=[{type:'section',title:CP_COURSE.title,html:raw}];
+  }
+  CP_LESSONS=lessons.length?lessons:[{type:'section',title:CP_COURSE.title||'Course',html:'<p>No content yet.</p>'}];
   try{ CP_DONE=new Set(JSON.parse(localStorage.getItem(cpKey(courseId))||'[]')); }catch(e){ CP_DONE=new Set(); }
   CP_IDX=0;
   document.getElementById('cpAiBody').innerHTML='<div class="cp-msg bot">Hi! Ask me anything about this lesson — I can summarise it, give examples, or explain a concept in simpler terms.</div>';
@@ -1016,13 +1050,13 @@ function cpRenderLessons(){
     return '<button class="cp-lesson'+(active?' active':'')+'" data-i="'+i+'">'+
       '<span class="cp-lesson-ic'+(done?' done':'')+'">'+(done?'✓':'')+'</span>'+
       '<span class="cp-lesson-t"><span class="cp-lesson-name">'+esc(cpLessonName(b,i))+'</span>'+
-      '<span class="cp-lesson-meta">'+esc(CP_KIND[b.type]||'Lesson')+'</span></span></button>';
+      '<span class="cp-lesson-meta">'+esc(cpLessonMeta(b))+'</span></span></button>';
   }).join('');
 }
 function cpShow(i){
   CP_IDX=Math.max(0,Math.min(i,CP_LESSONS.length-1));
   const b=CP_LESSONS[CP_IDX];
-  document.getElementById('cpMeta').textContent=CP_KIND[b.type]||'Lesson';
+  document.getElementById('cpMeta').textContent=cpLessonMeta(b);
   document.getElementById('cpTitle').textContent=cpLessonName(b,CP_IDX);
   document.getElementById('cpBody').innerHTML=cpBlockHtml(b);
   document.getElementById('cpBody').scrollTop=0;

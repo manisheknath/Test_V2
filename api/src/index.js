@@ -321,8 +321,9 @@ async function createCourse(request, env) {
   const b = await body(request);
   if (!b.title) throw httpError(400, "title_required");
   const id = crypto.randomUUID();
-  await ctx.db.prepare("INSERT INTO courses (id, org_id, title, summary, category, content, presentation, status) VALUES (?, ?, ?, ?, ?, ?, ?, 'published')")
-    .bind(id, ctx.orgId, b.title, b.summary || null, b.category || null, b.content || null, cleanPresentation(b.presentation)).run();
+  const status = ["draft", "published"].includes(b.status) ? b.status : "draft";
+  await ctx.db.prepare("INSERT INTO courses (id, org_id, title, summary, category, content, presentation, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(id, ctx.orgId, b.title, b.summary || null, b.category || null, b.content || null, cleanPresentation(b.presentation), status).run();
   await audit(env, ctx.accountId, ctx.orgId, "course.create", { title: b.title });
   return json({ ok: true, id });
 }
@@ -336,6 +337,7 @@ async function updateCourse(request, env, id) {
   if (b.category != null) { sets.push("category = ?"); vals.push(b.category || null); }
   if (b.content != null) { sets.push("content = ?"); vals.push(b.content || null); }
   if (b.presentation != null) { sets.push("presentation = ?"); vals.push(cleanPresentation(b.presentation)); }
+  if (b.status != null && ["draft", "published", "archived"].includes(b.status)) { sets.push("status = ?"); vals.push(b.status); }
   if (sets.length) await ctx.db.prepare(`UPDATE courses SET ${sets.join(", ")} WHERE id = ? AND org_id = ?`).bind(...vals, id, ctx.orgId).run();
   return json({ ok: true });
 }
@@ -397,7 +399,7 @@ async function myCourses(request, env) {
   const idList = await myCourseIds(ctx);
   if (!idList.length) return json({ ok: true, courses: [] });
   const ph = idList.map(() => "?").join(",");
-  const rows = (await ctx.db.prepare(`SELECT id, title, summary, category, presentation, created_at FROM courses WHERE org_id = ? AND status != 'archived' AND id IN (${ph}) ORDER BY created_at DESC`)
+  const rows = (await ctx.db.prepare(`SELECT id, title, summary, category, presentation, created_at FROM courses WHERE org_id = ? AND status = 'published' AND id IN (${ph}) ORDER BY created_at DESC`)
     .bind(ctx.orgId, ...idList).all()).results;
   return json({ ok: true, courses: rows.map(c => ({ id: c.id, title: c.title, summary: c.summary || "", category: c.category || "", presentation: c.presentation || "slideshow" })) });
 }
@@ -406,7 +408,7 @@ async function myCourse(request, env, id) {
   if (!ctx.orgId) throw httpError(404, "not_found");
   const idList = await myCourseIds(ctx);
   if (!idList.includes(id)) throw httpError(403, "not_assigned");
-  const c = await ctx.db.prepare("SELECT id, title, summary, category, content, presentation FROM courses WHERE id = ? AND org_id = ?").bind(id, ctx.orgId).first();
+  const c = await ctx.db.prepare("SELECT id, title, summary, category, content, presentation FROM courses WHERE id = ? AND org_id = ? AND status = 'published'").bind(id, ctx.orgId).first();
   if (!c) throw httpError(404, "not_found");
   return json({ ok: true, course: { id: c.id, title: c.title, summary: c.summary || "", category: c.category || "", content: c.content || "", presentation: c.presentation || "slideshow" } });
 }
