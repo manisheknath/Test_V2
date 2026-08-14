@@ -601,7 +601,7 @@
     <div class="cp-top-right">
       <div class="cp-top-timer">
         <span class="cp-timer-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
-        <span class="cp-timer-txt"><span class="cp-timer-lbl">Time Spent</span><span class="cp-timer-val" id="cpTimer">00:00</span></span>
+        <span class="cp-timer-val" id="cpTimer">00:00</span>
       </div>
       <button class="cp-hbtn" id="cpCmToggle" title="Comments" aria-label="Comments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
       <div class="cp-menu-wrap">
@@ -1148,7 +1148,18 @@ function renderMyTracks(){
 // Progress for a course card: done lessons (from local completion) over the
 // course's lesson count (from the API), clamped so stale data can't exceed 100%.
 function cpDoneCount(cid){ try{ return new Set(JSON.parse(localStorage.getItem(cpKey(cid))||'[]')).size; }catch(e){ return 0; } }
-function courseProg(c){ const total=c.lessons||0; let done=(typeof c.done==='number')?c.done:cpDoneCount(c.id); if(total) done=Math.min(done,total); return { done, total, pct: total?Math.round(done/total*100):0, completed:(typeof c.completed==='boolean')?c.completed:(total>0&&done>=total) }; }
+// Progress reflects whichever source has more (server round-trip OR local), so a
+// learner's completions show even when the server hasn't caught up.
+function courseProg(c){
+  let localTotal=0; try{ localTotal=parseInt(localStorage.getItem(cpTotalKey(c.id))||'0',10)||0; }catch(e){}
+  let total=(typeof c.lessons==='number' && c.lessons>0)?c.lessons:0;
+  total=Math.max(total, localTotal);
+  const localDone=cpDoneCount(c.id);
+  let done=Math.max((typeof c.done==='number')?c.done:0, localDone);
+  if(total) done=Math.min(done,total);
+  const pct=total?Math.round(done/total*100):0;
+  return { done, total, pct, completed:((typeof c.completed==='boolean')&&c.completed)||(total>0&&done>=total) };
+}
 function renderMyCourses(){
   const grid=document.getElementById('tdCourses'), contCard=document.getElementById('tdContinueCard');
   if(!MY_COURSES.length){ grid.innerHTML='<div class="td-empty">No courses assigned to you yet. Your admin assigns courses from the console.</div>'; contCard.hidden=true; return; }
@@ -1192,6 +1203,7 @@ function cpKey(cid){ return 'cpDone_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
 function cpBmKey(cid){ return 'cpBm_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
 function cpPosKey(cid){ return 'cpPos_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
 function cpTimeKey(cid){ return 'cpTime_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
+function cpTotalKey(cid){ return 'cpTotal_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
 // Live time-spent timer: accumulates real seconds in the course, pauses when the
 // tab is hidden or the course is closed, and resumes from the stored total.
 let cpSessionStart=0, cpBaseSecs=0, cpTimerInt=null;
@@ -1293,6 +1305,7 @@ async function openCourseFull(courseId){
   if(!chapters.length) chapters=[{title:CP_COURSE.title||'Course',description:'',blocks:[{type:'text',html:'<p>No content yet.</p>'}]}];
   CP_CHAPTERS=chapters; cpBuildItems();
   if(!CP_ITEMS.length){ CP_CHAPTERS=[{title:CP_COURSE.title||'Course',description:'',blocks:[{type:'text',html:'<p>No content yet.</p>'}]}]; cpBuildItems(); }
+  try{ localStorage.setItem(cpTotalKey(courseId), String(CP_ITEMS.length)); }catch(e){}   // cache item total for the dashboard bars
   await cpLoadProgress(courseId);
   try{ CP_BM=JSON.parse(localStorage.getItem(cpBmKey(courseId))); if(typeof CP_BM!=='number') CP_BM=null; }catch(e){ CP_BM=null; }
   document.getElementById('cpCourseTitle').textContent=CP_COURSE.title||'Course';
