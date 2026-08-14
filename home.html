@@ -1249,13 +1249,13 @@ function cpHideFinish(){ document.getElementById('coursePlayer').classList.remov
 function cpCssUrl(u){ return "'"+String(u).replace(/'/g,'%27')+"'"; }
 // Completion is stored server-side (cross-device); localStorage is a cache/fallback.
 async function cpLoadProgress(courseId){
+  // Merge local + server so an empty/unavailable server can never wipe local progress.
+  const done = new Set();
+  try{ (JSON.parse(localStorage.getItem(cpKey(courseId))||'[]')).forEach(x=>{ const n=parseInt(x,10); if(!isNaN(n)) done.add(n); }); }catch(e){}
   const d = await lmsGet('/api/my/courses/'+courseId+'/progress');
-  if (d && d.ok && Array.isArray(d.lessons)){
-    CP_DONE = new Set(d.lessons.map(x=>parseInt(x,10)).filter(n=>!isNaN(n)));
-    try{ localStorage.setItem(cpKey(courseId), JSON.stringify([...CP_DONE])); }catch(e){}
-  } else {
-    try{ CP_DONE = new Set(JSON.parse(localStorage.getItem(cpKey(courseId))||'[]')); }catch(e){ CP_DONE = new Set(); }
-  }
+  if (d && d.ok && Array.isArray(d.lessons)) d.lessons.forEach(x=>{ const n=parseInt(x,10); if(!isNaN(n)) done.add(n); });
+  CP_DONE = done;
+  try{ localStorage.setItem(cpKey(courseId), JSON.stringify([...CP_DONE])); }catch(e){}
 }
 function cpSaveProgress(){
   if (!CP_COURSE) return;
