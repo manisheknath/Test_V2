@@ -281,12 +281,12 @@
   .cp-top-badge.done{background:#DEF3E6;color:#1F8A4C;}
   .cp-top-sub{font-size:13px;color:var(--ds-text-muted,#5B6472);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .cp-top-right{display:flex;align-items:center;gap:14px;flex-shrink:0;}
-  .cp-top-prog{width:220px;}
-  .cp-top-prog-head{display:flex;align-items:center;justify-content:space-between;font-size:12.5px;color:var(--ds-text-muted,#5B6472);}
-  .cp-top-pct{font-weight:700;color:#27AE60;}
-  .cp-top-bar{height:7px;background:#E6E9EF;border-radius:999px;overflow:hidden;margin:6px 0 4px;}
-  .cp-top-bar>span{display:block;height:100%;background:#27AE60;border-radius:inherit;transition:width .3s;}
-  .cp-top-count{font-size:12px;color:var(--ds-text-faint,#8A94A3);}
+  .cp-top-timer{display:flex;align-items:center;gap:10px;padding:6px 14px 6px 8px;background:var(--ds-surface-2,#F6F8FC);border:1px solid var(--ds-border,#E6E9EF);border-radius:10px;}
+  .cp-timer-ic{width:30px;height:30px;border-radius:8px;background:#E7F0FB;color:#116ACC;display:grid;place-items:center;flex-shrink:0;}
+  .cp-timer-ic svg{width:16px;height:16px;}
+  .cp-timer-txt{display:flex;flex-direction:column;line-height:1.15;}
+  .cp-timer-lbl{font-size:11px;color:var(--ds-text-muted,#5B6472);}
+  .cp-timer-val{font-size:17px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.5px;}
   .cp-hbtn{width:40px;height:40px;border:1px solid var(--ds-border,#E6E9EF);background:#fff;border-radius:10px;cursor:pointer;color:var(--ds-text-muted,#5B6472);display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
   .cp-hbtn svg{width:18px;height:18px;}
   .cp-hbtn:hover{border-color:var(--ds-primary,#116ACC);color:var(--ds-primary,#116ACC);}
@@ -417,7 +417,7 @@
   .cp-cm-input button{width:38px;height:38px;flex-shrink:0;border:none;border-radius:50%;background:var(--ds-primary,#116ACC);color:#fff;cursor:pointer;font-size:15px;}
   .cp-cm-hide{margin-left:auto;border:none;background:none;color:var(--ds-text-faint,#828282);cursor:pointer;font-size:18px;line-height:1;padding:2px 7px;border-radius:7px;}
   .cp-cm-hide:hover{background:var(--ds-surface-3,#F2F4F8);color:var(--ds-text,#182233);}
-  @media(max-width:1100px){ .cp-panes{grid-template-columns:280px minmax(0,1fr);} .cp-top-prog{width:170px;} }
+  @media(max-width:1100px){ .cp-panes{grid-template-columns:280px minmax(0,1fr);} }
   @media(max-width:900px){ .cp-panes{grid-template-columns:minmax(0,1fr);} .cp-nav{display:none;} .cp-top-sub{display:none;} }
   @media(max-width:820px){ .cp{left:0;} }
 </style>
@@ -599,10 +599,9 @@
       </div>
     </div>
     <div class="cp-top-right">
-      <div class="cp-top-prog">
-        <div class="cp-top-prog-head"><span>Course Progress</span><span class="cp-top-pct" id="cpTopPct">0%</span></div>
-        <div class="cp-top-bar"><span id="cpTopBar" style="width:0"></span></div>
-        <div class="cp-top-count" id="cpTopCount">0 of 0 items completed</div>
+      <div class="cp-top-timer">
+        <span class="cp-timer-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span>
+        <span class="cp-timer-txt"><span class="cp-timer-lbl">Time Spent</span><span class="cp-timer-val" id="cpTimer">00:00</span></span>
       </div>
       <button class="cp-hbtn" id="cpCmToggle" title="Comments" aria-label="Comments"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
       <div class="cp-menu-wrap">
@@ -1193,8 +1192,21 @@ function cpKey(cid){ return 'cpDone_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
 function cpBmKey(cid){ return 'cpBm_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
 function cpPosKey(cid){ return 'cpPos_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
 function cpTimeKey(cid){ return 'cpTime_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
-let cpSessionStart=0;
-function cpFlushTime(){ if(!CP_COURSE||!cpSessionStart) return; const add=Math.max(0,Math.round((Date.now()-cpSessionStart)/1000)); cpSessionStart=Date.now(); if(add>0){ try{ const k=cpTimeKey(CP_COURSE.id), cur=parseInt(localStorage.getItem(k)||'0',10)||0; localStorage.setItem(k,String(cur+add)); }catch(e){} } }
+// Live time-spent timer: accumulates real seconds in the course, pauses when the
+// tab is hidden or the course is closed, and resumes from the stored total.
+let cpSessionStart=0, cpBaseSecs=0, cpTimerInt=null;
+function cpElapsed(){ return cpSessionStart ? Math.floor((Date.now()-cpSessionStart)/1000) : 0; }
+function cpTotalSecs(){ return cpBaseSecs + cpElapsed(); }
+function cpFlushTime(){
+  if(!CP_COURSE) return;
+  const add=cpElapsed();
+  if(add>0){ cpBaseSecs+=add; try{ localStorage.setItem(cpTimeKey(CP_COURSE.id), String(cpBaseSecs)); }catch(e){} }
+  if(cpSessionStart) cpSessionStart=Date.now();   // reset the running baseline
+}
+function cpFmtTimer(s){ s=Math.max(0,Math.floor(s)); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+function cpTickTimer(){ const el=document.getElementById('cpTimer'); if(el) el.textContent=cpFmtTimer(cpTotalSecs()); }
+function cpStopTimer(){ if(cpTimerInt){ clearInterval(cpTimerInt); cpTimerInt=null; } }
+function cpStartTimer(){ cpStopTimer(); cpTickTimer(); cpTimerInt=setInterval(cpTickTimer,1000); }
 function cpFmtTime(s){ s=s||0; const h=Math.floor(s/3600), m=Math.floor((s%3600)/60); if(h>0) return h+'h '+m+'m'; if(m>0) return m+'m'; return s>0?'<1m':'0m'; }
 const CP_ACH_ICONS={
   book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4a2 2 0 0 1 2-2h12v18H7a2 2 0 0 0-2 2z"/><path d="M5 20a2 2 0 0 0 2 2h12"/></svg>',
@@ -1290,7 +1302,8 @@ async function openCourseFull(courseId){
   let cpStart=0; try{ const sp=parseInt(localStorage.getItem(cpPosKey(courseId)),10); if(!isNaN(sp)) cpStart=sp; }catch(e){}
   CP_IDX=(cpStart>=0 && cpStart<CP_ITEMS.length)?cpStart:0;
   const p=document.getElementById('coursePlayer'); p.classList.remove('cp-focus','cp-finished'); cpSetComments(false);
-  cpSessionStart=Date.now();
+  cpBaseSecs=0; try{ cpBaseSecs=parseInt(localStorage.getItem(cpTimeKey(courseId))||'0',10)||0; }catch(e){}
+  cpSessionStart=Date.now(); cpStartTimer();
   if(cpAllDone()) cpShowFinish(); else cpShow(CP_IDX);
   cpLoadComments(courseId);
   p.classList.remove('hidden');
@@ -1324,7 +1337,6 @@ function cpUpdateProgressUI(){
   const pct=total?Math.round(done/total*100):0, txt=done+' of '+total+' item'+(total===1?'':'s')+' completed';
   const set=(id,v)=>{ const e=document.getElementById(id); if(e) e.textContent=v; };
   const barW=(id,pp)=>{ const e=document.getElementById(id); if(e) e.style.width=pp+'%'; };
-  set('cpTopPct',pct+'%'); barW('cpTopBar',pct); set('cpTopCount',txt);
   set('cpNavPct',pct+'%'); barW('cpBar',pct); set('cpNavCount',txt);
   const ib=document.getElementById('cpItemsBadge'); if(ib){ const c=total>0&&pct>=100; ib.textContent=c?'Completed':(total+' item'+(total===1?'':'s')); ib.classList.toggle('done',c); }
   const badge=document.getElementById('cpCourseBadge'); if(badge){ const c=total>0&&pct>=100; badge.textContent=c?'Completed':(done>0?'In Progress':'Not started'); badge.className='cp-top-badge'+(c?' done':''); }
@@ -1377,11 +1389,16 @@ document.getElementById('cpBookmark').addEventListener('click', ()=>{
 document.getElementById('cpExpand').addEventListener('click', ()=>{ document.getElementById('coursePlayer').classList.toggle('cp-focus'); });
 document.getElementById('cpMore').addEventListener('click',(e)=>{ e.stopPropagation(); document.getElementById('cpMenu').classList.toggle('hidden'); });
 document.addEventListener('click', ()=>{ const m=document.getElementById('cpMenu'); if(m) m.classList.add('hidden'); });
-function cpClosePlayer(){ cpFlushTime(); cpSaveProgress(); document.getElementById('coursePlayer').classList.add('hidden'); document.documentElement.style.overflow=''; if(typeof loadMyCourses==='function') loadMyCourses(); }
+function cpClosePlayer(){ cpFlushTime(); cpStopTimer(); cpSessionStart=0; cpSaveProgress(); document.getElementById('coursePlayer').classList.add('hidden'); document.documentElement.style.overflow=''; if(typeof loadMyCourses==='function') loadMyCourses(); }
 document.getElementById('cpExitBtn').addEventListener('click', cpClosePlayer);
-// Flush progress + time if the tab is hidden/closed while a course is open.
-document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden' && CP_COURSE && !document.getElementById('coursePlayer').classList.contains('hidden')){ cpFlushTime(); cpSaveProgress(); } });
-window.addEventListener('pagehide', ()=>{ if(CP_COURSE && !document.getElementById('coursePlayer').classList.contains('hidden')){ cpFlushTime(); cpSaveProgress(); } });
+function cpPlayerOpen(){ return CP_COURSE && !document.getElementById('coursePlayer').classList.contains('hidden'); }
+// Pause the timer + flush progress when the tab is hidden; resume when visible.
+document.addEventListener('visibilitychange', ()=>{
+  if(!cpPlayerOpen()) return;
+  if(document.visibilityState==='hidden'){ cpFlushTime(); cpStopTimer(); cpSessionStart=0; cpSaveProgress(); }
+  else { cpSessionStart=Date.now(); cpStartTimer(); }
+});
+window.addEventListener('pagehide', ()=>{ if(cpPlayerOpen()){ cpFlushTime(); cpStopTimer(); cpSaveProgress(); } });
 document.addEventListener('keydown', (e)=>{
   if(e.key!=='Escape' || document.getElementById('coursePlayer').classList.contains('hidden')) return;
   const m=document.getElementById('cpMenu'); if(m && !m.classList.contains('hidden')){ m.classList.add('hidden'); return; }
