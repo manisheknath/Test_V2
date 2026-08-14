@@ -601,7 +601,6 @@
             <input type="text" id="crsSearch" placeholder="Search courses, tracks…">
           </div>
         </div>
-        <div class="crs-stats" id="crsStats"></div>
         <div class="crs-grid">
           <div class="crs-main">
             <div class="crs-section-head"><h2>Continue Learning</h2></div>
@@ -1240,20 +1239,7 @@ const CRS_IC={
   track:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5z"/><path d="M2 12l10 5 10-5M2 17l10 5 10-5"/></svg>',
   arrow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>'
 };
-function renderCourses(){ renderCrsStats(); renderCrsContinue(); renderCrsOverview(); renderCrsDeadlines(); renderCrsList(); }
-function renderCrsStats(){
-  const a=crsAgg();
-  const cards=[
-    {ic:'book',c:'#116ACC',cb:'#E7F0FB',v:a.enrolled,l:'Enrolled Courses',sub:'Continue learning',link:''},
-    {ic:'check',c:'#27AE60',cb:'#DEF3E6',v:a.completed,l:'Completed Courses',sub:'View certificates',link:'cert'},
-    {ic:'clock',c:'#C7901C',cb:'#FBF0DA',v:a.inprog,l:'In Progress',sub:'Keep it up!',link:''},
-    {ic:'folder',c:'#7B3FE4',cb:'#EFE7FB',v:crsFmtHM(a.secs),l:'Learning Time',sub:'So far',link:''}
-  ];
-  document.getElementById('crsStats').innerHTML=cards.map(s=>
-    '<div class="crs-stat"><div class="crs-stat-top"><span class="crs-stat-ic" style="--c:'+s.c+';--cb:'+s.cb+';">'+CRS_IC[s.ic]+'</span>'+
-    '<div><div class="crs-stat-v">'+esc(String(s.v))+'</div><div class="crs-stat-l">'+esc(s.l)+'</div></div></div>'+
-    '<div class="crs-stat-sub'+(s.link?' link':'')+'"'+(s.link?' data-stat="'+s.link+'"':'')+'>'+esc(s.sub)+(s.link?' '+CRS_IC.arrow:'')+'</div></div>').join('');
-}
+function renderCourses(){ renderCrsContinue(); renderCrsOverview(); renderCrsDeadlines(); renderCrsList(); }
 function renderCrsContinue(){
   const q=CRS_SEARCH.trim().toLowerCase();
   const map=c=>({c,p:courseProg(c),seen:crsSeen(c.id)});
@@ -1321,7 +1307,6 @@ function renderCrsList(){
 document.getElementById('crsSearch').addEventListener('input', (e)=>{ CRS_SEARCH=e.target.value; renderCrsContinue(); renderCrsList(); });
 document.getElementById('crsSort').addEventListener('change', (e)=>{ CRS_SORT=e.target.value; renderCrsList(); });
 document.getElementById('crsTabs').addEventListener('click', (e)=>{ const b=e.target.closest('[data-tab]'); if(!b) return; CRS_TAB=b.dataset.tab; document.querySelectorAll('#crsTabs button').forEach(x=>x.classList.toggle('active',x===b)); renderCrsList(); });
-document.getElementById('crsStats').addEventListener('click', (e)=>{ const s=e.target.closest('[data-stat]'); if(s && s.dataset.stat==='cert' && typeof switchTakerView==='function') switchTakerView('certificates'); });
 // Open a course from any [data-cid] element (continue cards, list rows, buttons).
 document.getElementById('tview-trainings').addEventListener('click', (e)=>{
   const el=e.target.closest('[data-cid]'); if(!el || !el.dataset.cid) return;
