@@ -1,0 +1,11 @@
+Chapter,Type,Title,Content,URL
+Introduction,heading,Welcome to the course,,
+Introduction,text,,Write your lesson text here. Leave a blank line between paragraphs to start a new one.,
+Introduction,video,,,https://www.youtube.com/watch?v=VIDEO_ID
+Core Concepts,heading,Key principles,,
+Core Concepts,text,What is safety?,Safety is everyone's responsibility. Keep this cell as plain text.,
+Core Concepts,image,Workplace signage,,https://example.com/sign.png
+Core Concepts,pdf,,,https://example.com/handbook.pdf
+Assessment,assignment,Reflection,Describe one hazard in your workplace and how you would control it.,
+Assessment,quiz,Take the quiz,,https://forms.gle/EXAMPLE
+Assessment,link,Further reading,,https://example.com/more

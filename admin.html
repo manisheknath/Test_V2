@@ -504,12 +504,13 @@
                 <button class="primary" id="btnNewTraining">+ Create ▾</button>
                 <div class="dropdown-menu hidden" id="trNewMenu">
                   <button id="btnTrCreateNew">Create manually</button>
-                  <button id="btnTrUpload">Upload (PDF, PPT, Word)…</button>
+                  <button id="btnTrUpload">Upload a file (CSV, PDF, PPT, Word)…</button>
+                  <button id="btnTrTemplate">Download course template (CSV)</button>
                 </div>
               </div>
             </div>
           </div>
-          <input type="file" id="trFileInput" accept=".pdf,.docx,.pptx" class="hidden">
+          <input type="file" id="trFileInput" accept=".csv,.pdf,.docx,.pptx" class="hidden">
           <div class="card">
             <div class="list-toolbar" id="trToolbar">
               <div class="list-controls" id="trControls">
@@ -3750,9 +3751,11 @@ function openCourseBuilder(course){
     presentation:course.presentation||'slideshow', cover:parsed.cover||'', status:course.status||'draft', chapters:parsed.chapters };
   CB_PROPSMODE = 'chapter'; cbOpen(true);
 }
-async function cbStartNew(name, desc, cover, importHtml){
-  const first = mkChapter('Chapter 1', importHtml ? [ normBlock({ type:'text', html:importHtml }) ] : []);
-  courseDraft = { id:null, name, desc, category:'', presentation:'slideshow', cover:cover||'', status:'draft', chapters:[first] };
+async function cbStartNew(name, desc, cover, importHtml, importChapters){
+  const chapters = (importChapters && importChapters.length)
+    ? importChapters
+    : [ mkChapter('Chapter 1', importHtml ? [ normBlock({ type:'text', html:importHtml }) ] : []) ];
+  courseDraft = { id:null, name, desc, category:'', presentation:'slideshow', cover:cover||'', status:'draft', chapters };
   CB_PROPSMODE = 'chapter'; cbOpen(false);
   await cbSave(false); // create immediately so autosave has an id
 }
@@ -4210,27 +4213,109 @@ document.getElementById('cpEdit').addEventListener('click', () => { if (previewC
   menu.addEventListener('click', () => menu.classList.add('hidden'));
   document.addEventListener('click', (e) => { if (!e.target.closest('.dropdown')) menu.classList.add('hidden'); });
 })();
-let nc2Cover = '', nc2ImportHtml = null;
-function openCreateModal(importName, importHtml){
-  nc2Cover = ''; nc2ImportHtml = importHtml || null;
+let nc2Cover = '', nc2ImportHtml = null, nc2ImportChapters = null;
+function openCreateModal(importName, importHtml, importChapters){
+  nc2Cover = ''; nc2ImportHtml = importHtml || null; nc2ImportChapters = (importChapters && importChapters.length) ? importChapters : null;
   document.getElementById('nc2Notice').innerHTML = '';
   document.getElementById('nc2_title').value = importName ? importName.replace(/\.[^.]+$/,'') : '';
   document.getElementById('nc2_desc').value = '';
   document.getElementById('nc2DropPreview').classList.add('hidden');
   document.getElementById('nc2DropEmpty').classList.remove('hidden');
-  const ir = document.getElementById('nc2ImportRow');
-  if (importName){ document.getElementById('nc2FileName').textContent = importName; ir.classList.remove('hidden'); } else ir.classList.add('hidden');
+  const ir = document.getElementById('nc2ImportRow'), span = ir.querySelector('span');
+  if (importName){
+    if (nc2ImportChapters){ const n = nc2ImportChapters.length, b = nc2ImportChapters.reduce((s,c)=>s+c.blocks.length,0);
+      span.innerHTML = 'Imported <b>'+n+' chapter'+(n===1?'':'s')+'</b> ('+b+' block'+(b===1?'':'s')+') from <b>'+pEsc(importName)+'</b> — review and edit, then Publish. The file isn’t stored.'; }
+    else span.innerHTML = 'Imported from <b>'+pEsc(importName)+'</b> — the text is added as your first chapter; the file itself isn’t stored.';
+    ir.classList.remove('hidden');
+  } else ir.classList.add('hidden');
   openSheet(document.getElementById('newCourseModal'));
   setTimeout(() => document.getElementById('nc2_title').focus(), 50);
 }
 document.getElementById('btnTrCreateNew').addEventListener('click', () => openCreateModal());
 document.getElementById('btnTrUpload').addEventListener('click', () => document.getElementById('trFileInput').click());
+document.getElementById('btnTrTemplate').addEventListener('click', downloadCourseTemplate);
 document.getElementById('trFileInput').addEventListener('change', async (e) => {
   const f = e.target.files && e.target.files[0]; e.target.value = ''; if (!f) return;
   toast('Reading “'+f.name+'”…');
-  try { const html = await parseCourseFile(f); openCreateModal(f.name, html); }
-  catch(err){ toast(err.message || 'Could not read that file.','error'); }
+  try {
+    if (/\.csv$/i.test(f.name)){ const chapters = parseCsvCourse(await f.text()); openCreateModal(f.name, null, chapters); }
+    else { const html = await parseCourseFile(f); openCreateModal(f.name, html); }
+  } catch(err){ toast(err.message || 'Could not read that file.','error'); }
 });
+
+/* ---------- CSV course template: import + download ----------
+   Columns: Chapter, Type, Title, Content, URL. One block per row; rows with the
+   same (or blank) Chapter group into a chapter. Types: heading, text, video,
+   audio, pdf, presentation, image, link, quiz, assignment, embed. */
+function parseCsvRows(text){
+  const rows = []; let row = [], field = '', inQ = false;
+  text = String(text).replace(/^﻿/, '').replace(/\r\n?/g, '\n');
+  for (let i = 0; i < text.length; i++){
+    const ch = text[i];
+    if (inQ){ if (ch === '"'){ if (text[i+1] === '"'){ field += '"'; i++; } else inQ = false; } else field += ch; }
+    else if (ch === '"') inQ = true;
+    else if (ch === ','){ row.push(field); field = ''; }
+    else if (ch === '\n'){ row.push(field); rows.push(row); row = []; field = ''; }
+    else field += ch;
+  }
+  if (field !== '' || row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+function csvTextToHtml(s){ return String(s).split(/\n{2,}/).map(p => '<p>'+pEsc(p.trim()).replace(/\n/g,'<br>')+'</p>').join(''); }
+function csvRowToBlock(type, title, content, url){
+  const t = (type || 'text').toLowerCase();
+  if (t === 'heading') return title ? normBlock({ type:'heading', text:title }) : null;
+  if (t === 'assignment') return normBlock({ type:'assignment', html:(title?'<h3>'+pEsc(title)+'</h3>':'')+(content?csvTextToHtml(content):'<p></p>') });
+  if (t === 'embed') return (content||url) ? normBlock({ type:'embed', html: content || url }) : null;
+  if (t === 'image') return url ? normBlock({ type:'image', url, caption:title }) : null;
+  if (t === 'link') return url ? normBlock({ type:'link', url, label:title||'Open link' }) : null;
+  if (t === 'quiz') return url ? normBlock({ type:'quiz', url, label:title||'Open quiz' }) : null;
+  if (t === 'video' || t === 'audio' || t === 'pdf' || t === 'presentation') return url ? normBlock({ type:t, url }) : null;
+  const html = (title?'<h3>'+pEsc(title)+'</h3>':'') + (content?csvTextToHtml(content):'');   // text / unknown
+  return html ? normBlock({ type:'text', html }) : null;
+}
+function parseCsvCourse(text){
+  const rows = parseCsvRows(text).filter(r => r.some(c => String(c).trim() !== ''));
+  if (!rows.length) throw new Error('That CSV looks empty. Fill in the template and try again.');
+  const head = rows[0].map(c => String(c).trim().toLowerCase());
+  const hasHeader = head.includes('type');
+  const idx = hasHeader
+    ? { chapter:head.indexOf('chapter'), type:head.indexOf('type'), title:head.indexOf('title'), content:head.indexOf('content'), url:head.indexOf('url') }
+    : { chapter:0, type:1, title:2, content:3, url:4 };
+  const get = (r, k) => (idx[k] >= 0 && idx[k] < r.length) ? String(r[idx[k]]).trim() : '';
+  const chapters = []; let cur = null, lastName = '';
+  for (let r = hasHeader ? 1 : 0; r < rows.length; r++){
+    const row = rows[r];
+    let name = get(row, 'chapter'); if (name) lastName = name; else name = lastName || 'Chapter 1';
+    if (!cur || cur.title !== name){ cur = mkChapter(name, []); chapters.push(cur); }
+    const block = csvRowToBlock(get(row,'type'), get(row,'title'), get(row,'content'), get(row,'url'));
+    if (block) cur.blocks.push(block);
+  }
+  if (!chapters.some(c => c.blocks.length)) throw new Error('No content rows found. Add rows under the header and try again.');
+  return chapters;
+}
+function csvCell(v){ v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }
+function downloadCourseTemplate(){
+  const rows = [
+    ['Chapter','Type','Title','Content','URL'],
+    ['Introduction','heading','Welcome to the course','',''],
+    ['Introduction','text','','Write your lesson text here. Leave a blank line between paragraphs to start a new one.',''],
+    ['Introduction','video','','','https://www.youtube.com/watch?v=VIDEO_ID'],
+    ['Core Concepts','heading','Key principles','',''],
+    ['Core Concepts','text','What is safety?','Safety is everyone’s responsibility. Keep this cell as plain text.',''],
+    ['Core Concepts','image','Workplace signage','','https://example.com/sign.png'],
+    ['Core Concepts','pdf','','','https://example.com/handbook.pdf'],
+    ['Assessment','assignment','Reflection','Describe one hazard in your workplace and how you would control it.',''],
+    ['Assessment','quiz','Take the quiz','','https://forms.gle/EXAMPLE'],
+    ['Assessment','link','Further reading','','https://example.com/more']
+  ];
+  const csv = rows.map(r => r.map(csvCell).join(',')).join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['﻿'+csv], { type:'text/csv;charset=utf-8;' }));
+  a.download = 'course-template.csv'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+  toast('Template downloaded — fill it in, then “Upload a file”.', 'success');
+}
 async function nc2SetCover(f){
   try { nc2Cover = await imageToDataUrl(f, 1280); document.getElementById('nc2CoverImg').src = nc2Cover; document.getElementById('nc2DropPreview').classList.remove('hidden'); document.getElementById('nc2DropEmpty').classList.add('hidden'); }
   catch(err){ toast(err.message || 'Could not read image','error'); }
@@ -4249,7 +4334,7 @@ document.getElementById('nc2Start').addEventListener('click', async () => {
   if (!name){ document.getElementById('nc2Notice').innerHTML = '<div class="notice error">A course title is required.</div>'; return; }
   const desc = document.getElementById('nc2_desc').value.trim();
   closeSheet(document.getElementById('newCourseModal'));
-  await cbStartNew(name, desc, nc2Cover, nc2ImportHtml);
+  await cbStartNew(name, desc, nc2Cover, nc2ImportHtml, nc2ImportChapters);
 });
 
 /* ---------- File parsing (PDF / PPT / Word) — libraries loaded on demand ----
