@@ -359,6 +359,40 @@
   .cp-complete.is-done{background:#DEF3E6;border-color:#27AE60;color:#1F8A4C;}
   .cp-complete .dot{width:18px;height:18px;border-radius:50%;border:1.6px solid #27AE60;color:#27AE60;display:grid;place-items:center;font-size:11px;}
   .cp-complete.is-done .dot{background:#27AE60;border-color:#27AE60;color:#fff;}
+  /* course completion screen */
+  .cp-finish{display:none;flex:1;overflow-y:auto;position:relative;}
+  .cp.cp-finished .cp-main-head,.cp.cp-finished #cpDivider,.cp.cp-finished #cpBody,.cp.cp-finished #cpFootNormal{display:none;}
+  .cp.cp-finished .cp-finish{display:block;}
+  #cpFootFinish{display:none;}
+  .cp.cp-finished #cpFootFinish{display:flex;}
+  .cp-fin-inner{max-width:640px;margin:0 auto;padding:28px 24px 34px;text-align:center;position:relative;z-index:1;}
+  .cp-fin-check{width:82px;height:82px;border-radius:50%;background:#27AE60;display:grid;place-items:center;margin:6px auto 20px;box-shadow:0 8px 24px rgba(39,174,96,.35);}
+  .cp-fin-check svg{width:38px;height:38px;}
+  .cp-fin-h{font-size:29px;font-weight:700;margin:0 0 4px;letter-spacing:-.02em;}
+  .cp-fin-sub{font-size:20px;font-weight:700;color:#27AE60;margin-bottom:10px;}
+  .cp-fin-p{font-size:14.5px;color:var(--ds-text-muted,#5B6472);margin:0 0 22px;}
+  .cp-fin-actions{display:flex;gap:12px;justify-content:center;margin-bottom:30px;flex-wrap:wrap;}
+  .cp-fin-review{background:#27AE60;border:1px solid #27AE60;color:#fff;}
+  .cp-fin-review:hover{background:#219653;}
+  .cp-fin-ach-title{text-align:left;font-size:14px;font-weight:700;margin:0 0 12px;}
+  .cp-fin-ach{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+  .cp-ach{background:var(--ds-surface-2,#F6F8FC);border:1px solid var(--ds-border,#E6E9EF);border-radius:12px;padding:16px 10px;text-align:center;}
+  .cp-ach-ic{width:34px;height:34px;border-radius:9px;background:#E7F0FB;color:#116ACC;display:grid;place-items:center;margin:0 auto 8px;}
+  .cp-ach-ic svg{width:18px;height:18px;}
+  .cp-ach-v{font-size:20px;font-weight:700;}
+  .cp-ach-l{font-size:11.5px;color:var(--ds-text-muted,#5B6472);margin-top:2px;}
+  .cp-fin-keep{display:flex;align-items:center;gap:14px;text-align:left;background:#EAF6EF;border:1px solid #CDE9D8;border-radius:12px;padding:14px 16px;}
+  .cp-fin-keep-ic{width:38px;height:38px;flex-shrink:0;border-radius:10px;background:#27AE60;color:#fff;display:grid;place-items:center;}
+  .cp-fin-keep-ic svg{width:20px;height:20px;}
+  .cp-fin-keep-txt{flex:1;min-width:0;}
+  .cp-fin-keep-txt b{display:block;font-size:14px;}
+  .cp-fin-keep-txt span{font-size:12.5px;color:var(--ds-text-muted,#5B6472);}
+  .cp-fin-keep .cp-fbtn{flex-shrink:0;background:#fff;border:1px solid var(--ds-border-strong,#C4CBD6);}
+  .cp-confetti{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:2;}
+  .cp-conf{position:absolute;top:-16px;border-radius:2px;opacity:.9;animation-name:cpfall;animation-timing-function:ease-in;animation-iteration-count:1;animation-fill-mode:forwards;}
+  @keyframes cpfall{0%{transform:translateY(-20px) rotate(0);opacity:1;}100%{transform:translateY(640px) rotate(560deg);opacity:0;}}
+  .cp-items-badge.done{background:#DEF3E6;color:#1F8A4C;}
+  @media(max-width:1100px){ .cp-fin-ach{grid-template-columns:repeat(2,1fr);} }
   /* comments drawer */
   .cp-cm{position:absolute;top:20px;right:26px;bottom:20px;width:340px;max-width:calc(100% - 40px);background:#fff;border:1px solid var(--ds-border,#E6E9EF);border-radius:14px;box-shadow:0 18px 44px rgba(24,34,51,.18);display:flex;flex-direction:column;transform:translateX(calc(100% + 60px));transition:transform .2s ease;z-index:7;}
   .cp.cm-open .cp-cm{transform:translateX(0);}
@@ -596,12 +630,38 @@
             <button class="cp-hbtn" id="cpExpand" title="Focus mode" aria-label="Focus mode"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg></button>
           </div>
         </div>
-        <div class="cp-divider"></div>
+        <div class="cp-divider" id="cpDivider"></div>
         <div class="cp-body" id="cpBody"></div>
-        <div class="cp-foot">
+        <!-- course completion screen -->
+        <div class="cp-finish" id="cpFinish">
+          <div class="cp-confetti" id="cpConfetti"></div>
+          <div class="cp-fin-inner">
+            <div class="cp-fin-check"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg></div>
+            <h1 class="cp-fin-h">Congratulations!</h1>
+            <div class="cp-fin-sub">You've completed the course 🎉</div>
+            <p class="cp-fin-p">Great job! You've completed all the lessons in this course.</p>
+            <div class="cp-fin-actions">
+              <button class="cp-fbtn cp-prev" id="cpViewCert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M14 3v5h5"/><path d="M7 3h8l5 5v12a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1Z"/></svg> View Certificate</button>
+              <button class="cp-fbtn cp-fin-review" id="cpReview">Review Course</button>
+            </div>
+            <div class="cp-fin-ach-title">Your Achievements</div>
+            <div class="cp-fin-ach" id="cpAchievements"></div>
+            <div class="cp-fin-keep">
+              <span class="cp-fin-keep-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z"/></svg></span>
+              <div class="cp-fin-keep-txt"><b>Keep it up!</b><span>You're building your knowledge. Explore more courses to keep learning.</span></div>
+              <button class="cp-fbtn cp-prev" id="cpBrowseMore">Browse More Courses <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+            </div>
+          </div>
+        </div>
+        <div class="cp-foot" id="cpFootNormal">
           <button class="cp-fbtn cp-prev" id="cpPrev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Previous Lesson</button>
           <button class="cp-complete" id="cpComplete"><span class="dot" id="cpCompDot"></span><span id="cpCompLbl">Mark as Complete</span></button>
           <button class="cp-fbtn cp-next" id="cpNext">Next Lesson <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
+        </div>
+        <div class="cp-foot" id="cpFootFinish">
+          <button class="cp-fbtn cp-prev" id="cpFinPrev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Previous Lesson</button>
+          <span class="cp-complete is-done" style="cursor:default;"><span class="dot">✓</span>Completed</span>
+          <button class="cp-fbtn cp-next" id="cpFinExit">Go to My Trainings <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;"><path d="M5 12h14M12 5l7 7-7 7"/></svg></button>
         </div>
       </div>
     </main>
@@ -1132,6 +1192,36 @@ const CP_CARET='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strok
 function cpKey(cid){ return 'cpDone_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
 function cpBmKey(cid){ return 'cpBm_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
 function cpPosKey(cid){ return 'cpPos_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
+function cpTimeKey(cid){ return 'cpTime_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
+let cpSessionStart=0;
+function cpFlushTime(){ if(!CP_COURSE||!cpSessionStart) return; const add=Math.max(0,Math.round((Date.now()-cpSessionStart)/1000)); cpSessionStart=Date.now(); if(add>0){ try{ const k=cpTimeKey(CP_COURSE.id), cur=parseInt(localStorage.getItem(k)||'0',10)||0; localStorage.setItem(k,String(cur+add)); }catch(e){} } }
+function cpFmtTime(s){ s=s||0; const h=Math.floor(s/3600), m=Math.floor((s%3600)/60); if(h>0) return h+'h '+m+'m'; if(m>0) return m+'m'; return s>0?'<1m':'0m'; }
+const CP_ACH_ICONS={
+  book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4a2 2 0 0 1 2-2h12v18H7a2 2 0 0 0-2 2z"/><path d="M5 20a2 2 0 0 0 2 2h12"/></svg>',
+  list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg>'
+};
+function cpAllDone(){ const t=CP_ITEMS.length; return t>0 && [...CP_DONE].filter(i=>i>=0&&i<t).length>=t; }
+function cpRenderAchievements(){
+  const chapters=CP_CHAPTERS.length, lessons=CP_ITEMS.length;
+  let secs=0; try{ if(CP_COURSE) secs=parseInt(localStorage.getItem(cpTimeKey(CP_COURSE.id))||'0',10)||0; }catch(e){}
+  const cards=[['book',String(chapters),'Chapters Completed'],['list',String(lessons),'Lessons Completed'],['clock',cpFmtTime(secs),'Time Spent'],['target','100%','Course Progress']];
+  document.getElementById('cpAchievements').innerHTML=cards.map(c=>'<div class="cp-ach"><span class="cp-ach-ic">'+CP_ACH_ICONS[c[0]]+'</span><div class="cp-ach-v">'+esc(c[1])+'</div><div class="cp-ach-l">'+esc(c[2])+'</div></div>').join('');
+}
+function cpBurstConfetti(){
+  const el=document.getElementById('cpConfetti'); if(!el) return;
+  const colors=['#116ACC','#27AE60','#F2C94C','#EB5757','#9B51E0','#2F80ED']; let h='';
+  for(let i=0;i<54;i++){ const left=(Math.random()*100).toFixed(1), c=colors[i%colors.length], delay=(Math.random()*0.7).toFixed(2), dur=(2.4+Math.random()*1.6).toFixed(2), w=Math.round(6+Math.random()*6); h+='<span class="cp-conf" style="left:'+left+'%;background:'+c+';width:'+w+'px;height:'+Math.round(w*0.55)+'px;animation-delay:'+delay+'s;animation-duration:'+dur+'s;"></span>'; }
+  el.innerHTML=h; setTimeout(()=>{ if(el) el.innerHTML=''; }, 5200);
+}
+function cpShowFinish(){
+  cpFlushTime();
+  document.getElementById('coursePlayer').classList.add('cp-finished');
+  cpRenderAchievements(); cpBurstConfetti(); cpRenderChapters(); cpUpdateProgressUI();
+  const f=document.getElementById('cpFinish'); if(f) f.scrollTop=0;
+}
+function cpHideFinish(){ document.getElementById('coursePlayer').classList.remove('cp-finished'); }
 function cpCssUrl(u){ return "'"+String(u).replace(/'/g,'%27')+"'"; }
 // Completion is stored server-side (cross-device); localStorage is a cache/fallback.
 async function cpLoadProgress(courseId){
@@ -1199,8 +1289,9 @@ async function openCourseFull(courseId){
   CP_OPEN=new Set();
   let cpStart=0; try{ const sp=parseInt(localStorage.getItem(cpPosKey(courseId)),10); if(!isNaN(sp)) cpStart=sp; }catch(e){}
   CP_IDX=(cpStart>=0 && cpStart<CP_ITEMS.length)?cpStart:0;
-  const p=document.getElementById('coursePlayer'); p.classList.remove('cp-focus'); cpSetComments(false);
-  cpShow(CP_IDX);
+  const p=document.getElementById('coursePlayer'); p.classList.remove('cp-focus','cp-finished'); cpSetComments(false);
+  cpSessionStart=Date.now();
+  if(cpAllDone()) cpShowFinish(); else cpShow(CP_IDX);
   cpLoadComments(courseId);
   p.classList.remove('hidden');
   document.documentElement.style.overflow='hidden';
@@ -1235,11 +1326,12 @@ function cpUpdateProgressUI(){
   const barW=(id,pp)=>{ const e=document.getElementById(id); if(e) e.style.width=pp+'%'; };
   set('cpTopPct',pct+'%'); barW('cpTopBar',pct); set('cpTopCount',txt);
   set('cpNavPct',pct+'%'); barW('cpBar',pct); set('cpNavCount',txt);
-  set('cpItemsBadge',total+' item'+(total===1?'':'s'));
+  const ib=document.getElementById('cpItemsBadge'); if(ib){ const c=total>0&&pct>=100; ib.textContent=c?'Completed':(total+' item'+(total===1?'':'s')); ib.classList.toggle('done',c); }
   const badge=document.getElementById('cpCourseBadge'); if(badge){ const c=total>0&&pct>=100; badge.textContent=c?'Completed':(done>0?'In Progress':'Not started'); badge.className='cp-top-badge'+(c?' done':''); }
 }
 function cpShow(i){
   if(!CP_ITEMS.length) return;
+  cpHideFinish();
   CP_IDX=Math.max(0,Math.min(i,CP_ITEMS.length-1));
   const it=CP_ITEMS[CP_IDX]; CP_OPEN.add(it.ci);
   document.getElementById('cpMeta').textContent='Chapter '+(it.ci+1)+' of '+CP_CHAPTERS.length;
@@ -1264,12 +1356,19 @@ document.getElementById('cpChapters').addEventListener('click',(e)=>{
 document.getElementById('cpPrev').addEventListener('click', ()=>cpShow(CP_IDX-1));
 document.getElementById('cpNext').addEventListener('click', ()=>{
   if(!CP_DONE.has(CP_IDX)){ CP_DONE.add(CP_IDX); cpSaveProgress(); }   // advancing completes the item you're leaving
-  cpShow(CP_IDX+1);
+  if(cpAllDone()) cpShowFinish(); else cpShow(CP_IDX+1);
 });
 document.getElementById('cpComplete').addEventListener('click', ()=>{
   if(CP_DONE.has(CP_IDX)) CP_DONE.delete(CP_IDX); else CP_DONE.add(CP_IDX);
-  cpSaveProgress(); cpShow(CP_IDX);
+  cpSaveProgress();
+  if(cpAllDone()) cpShowFinish(); else cpShow(CP_IDX);
 });
+// Completion screen actions
+document.getElementById('cpFinPrev').addEventListener('click', ()=>cpShow(CP_ITEMS.length-1));
+document.getElementById('cpFinExit').addEventListener('click', ()=>cpClosePlayer());
+document.getElementById('cpReview').addEventListener('click', ()=>cpShow(0));
+document.getElementById('cpViewCert').addEventListener('click', ()=>{ if(typeof switchTakerView==='function') switchTakerView('certificates'); });
+document.getElementById('cpBrowseMore').addEventListener('click', ()=>{ if(typeof switchTakerView==='function') switchTakerView('trainings'); });
 document.getElementById('cpBookmark').addEventListener('click', ()=>{
   CP_BM=(CP_BM===CP_IDX)?null:CP_IDX;
   if(CP_COURSE){ try{ if(CP_BM==null) localStorage.removeItem(cpBmKey(CP_COURSE.id)); else localStorage.setItem(cpBmKey(CP_COURSE.id),String(CP_BM)); }catch(e){} }
@@ -1278,11 +1377,11 @@ document.getElementById('cpBookmark').addEventListener('click', ()=>{
 document.getElementById('cpExpand').addEventListener('click', ()=>{ document.getElementById('coursePlayer').classList.toggle('cp-focus'); });
 document.getElementById('cpMore').addEventListener('click',(e)=>{ e.stopPropagation(); document.getElementById('cpMenu').classList.toggle('hidden'); });
 document.addEventListener('click', ()=>{ const m=document.getElementById('cpMenu'); if(m) m.classList.add('hidden'); });
-function cpClosePlayer(){ cpSaveProgress(); document.getElementById('coursePlayer').classList.add('hidden'); document.documentElement.style.overflow=''; if(typeof loadMyCourses==='function') loadMyCourses(); }
+function cpClosePlayer(){ cpFlushTime(); cpSaveProgress(); document.getElementById('coursePlayer').classList.add('hidden'); document.documentElement.style.overflow=''; if(typeof loadMyCourses==='function') loadMyCourses(); }
 document.getElementById('cpExitBtn').addEventListener('click', cpClosePlayer);
-// Flush progress if the tab is hidden/closed while a course is open.
-document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden' && CP_COURSE && !document.getElementById('coursePlayer').classList.contains('hidden')) cpSaveProgress(); });
-window.addEventListener('pagehide', ()=>{ if(CP_COURSE && !document.getElementById('coursePlayer').classList.contains('hidden')) cpSaveProgress(); });
+// Flush progress + time if the tab is hidden/closed while a course is open.
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden' && CP_COURSE && !document.getElementById('coursePlayer').classList.contains('hidden')){ cpFlushTime(); cpSaveProgress(); } });
+window.addEventListener('pagehide', ()=>{ if(CP_COURSE && !document.getElementById('coursePlayer').classList.contains('hidden')){ cpFlushTime(); cpSaveProgress(); } });
 document.addEventListener('keydown', (e)=>{
   if(e.key!=='Escape' || document.getElementById('coursePlayer').classList.contains('hidden')) return;
   const m=document.getElementById('cpMenu'); if(m && !m.classList.contains('hidden')){ m.classList.add('hidden'); return; }
