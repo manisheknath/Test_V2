@@ -265,6 +265,94 @@
   .td-evt .k{font-size:11.5px;color:var(--faint);} .td-evt .v{font-size:13px;font-weight:600;}
   @media(max-width:1000px){ #tview-trainings .td-grid{grid-template-columns:1fr;} .td-cl{grid-template-columns:1fr;} .td-cgrid{grid-template-columns:repeat(2,1fr);} }
 
+  /* ============ Courses dashboard ============ */
+  .crs-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;}
+  .crs-head h1{font-size:24px;font-weight:700;margin:0;letter-spacing:-.01em;}
+  .crs-head p{margin:3px 0 0;color:var(--muted);font-size:13.5px;}
+  .crs-search{display:flex;align-items:center;gap:9px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:0 12px;height:40px;width:280px;max-width:40vw;flex-shrink:0;}
+  .crs-search svg{width:16px;height:16px;color:var(--faint);flex-shrink:0;}
+  .crs-search input{border:none;outline:none;background:none;font-family:inherit;font-size:13.5px;width:100%;color:var(--text);}
+  .crs-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px;}
+  .crs-stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;}
+  .crs-stat-top{display:flex;align-items:center;gap:12px;}
+  .crs-stat-ic{width:42px;height:42px;border-radius:11px;display:grid;place-items:center;flex-shrink:0;background:var(--cb,#E7F0FB);color:var(--c,#116ACC);}
+  .crs-stat-ic svg{width:20px;height:20px;}
+  .crs-stat-v{font-size:22px;font-weight:700;line-height:1.1;}
+  .crs-stat-l{font-size:12.5px;color:var(--muted);margin-top:1px;}
+  .crs-stat-sub{margin-top:12px;font-size:12px;color:var(--faint);display:flex;align-items:center;gap:5px;cursor:default;}
+  .crs-stat-sub.link{color:#116ACC;cursor:pointer;}
+  .crs-stat-sub svg{width:13px;height:13px;}
+  .crs-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start;}
+  .crs-section-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+  .crs-section-head h2{font-size:16px;font-weight:700;margin:0;}
+  .crs-cl{display:flex;gap:14px;overflow-x:auto;padding-bottom:6px;margin-bottom:24px;scroll-snap-type:x proximity;}
+  .crs-cl::-webkit-scrollbar{height:7px;} .crs-cl::-webkit-scrollbar-thumb{background:var(--border-strong,#CBD2DA);border-radius:9px;}
+  .crs-clc{flex:0 0 240px;scroll-snap-align:start;background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;cursor:pointer;transition:box-shadow .15s,transform .15s;}
+  .crs-clc:hover{box-shadow:0 8px 22px rgba(20,40,30,.1);transform:translateY(-2px);}
+  .crs-clc-cover{height:110px;background-size:cover;background-position:center;position:relative;}
+  .crs-clc-badge{position:absolute;top:10px;right:10px;font-size:10.5px;font-weight:600;background:rgba(255,255,255,.92);color:#116ACC;padding:3px 9px;border-radius:999px;}
+  .crs-clc-badge.done{color:#1F8A4C;}
+  .crs-clc-body{padding:12px 14px 14px;}
+  .crs-clc-title{font-size:14px;font-weight:600;line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .crs-clc-sub{font-size:12px;color:var(--faint);margin:2px 0 10px;}
+  .crs-clc-barrow{display:flex;align-items:center;gap:8px;}
+  .crs-clc-bar{flex:1;height:6px;background:var(--surface-3);border-radius:999px;overflow:hidden;}
+  .crs-clc-bar>span{display:block;height:100%;background:#116ACC;border-radius:inherit;}
+  .crs-clc.done .crs-clc-bar>span{background:#27AE60;}
+  .crs-clc-pct{font-size:12px;font-weight:700;color:#116ACC;}
+  .crs-clc.done .crs-clc-pct{color:#27AE60;}
+  .crs-clc-foot{display:flex;align-items:center;justify-content:space-between;margin-top:11px;font-size:11.5px;color:var(--faint);}
+  .crs-clc-foot svg{width:14px;height:14px;color:#116ACC;}
+  .crs-cl-empty{color:var(--muted);font-size:13px;padding:20px 4px;}
+  .crs-list-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:6px 18px 12px;}
+  .crs-list-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--border);padding:10px 0;margin-bottom:6px;}
+  .crs-tabs{display:flex;gap:4px;}
+  .crs-tabs button{border:none;background:none;font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);padding:7px 12px;border-radius:8px;cursor:pointer;}
+  .crs-tabs button.active{background:var(--accent-soft,#E7F0FB);color:#116ACC;}
+  .crs-sort{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);}
+  .crs-sort select{font-family:inherit;font-size:12.5px;border:1px solid var(--border);border-radius:8px;padding:6px 8px;background:var(--surface);color:var(--text);cursor:pointer;}
+  .crs-list{display:flex;flex-direction:column;}
+  .crs-row{display:flex;align-items:center;gap:14px;padding:14px 4px;border-bottom:1px solid var(--border);cursor:pointer;}
+  .crs-row:last-child{border-bottom:none;}
+  .crs-row:hover{background:var(--surface-2);}
+  .crs-row-ic{width:44px;height:44px;flex-shrink:0;border-radius:11px;display:grid;place-items:center;background:var(--cb,#E7F0FB);color:var(--c,#116ACC);}
+  .crs-row-ic svg{width:20px;height:20px;}
+  .crs-row-main{flex:1;min-width:0;}
+  .crs-row-title{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px;}
+  .crs-badge{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:6px;background:var(--accent-soft,#E7F0FB);color:#116ACC;}
+  .crs-badge.track{background:#EFE7FB;color:#7B3FE4;}
+  .crs-row-desc{font-size:12.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px;}
+  .crs-row-prog{width:150px;flex-shrink:0;}
+  .crs-row-prog-lbl{font-size:11px;color:var(--faint);margin-bottom:4px;}
+  .crs-row-bar{height:6px;background:var(--surface-3);border-radius:999px;overflow:hidden;}
+  .crs-row-bar>span{display:block;height:100%;background:#116ACC;border-radius:inherit;}
+  .crs-row.done .crs-row-bar>span{background:#27AE60;}
+  .crs-row-pct{font-size:12.5px;font-weight:700;color:var(--muted);width:40px;text-align:right;flex-shrink:0;}
+  .crs-row-count{font-size:12.5px;color:var(--muted);width:150px;flex-shrink:0;}
+  .crs-continue{flex-shrink:0;border:1px solid var(--border-strong,#CBD2DA);background:var(--surface);color:#116ACC;font-family:inherit;font-weight:600;font-size:12.5px;padding:8px 14px;border-radius:8px;cursor:pointer;display:inline-flex;align-items:center;gap:6px;}
+  .crs-continue:hover{border-color:#116ACC;background:var(--accent-soft,#E7F0FB);}
+  .crs-continue svg{width:14px;height:14px;}
+  .crs-empty{color:var(--muted);font-size:13px;padding:28px 4px;text-align:center;}
+  .crs-rail{display:flex;flex-direction:column;gap:16px;position:sticky;top:16px;}
+  .crs-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px 18px;}
+  .crs-card h3{font-size:15px;font-weight:700;margin:0 0 14px;}
+  .crs-ring-wrap{display:flex;justify-content:center;}
+  .crs-ring{width:150px;height:150px;}
+  .crs-ring-pct{font-size:26px;font-weight:700;fill:var(--text);}
+  .crs-ring-lbl{font-size:9px;fill:var(--faint);text-transform:uppercase;letter-spacing:.08em;}
+  .crs-legend{margin-top:14px;display:flex;flex-direction:column;gap:9px;}
+  .crs-leg{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--muted);}
+  .crs-leg .dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+  .crs-leg b{margin-left:auto;color:var(--text);font-weight:700;}
+  .crs-dl{display:flex;gap:11px;padding:11px 0;border-top:1px solid var(--border);}
+  .crs-dl:first-child{border-top:none;padding-top:2px;}
+  .crs-dl-ic{width:30px;height:30px;flex-shrink:0;border-radius:8px;background:var(--accent-soft,#E7F0FB);color:#116ACC;display:grid;place-items:center;}
+  .crs-dl-ic svg{width:15px;height:15px;}
+  .crs-dl-t{font-size:13px;font-weight:600;line-height:1.3;}
+  .crs-dl-s{font-size:11.5px;color:var(--faint);}
+  .crs-dl-empty{font-size:12.5px;color:var(--faint);padding:6px 2px;}
+  @media(max-width:1080px){ .crs-stats{grid-template-columns:repeat(2,1fr);} .crs-grid{grid-template-columns:1fr;} .crs-rail{position:static;flex-direction:row;flex-wrap:wrap;} .crs-rail .crs-card{flex:1;min-width:240px;} }
+  @media(max-width:640px){ .crs-stats{grid-template-columns:1fr;} .crs-search{width:auto;flex:1;} }
   /* ============ Course player ============ */
   /* Opens in the content area, keeping the portal sidebar visible on the left. */
   .cp{position:fixed;top:0;right:0;bottom:0;left:var(--sb-w,222px);z-index:40;background:#F1F4F9;display:flex;flex-direction:column;
@@ -504,46 +592,44 @@
         <div id="dashBody"></div>
       </section>
 
-      <!-- Trainings (learner course dashboard) -->
+      <!-- Trainings (learner Courses dashboard) -->
       <section class="view" id="tview-trainings" hidden>
-        <div class="hello"><h1>My Courses</h1><p>Courses and learning material assigned to you.</p></div>
-        <div class="td-grid">
-          <div class="td-col">
-            <!-- Assigned learning tracks -->
-            <div class="td-card" id="tdTracksCard" hidden>
-              <div class="td-head"><h2>Your Tracks</h2></div>
-              <div id="tdTracks"></div>
-            </div>
-            <!-- Continue learning (top assigned course) -->
-            <div class="td-card" id="tdContinueCard" hidden>
-              <div class="td-head"><h2>Continue Learning</h2></div>
-              <div class="td-cl" id="tdContinue"></div>
-            </div>
-            <!-- My courses grid -->
-            <div class="td-card">
-              <div class="td-head"><h2>All courses</h2><span class="link" id="tdRefresh">Refresh</span></div>
-              <div class="td-tabs" id="tdTabs">
-                <button class="active" data-f="all">All</button>
-                <button data-f="in">In progress</button>
-                <button data-f="not">Not started</button>
+        <div class="crs-head">
+          <div><h1>Courses</h1><p>Discover and continue your learning journey.</p></div>
+          <div class="crs-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="crsSearch" placeholder="Search courses, tracks…">
+          </div>
+        </div>
+        <div class="crs-stats" id="crsStats"></div>
+        <div class="crs-grid">
+          <div class="crs-main">
+            <div class="crs-section-head"><h2>Continue Learning</h2></div>
+            <div class="crs-cl" id="crsContinue"></div>
+            <div class="crs-list-card">
+              <div class="crs-list-top">
+                <div class="crs-tabs" id="crsTabs">
+                  <button class="active" data-tab="all">All Courses</button>
+                  <button data-tab="tracks">Tracks</button>
+                  <button data-tab="assigned">Assigned to Me</button>
+                </div>
+                <div class="crs-sort">
+                  <span>Sort by</span>
+                  <select id="crsSort"><option value="recent">Recently Added</option><option value="progress">Progress</option><option value="title">Title</option></select>
+                </div>
               </div>
-              <div class="td-cgrid" id="tdCourses"><div class="td-empty">Loading your courses…</div></div>
+              <div class="crs-list" id="crsList"><div class="crs-empty">Loading your courses…</div></div>
             </div>
           </div>
-          <!-- Right rail -->
-          <div class="td-col td-rail">
-            <div class="td-card">
-              <div class="td-head"><h2>Calendar</h2></div>
-              <div class="td-evt"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 5v14l11-7z"/></svg></span><div><div class="k">Live session</div><div class="v">Secure Coding Practices</div></div></div>
-              <div class="td-evt"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 9h16"/></svg></span><div><div class="k">Assignment due</div><div class="v">Module 2 Quiz</div></div></div>
+          <div class="crs-rail">
+            <div class="crs-card">
+              <h3>My Learning Overview</h3>
+              <div class="crs-ring-wrap" id="crsRing"></div>
+              <div class="crs-legend" id="crsLegend"></div>
             </div>
-            <div class="td-card">
-              <div class="td-head"><h2>My Tasks</h2></div>
-              <div class="td-evt"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg></span><div><div class="v">Complete assigned courses</div><div class="k">Keep your streak going</div></div></div>
-            </div>
-            <div class="td-card">
-              <div class="td-head"><h2>Announcements</h2></div>
-              <div class="td-evt"><span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11v2l14 5V6L3 11Z"/><path d="M17 8a4 4 0 0 1 0 8"/></svg></span><div><div class="v">Welcome to the portal</div><div class="k">Your courses appear here as they're assigned.</div></div></div>
+            <div class="crs-card">
+              <h3>Upcoming Deadlines</h3>
+              <div id="crsDeadlines"></div>
             </div>
           </div>
         </div>
@@ -1111,45 +1197,21 @@ const TD_GRADS = ['linear-gradient(140deg,#06263f,#0c3a63)','linear-gradient(140
 function tdGrad(id){ let h=0; const s=String(id); for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0; return TD_GRADS[h%TD_GRADS.length]; }
 function tdIcon(){ return '<svg viewBox="0 0 24 24" fill="none" stroke="#88c6ff" stroke-width="1.4"><path d="M4 5h11a2 2 0 0 1 2 2v13H6a2 2 0 0 1-2-2Z"/><path d="M17 7h3v13H6"/></svg>'; }
 async function lmsGet(path){ try{ const res=await fetch(CONFIG.lmsApi+path,{headers:{authorization:'Bearer '+getToken()}}); return await res.json(); }catch(e){ return {ok:false,error:'network'}; } }
+let MY_TRACKS=[], CRS_TAB='all', CRS_SORT='recent', CRS_SEARCH='';
 async function loadMyCourses(){
-  const grid=document.getElementById('tdCourses'); if(grid) grid.innerHTML='<div class="td-empty">Loading your courses…</div>';
+  const list=document.getElementById('crsList'); if(list) list.innerHTML='<div class="crs-empty">Loading your courses…</div>';
   const d=await lmsGet('/api/my/courses');
   MY_COURSES=(d&&d.ok)?(d.courses||[]):[];
-  renderMyCourses();
   loadMyTracks();
+  renderCourses();
 }
-let MY_TRACKS=[];
 async function loadMyTracks(){
   const d=await lmsGet('/api/my/curricula');
   MY_TRACKS=(d&&d.ok)?(d.curricula||[]):[];
-  renderMyTracks();
+  renderCourses();
 }
-function renderMyTracks(){
-  const card=document.getElementById('tdTracksCard'), el=document.getElementById('tdTracks');
-  if(!card||!el) return;
-  if(!MY_TRACKS.length){ card.hidden=true; el.innerHTML=''; return; }
-  card.hidden=false;
-  el.innerHTML=MY_TRACKS.map(t=>{
-    const done=t.coursesTotal>0 && t.coursesDone>=t.coursesTotal;
-    const courses=(t.courses||[]).map(c=>{
-      const meta=c.lessons?(c.completed?'Completed':(c.done?c.done+'/'+c.lessons:'Not started')):'';
-      return '<div class="td-tc" data-cid="'+esc(c.id)+'"><span class="td-tc-ic'+(c.completed?' done':'')+'">'+(c.completed?'✓':'')+'</span>'+
-        '<span class="td-tc-t">'+esc(c.title)+'</span><span class="td-tc-m">'+esc(meta)+'</span></div>';
-    }).join('');
-    return '<div class="td-track'+(done?' is-done':'')+'">'+
-      '<div class="td-track-head"><span class="td-track-title">'+esc(t.title)+'</span>'+
-        '<span class="td-track-pct">'+t.coursesDone+' / '+t.coursesTotal+' done</span></div>'+
-      (t.summary?'<div class="td-track-sub">'+esc(t.summary)+'</div>':'')+
-      '<div class="td-track-bar"><span style="width:'+t.pct+'%"></span></div>'+
-      '<div class="td-track-courses">'+(courses||'<div class="td-tc-m" style="padding:4px 8px;">No published courses in this track yet.</div>')+'</div>'+
-    '</div>';
-  }).join('');
-}
-// Progress for a course card: done lessons (from local completion) over the
-// course's lesson count (from the API), clamped so stale data can't exceed 100%.
 function cpDoneCount(cid){ try{ return new Set(JSON.parse(localStorage.getItem(cpKey(cid))||'[]')).size; }catch(e){ return 0; } }
-// Progress reflects whichever source has more (server round-trip OR local), so a
-// learner's completions show even when the server hasn't caught up.
+// Progress reflects whichever source has more (server round-trip OR local).
 function courseProg(c){
   let localTotal=0; try{ localTotal=parseInt(localStorage.getItem(cpTotalKey(c.id))||'0',10)||0; }catch(e){}
   let total=(typeof c.lessons==='number' && c.lessons>0)?c.lessons:0;
@@ -1160,36 +1222,109 @@ function courseProg(c){
   const pct=total?Math.round(done/total*100):0;
   return { done, total, pct, completed:((typeof c.completed==='boolean')&&c.completed)||(total>0&&done>=total) };
 }
-function renderMyCourses(){
-  const grid=document.getElementById('tdCourses'), contCard=document.getElementById('tdContinueCard');
-  if(!MY_COURSES.length){ grid.innerHTML='<div class="td-empty">No courses assigned to you yet. Your admin assigns courses from the console.</div>'; contCard.hidden=true; return; }
-  grid.innerHTML=MY_COURSES.map(c=>{
-    const p=courseProg(c);
-    const label = p.total ? (p.completed ? 'Completed' : p.done ? (p.done+' / '+p.total+' lessons') : 'Not started') : '';
-    const badge = p.completed ? '<span class="pct done">✓ Done</span>' : (p.done&&p.total?'<span class="pct">'+p.pct+'%</span>':'');
-    return '<div class="td-ccard'+(p.completed?' is-done':'')+'" data-cid="'+esc(c.id)+'">'+
-      '<div class="td-cover" style="--cv:'+tdGrad(c.id)+';">'+tdIcon()+badge+'</div>'+
-      '<h3>'+esc(c.title)+'</h3><div class="lvl">'+esc(c.category||'Course')+' · '+(c.presentation==='single_page'?'Single page':'Slideshow')+'</div>'+
-      (p.total?'<div class="td-progress"><span style="width:'+p.pct+'%"></span></div><div class="td-metaline"><span'+(p.completed?' style="color:#27AE60;font-weight:600;"':'')+'>'+label+'</span></div>':'')+
-    '</div>';
-  }).join('');
-  // "Continue" card: the first in-progress course, else the first assigned.
-  const cont=MY_COURSES.find(c=>{ const p=courseProg(c); return p.pct>0 && p.pct<100; }) || MY_COURSES[0];
-  const cp=courseProg(cont);
-  const contLabel = cp.total ? (cp.done>=cp.total ? 'Completed' : cp.done ? (cp.pct+'% · '+cp.done+' of '+cp.total+' lessons') : 'Not started') : 'Not started';
-  document.getElementById('tdContinue').innerHTML=
-    '<div class="td-cover" style="--cv:'+tdGrad(cont.id)+';">'+tdIcon()+'</div>'+
-    '<div><h3>'+esc(cont.title)+'</h3><div class="cat">'+esc(cont.category||'Course')+'</div>'+
-    (cont.summary?'<p style="margin:0 0 8px;color:var(--muted);font-size:13px;">'+esc(cont.summary)+'</p>':'')+
-    '<div class="td-progress"><span style="width:'+cp.pct+'%"></span></div>'+
-    '<div class="td-metaline"><span>'+contLabel+'</span><span>'+MY_COURSES.length+' assigned</span></div>'+
-    '<div class="td-btns"><button class="td-btn" data-cid="'+esc(cont.id)+'">'+(cp.done? 'Continue' : 'Start course')+'</button></div></div>';
-  contCard.hidden=false;
+function cpSeenKey(cid){ return 'cpSeen_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
+function crsSeen(cid){ try{ return parseInt(localStorage.getItem(cpSeenKey(cid))||'0',10)||0; }catch(e){ return 0; } }
+function cpFmtAgo(ts){ if(!ts) return 'Not opened yet'; const d=Math.max(0,(Date.now()-ts)/1000); if(d<60) return 'Last accessed just now'; if(d<3600) return 'Last accessed '+Math.floor(d/60)+'m ago'; if(d<86400) return 'Last accessed '+Math.floor(d/3600)+'h ago'; return 'Last accessed '+Math.floor(d/86400)+'d ago'; }
+function crsFmtHM(s){ s=s||0; const h=Math.floor(s/3600), m=Math.floor((s%3600)/60); return h>0?(h+'h '+m+'m'):(m+'m'); }
+function crsAgg(){
+  let completed=0,inprog=0,notstarted=0,di=0,ti=0,secs=0;
+  MY_COURSES.forEach(c=>{ const p=courseProg(c); if(p.completed)completed++; else if(p.pct>0)inprog++; else notstarted++; di+=p.done; ti+=p.total; try{ secs+=parseInt(localStorage.getItem(cpTimeKey(c.id))||'0',10)||0; }catch(e){} });
+  return { enrolled:MY_COURSES.length, completed, inprog, notstarted, overall: ti?Math.round(di/ti*100):0, secs };
 }
-document.getElementById('tdRefresh').addEventListener('click', loadMyCourses);
-// Open an assigned course → full-screen player.
+const CRS_IC={
+  book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4a2 2 0 0 1 2-2h12v18H7a2 2 0 0 0-2 2z"/><path d="M5 20a2 2 0 0 0 2 2h12"/></svg>',
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>',
+  clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  folder:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  course:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V10M9 19V4M14 19v-8M19 19v-5"/></svg>',
+  track:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5z"/><path d="M2 12l10 5 10-5M2 17l10 5 10-5"/></svg>',
+  arrow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>'
+};
+function renderCourses(){ renderCrsStats(); renderCrsContinue(); renderCrsOverview(); renderCrsDeadlines(); renderCrsList(); }
+function renderCrsStats(){
+  const a=crsAgg();
+  const cards=[
+    {ic:'book',c:'#116ACC',cb:'#E7F0FB',v:a.enrolled,l:'Enrolled Courses',sub:'Continue learning',link:''},
+    {ic:'check',c:'#27AE60',cb:'#DEF3E6',v:a.completed,l:'Completed Courses',sub:'View certificates',link:'cert'},
+    {ic:'clock',c:'#C7901C',cb:'#FBF0DA',v:a.inprog,l:'In Progress',sub:'Keep it up!',link:''},
+    {ic:'folder',c:'#7B3FE4',cb:'#EFE7FB',v:crsFmtHM(a.secs),l:'Learning Time',sub:'So far',link:''}
+  ];
+  document.getElementById('crsStats').innerHTML=cards.map(s=>
+    '<div class="crs-stat"><div class="crs-stat-top"><span class="crs-stat-ic" style="--c:'+s.c+';--cb:'+s.cb+';">'+CRS_IC[s.ic]+'</span>'+
+    '<div><div class="crs-stat-v">'+esc(String(s.v))+'</div><div class="crs-stat-l">'+esc(s.l)+'</div></div></div>'+
+    '<div class="crs-stat-sub'+(s.link?' link':'')+'"'+(s.link?' data-stat="'+s.link+'"':'')+'>'+esc(s.sub)+(s.link?' '+CRS_IC.arrow:'')+'</div></div>').join('');
+}
+function renderCrsContinue(){
+  const q=CRS_SEARCH.trim().toLowerCase();
+  const map=c=>({c,p:courseProg(c),seen:crsSeen(c.id)});
+  const match=x=>!q||x.c.title.toLowerCase().includes(q);
+  let items=MY_COURSES.map(map).filter(x=>x.p.pct>0&&x.p.pct<100).filter(match).sort((a,b)=>b.seen-a.seen);
+  if(!items.length) items=MY_COURSES.map(map).filter(x=>!x.p.completed).filter(match).slice(0,6);
+  const el=document.getElementById('crsContinue');
+  if(!items.length){ el.innerHTML='<div class="crs-cl-empty">Nothing in progress right now — pick a course below to get started.</div>'; return; }
+  el.innerHTML=items.map(({c,p,seen})=>{
+    const badge=p.completed?'<span class="crs-clc-badge done">Completed</span>':'<span class="crs-clc-badge">In Progress</span>';
+    return '<div class="crs-clc'+(p.completed?' done':'')+'" data-cid="'+esc(c.id)+'">'+
+      '<div class="crs-clc-cover" style="background:'+tdGrad(c.id)+'">'+badge+'</div>'+
+      '<div class="crs-clc-body"><div class="crs-clc-title">'+esc(c.title)+'</div>'+
+      '<div class="crs-clc-sub">'+(p.total?(p.done+' of '+p.total+' lessons'):esc(c.category||'Course'))+'</div>'+
+      '<div class="crs-clc-barrow"><span class="crs-clc-bar"><span style="width:'+p.pct+'%"></span></span><span class="crs-clc-pct">'+p.pct+'%</span></div>'+
+      '<div class="crs-clc-foot"><span>'+esc(cpFmtAgo(seen))+'</span>'+CRS_IC.arrow.replace('stroke-width="2.2"','stroke-width="2.2" style="width:14px;height:14px"')+'</div></div></div>';
+  }).join('');
+}
+function renderCrsOverview(){
+  const a=crsAgg(), C=2*Math.PI*50, off=C*(1-a.overall/100);
+  document.getElementById('crsRing').innerHTML=
+    '<svg class="crs-ring" viewBox="0 0 120 120">'+
+    '<circle cx="60" cy="60" r="50" fill="none" stroke="#E6E9EF" stroke-width="12"/>'+
+    '<circle cx="60" cy="60" r="50" fill="none" stroke="#116ACC" stroke-width="12" stroke-linecap="round" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90 60 60)"/>'+
+    '<text x="60" y="57" text-anchor="middle" dominant-baseline="middle" class="crs-ring-pct">'+a.overall+'%</text>'+
+    '<text x="60" y="78" text-anchor="middle" class="crs-ring-lbl">Overall</text></svg>';
+  document.getElementById('crsLegend').innerHTML=
+    '<div class="crs-leg"><span class="dot" style="background:#27AE60"></span>Completed <b>'+a.completed+'</b></div>'+
+    '<div class="crs-leg"><span class="dot" style="background:#116ACC"></span>In Progress <b>'+a.inprog+'</b></div>'+
+    '<div class="crs-leg"><span class="dot" style="background:#CBD2DA"></span>Not Started <b>'+a.notstarted+'</b></div>';
+}
+function renderCrsDeadlines(){
+  document.getElementById('crsDeadlines').innerHTML='<div class="crs-dl-empty">No upcoming deadlines — you’re all caught up.</div>';
+}
+function renderCrsList(){
+  const el=document.getElementById('crsList'), q=CRS_SEARCH.trim().toLowerCase();
+  if(CRS_TAB==='tracks'){
+    let items=MY_TRACKS.filter(t=>!q||t.title.toLowerCase().includes(q));
+    if(CRS_SORT==='title') items=items.slice().sort((a,b)=>a.title.localeCompare(b.title));
+    else if(CRS_SORT==='progress') items=items.slice().sort((a,b)=>b.pct-a.pct);
+    if(!items.length){ el.innerHTML='<div class="crs-empty">'+(MY_TRACKS.length?'No tracks match your search.':'No learning tracks assigned to you yet.')+'</div>'; return; }
+    el.innerHTML=items.map(t=>{
+      const done=t.coursesTotal>0&&t.coursesDone>=t.coursesTotal, go=(t.courses.find(c=>!c.completed)||t.courses[0]||{}).id||'';
+      return '<div class="crs-row" data-cid="'+esc(go)+'"><span class="crs-row-ic" style="--c:#7B3FE4;--cb:#EFE7FB;">'+CRS_IC.track+'</span>'+
+        '<div class="crs-row-main"><div class="crs-row-title">'+esc(t.title)+' <span class="crs-badge track">Track</span></div>'+
+        '<div class="crs-row-desc">'+esc(t.summary||(t.coursesTotal+' courses'))+'</div></div>'+
+        '<div class="crs-row-count">'+t.coursesTotal+' course'+(t.coursesTotal===1?'':'s')+' · '+t.coursesDone+' done</div>'+
+        '<button class="crs-continue" data-cid="'+esc(go)+'">'+(done?'Review':'Continue')+' '+CRS_IC.arrow+'</button></div>';
+    }).join('');
+    return;
+  }
+  let items=MY_COURSES.map(c=>({c,p:courseProg(c),seen:crsSeen(c.id)})).filter(x=>!q||x.c.title.toLowerCase().includes(q)||(x.c.summary||'').toLowerCase().includes(q));
+  if(CRS_SORT==='title') items.sort((a,b)=>a.c.title.localeCompare(b.c.title));
+  else if(CRS_SORT==='progress') items.sort((a,b)=>b.p.pct-a.p.pct);
+  else items.sort((a,b)=>b.seen-a.seen);
+  if(!items.length){ el.innerHTML='<div class="crs-empty">'+(MY_COURSES.length?'No courses match your search.':'No courses assigned to you yet. Your admin assigns courses from the console.')+'</div>'; return; }
+  el.innerHTML=items.map(({c,p})=>
+    '<div class="crs-row'+(p.completed?' done':'')+'" data-cid="'+esc(c.id)+'"><span class="crs-row-ic" style="--c:#116ACC;--cb:#E7F0FB;">'+CRS_IC.course+'</span>'+
+    '<div class="crs-row-main"><div class="crs-row-title">'+esc(c.title)+' <span class="crs-badge">Course</span></div>'+
+    '<div class="crs-row-desc">'+esc(c.summary||c.category||'Course')+'</div></div>'+
+    '<div class="crs-row-prog"><div class="crs-row-prog-lbl">Progress</div><div class="crs-row-bar"><span style="width:'+p.pct+'%"></span></div></div>'+
+    '<div class="crs-row-pct">'+p.pct+'%</div>'+
+    '<button class="crs-continue" data-cid="'+esc(c.id)+'">'+(p.completed?'Review':(p.pct>0?'Continue':'Start'))+' '+CRS_IC.arrow+'</button></div>').join('');
+}
+document.getElementById('crsSearch').addEventListener('input', (e)=>{ CRS_SEARCH=e.target.value; renderCrsContinue(); renderCrsList(); });
+document.getElementById('crsSort').addEventListener('change', (e)=>{ CRS_SORT=e.target.value; renderCrsList(); });
+document.getElementById('crsTabs').addEventListener('click', (e)=>{ const b=e.target.closest('[data-tab]'); if(!b) return; CRS_TAB=b.dataset.tab; document.querySelectorAll('#crsTabs button').forEach(x=>x.classList.toggle('active',x===b)); renderCrsList(); });
+document.getElementById('crsStats').addEventListener('click', (e)=>{ const s=e.target.closest('[data-stat]'); if(s && s.dataset.stat==='cert' && typeof switchTakerView==='function') switchTakerView('certificates'); });
+// Open a course from any [data-cid] element (continue cards, list rows, buttons).
 document.getElementById('tview-trainings').addEventListener('click', (e)=>{
-  const el=e.target.closest('[data-cid]'); if(!el) return;
+  const el=e.target.closest('[data-cid]'); if(!el || !el.dataset.cid) return;
   openCourseFull(el.dataset.cid);
 });
 
@@ -1306,6 +1441,7 @@ async function openCourseFull(courseId){
   CP_CHAPTERS=chapters; cpBuildItems();
   if(!CP_ITEMS.length){ CP_CHAPTERS=[{title:CP_COURSE.title||'Course',description:'',blocks:[{type:'text',html:'<p>No content yet.</p>'}]}]; cpBuildItems(); }
   try{ localStorage.setItem(cpTotalKey(courseId), String(CP_ITEMS.length)); }catch(e){}   // cache item total for the dashboard bars
+  try{ localStorage.setItem(cpSeenKey(courseId), String(Date.now())); }catch(e){}          // last-accessed for "Continue learning"
   await cpLoadProgress(courseId);
   try{ CP_BM=JSON.parse(localStorage.getItem(cpBmKey(courseId))); if(typeof CP_BM!=='number') CP_BM=null; }catch(e){ CP_BM=null; }
   document.getElementById('cpCourseTitle').textContent=CP_COURSE.title||'Course';
