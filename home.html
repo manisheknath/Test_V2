@@ -1131,6 +1131,7 @@ const CP_BOOK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 const CP_CARET='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
 function cpKey(cid){ return 'cpDone_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
 function cpBmKey(cid){ return 'cpBm_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
+function cpPosKey(cid){ return 'cpPos_'+((ACCOUNT&&ACCOUNT.id)||'x')+'_'+cid; }
 function cpCssUrl(u){ return "'"+String(u).replace(/'/g,'%27')+"'"; }
 // Completion is stored server-side (cross-device); localStorage is a cache/fallback.
 async function cpLoadProgress(courseId){
@@ -1196,7 +1197,8 @@ async function openCourseFull(courseId){
   document.getElementById('cpCourseSub').textContent=CP_COURSE.summary||'';
   document.getElementById('cpCover').style.backgroundImage=cover?('url('+cpCssUrl(cover)+')'):'';
   CP_OPEN=new Set();
-  CP_IDX=(CP_BM!=null && CP_BM<CP_ITEMS.length)?CP_BM:0;
+  let cpStart=0; try{ const sp=parseInt(localStorage.getItem(cpPosKey(courseId)),10); if(!isNaN(sp)) cpStart=sp; }catch(e){}
+  CP_IDX=(cpStart>=0 && cpStart<CP_ITEMS.length)?cpStart:0;
   const p=document.getElementById('coursePlayer'); p.classList.remove('cp-focus'); cpSetComments(false);
   cpShow(CP_IDX);
   cpLoadComments(courseId);
@@ -1251,6 +1253,7 @@ function cpShow(i){
   document.getElementById('cpCompLbl').textContent=isDone?'Completed':'Mark as Complete';
   document.getElementById('cpCompDot').textContent=isDone?'✓':'';
   const bm=document.getElementById('cpBookmark'); if(bm) bm.classList.toggle('on',CP_BM===CP_IDX);
+  try{ if(CP_COURSE) localStorage.setItem(cpPosKey(CP_COURSE.id), String(CP_IDX)); }catch(e){}
   cpRenderChapters(); cpUpdateProgressUI();
 }
 document.getElementById('cpChapters').addEventListener('click',(e)=>{
@@ -1259,7 +1262,10 @@ document.getElementById('cpChapters').addEventListener('click',(e)=>{
   const it=e.target.closest('[data-i]'); if(it) cpShow(+it.dataset.i);
 });
 document.getElementById('cpPrev').addEventListener('click', ()=>cpShow(CP_IDX-1));
-document.getElementById('cpNext').addEventListener('click', ()=>cpShow(CP_IDX+1));
+document.getElementById('cpNext').addEventListener('click', ()=>{
+  if(!CP_DONE.has(CP_IDX)){ CP_DONE.add(CP_IDX); cpSaveProgress(); }   // advancing completes the item you're leaving
+  cpShow(CP_IDX+1);
+});
 document.getElementById('cpComplete').addEventListener('click', ()=>{
   if(CP_DONE.has(CP_IDX)) CP_DONE.delete(CP_IDX); else CP_DONE.add(CP_IDX);
   cpSaveProgress(); cpShow(CP_IDX);
@@ -1272,8 +1278,11 @@ document.getElementById('cpBookmark').addEventListener('click', ()=>{
 document.getElementById('cpExpand').addEventListener('click', ()=>{ document.getElementById('coursePlayer').classList.toggle('cp-focus'); });
 document.getElementById('cpMore').addEventListener('click',(e)=>{ e.stopPropagation(); document.getElementById('cpMenu').classList.toggle('hidden'); });
 document.addEventListener('click', ()=>{ const m=document.getElementById('cpMenu'); if(m) m.classList.add('hidden'); });
-function cpClosePlayer(){ document.getElementById('coursePlayer').classList.add('hidden'); document.documentElement.style.overflow=''; if(typeof loadMyCourses==='function') loadMyCourses(); }
+function cpClosePlayer(){ cpSaveProgress(); document.getElementById('coursePlayer').classList.add('hidden'); document.documentElement.style.overflow=''; if(typeof loadMyCourses==='function') loadMyCourses(); }
 document.getElementById('cpExitBtn').addEventListener('click', cpClosePlayer);
+// Flush progress if the tab is hidden/closed while a course is open.
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='hidden' && CP_COURSE && !document.getElementById('coursePlayer').classList.contains('hidden')) cpSaveProgress(); });
+window.addEventListener('pagehide', ()=>{ if(CP_COURSE && !document.getElementById('coursePlayer').classList.contains('hidden')) cpSaveProgress(); });
 document.addEventListener('keydown', (e)=>{
   if(e.key!=='Escape' || document.getElementById('coursePlayer').classList.contains('hidden')) return;
   const m=document.getElementById('cpMenu'); if(m && !m.classList.contains('hidden')){ m.classList.add('hidden'); return; }
